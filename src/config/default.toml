@@ -1,0 +1,11 @@
+[server]
+host = "0.0.0.0"
+port = 5001
+
+[database]
+file_path = "database.db"
+
+[auth]
+secret_key = "admin_key"
+token_duration = 900
+refresh_token_duration = 3600
