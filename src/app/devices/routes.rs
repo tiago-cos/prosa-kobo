@@ -15,8 +15,5 @@ pub fn get_routes(state: AppState) -> Router {
         .route("/devices/unlink", post(handlers::unlink_device_handler))
         .route("/devices/auth", post(handlers::device_auth_handler))
         .route("/devices/auth/refresh", post(handlers::refresh_token_handler))
-        .route("/tmp", get(handlers::tmp)
-            .route_layer(from_fn_with_state(state.clone(), extract_token_middleware))
-        )
         .with_state(state)
 }
