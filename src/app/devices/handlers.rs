@@ -1,12 +1,20 @@
 use super::{
     models::{
-        DeviceAuthRequest, DeviceAuthResponse, DeviceError, LinkDeviceRequest, RefreshTokenRequest, RefreshTokenResponse
+        DeviceAuthRequest, DeviceAuthResponse, DeviceError, LinkDeviceRequest, RefreshTokenRequest,
+        RefreshTokenResponse,
     },
     service,
 };
 use crate::app::{authentication, error::KoboError, AppState, Pool};
-use axum::{extract::{Query, State}, response::IntoResponse, Extension, Json};
-use std::{collections::HashMap, time::{SystemTime, UNIX_EPOCH}};
+use axum::{
+    extract::{Query, State},
+    response::IntoResponse,
+    Json,
+};
+use std::{
+    collections::HashMap,
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 pub async fn device_auth_handler(
     State(state): State<AppState>,
@@ -85,9 +93,4 @@ pub async fn unlink_device_handler(
 
     service::unlink_device(&pool, &body.device_id, &body.api_key, now).await?;
     Ok(())
-}
-
-pub async fn tmp(Extension(api_key): Extension<String>) -> impl IntoResponse {
-    let response = format!("Hi there! Your api key is: {}", api_key);
-    response
 }

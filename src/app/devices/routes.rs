@@ -1,7 +1,6 @@
 use super::handlers;
-use crate::app::{authentication::middleware::extract_token_middleware, AppState};
+use crate::app::AppState;
 use axum::{
-    middleware::from_fn_with_state,
     routing::{get, post},
     Router,
 };
