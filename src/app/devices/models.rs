@@ -19,7 +19,7 @@ pub enum DeviceError {
     DeviceAlreadyLinked,
     #[strum(message = "InvalidApiKey")]
     #[strum(detailed_message = "The provided api key is invalid.")]
-    #[strum(props(StatusCode = "401"))]
+    #[strum(props(StatusCode = "400"))]
     InvalidApiKey,
     #[strum(message = "MissingApiKey")]
     #[strum(detailed_message = "The api key must be provided.")]

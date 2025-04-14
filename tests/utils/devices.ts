@@ -1,5 +1,6 @@
 import request from "supertest";
 import { randomString, SERVER_URL } from "./common";
+import { createHash } from "crypto";
 
 export const DEVICE_NOT_FOUND = "The requested device does not exist or is not accessible.";
 export const DEVICE_ALREADY_LINKED = "This device is already linked.";
@@ -18,6 +19,13 @@ async function generateDeviceAuthRequest(device_id: string, user_key: string) {
     };
 
     return request;
+}
+
+function generateDeviceId(deviceId: string, userKey: string): string {
+    const hash = createHash('sha256')
+        .update(deviceId + userKey)
+        .digest();
+    return hash.toString('base64');
 }
 
 async function generateDeviceAuthRefreshRequest(refresh_token: string) {
@@ -66,6 +74,8 @@ export async function authDevice(deviceId?: string, userKey?: string) {
         userKey = randomString(16);
 
     const response = await req.send(await generateDeviceAuthRequest(deviceId, userKey));
+
+    deviceId = generateDeviceId(deviceId, userKey);
 
     return {response, deviceId, userKey};
 }

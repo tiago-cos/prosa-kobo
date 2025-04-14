@@ -36,6 +36,10 @@ pub async fn unlink_device(
     api_key: &str,
     timestamp: i64,
 ) -> Result<(), KoboError> {
+    if !is_valid_api_key(api_key) {
+        return Err(DeviceError::InvalidApiKey.into());
+    }
+    
     data::remove_linked_device(pool, device_id, api_key).await?;
     data::add_unlinked_device(pool, device_id, timestamp).await;
 
