@@ -4,6 +4,7 @@ use strum_macros::{EnumMessage, EnumProperty};
 type JwtError = jsonwebtoken::errors::Error;
 type JwtErrorKind = jsonwebtoken::errors::ErrorKind;
 
+#[rustfmt::skip]
 #[derive(EnumMessage, EnumProperty, Debug)]
 pub enum AuthError {
     #[strum(message = "ExpiredToken", detailed_message = "Expired token")]
@@ -21,10 +22,7 @@ pub enum AuthError {
     #[strum(message = "MissingAuth", detailed_message = "No authentication was provided.")]
     #[strum(props(StatusCode = "401"))]
     MissingAuth,
-    #[strum(
-        message = "NotLinked",
-        detailed_message = "This device is not associated with an API key."
-    )]
+    #[strum(message = "NotLinked", detailed_message = "This device is not associated with an API key.")]
     #[strum(props(StatusCode = "403"))]
     NotLinked,
     #[strum(message = "InternalError", detailed_message = "Internal error")]

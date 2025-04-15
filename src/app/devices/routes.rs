@@ -12,7 +12,7 @@ pub fn get_routes(state: AppState) -> Router {
         .route("/devices/linked", get(handlers::get_linked_devices_handler))
         .route("/devices/link", post(handlers::link_device_handler))
         .route("/devices/unlink", post(handlers::unlink_device_handler))
-        .route("/devices/auth", post(handlers::device_auth_handler))
-        .route("/devices/auth/refresh", post(handlers::refresh_token_handler))
+        .route("/v1/auth/device", post(handlers::device_auth_handler))
+        .route("/v1/auth/refresh", post(handlers::refresh_token_handler))
         .with_state(state)
 }

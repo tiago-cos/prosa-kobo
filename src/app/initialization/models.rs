@@ -1,4 +1,5 @@
-pub const RESPONSE: &str = r#"{
+pub const RESPONSE: &str = r#"
+{
     "Resources": {
         "productsv2": "http://{host}/v2/products",
         "personalizedrecommendations": "http://{host}/v2/users/personalizedrecommendations",
@@ -29,8 +30,8 @@ pub const RESPONSE: &str = r#"{
         "notifications_registration_issue": "http://{host}/v1/notifications/registration",
         "exchange_auth": "http://{host}/v1/auth/exchange",
         "rakuten_token_exchange": "http://{host}/v1/auth/rakuten_token_exchange",
-        "device_auth": "http://{host}/devices/auth",
-        "device_refresh": "http://{host}/devices/auth/refresh",
+        "device_auth": "http://{host}/v1/auth/device",
+        "device_refresh": "http://{host}/v1/auth/refresh",
         "add_device": "http://{host}/v1/user/add-device",
         "get_tests_request": "http://{host}/v1/analytics/gettests",
         "post_analytics_event": "http://{host}/v1/analytics/event",

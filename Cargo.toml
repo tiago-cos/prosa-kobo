@@ -16,3 +16,4 @@ sqlx = { version = "0.8.3", features = ["runtime-tokio", "sqlite"] }
 strum = "0.27.1"
 strum_macros = "0.27.1"
 tokio = { version = "1.44.0", features = ["full"] }
+ureq = "2.10.1"
