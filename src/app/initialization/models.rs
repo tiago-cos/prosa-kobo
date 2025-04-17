@@ -1,3 +1,5 @@
+use serde::Deserialize;
+
 pub const RESPONSE: &str = r#"
 {
     "Resources": {
@@ -10,7 +12,7 @@ pub const RESPONSE: &str = r#"
         "get_download_link": "http://{host}/v1/library/downloadlink",
         "get_download_keys": "http://{host}/v1/library/downloadkeys",
         "checkout_borrowed_book": "http://{host}/v1/library/borrow",
-        "library_sync": "http://{host}/library/sync",
+        "library_sync": "http://{host}/v1/library/sync",
         "library_search": "http://{host}/v1/library/search",
         "library_items": "http://{host}/books",
         "add_entitlement": "http://{host}/{RevisionIds}",
@@ -82,7 +84,7 @@ pub const RESPONSE: &str = r#"
         "social_host": "https://social.kobobooks.com",
         "reading_services_host": "http://{host}",
         "discovery_host": "https://discovery.kobobooks.com",
-        "oauth_host": "https://oauth.kobo.com",
+        "oauth_host": "http://{host}/oauth/{device_id}",
         "eula_page": "https://www.kobo.com/termsofuse?style=onestore",
         "password_retrieval_page": "https://www.kobo.com/passwordretrieval.html",
         "store_search": "https://www.kobo.com/{region}/{language}/Search?Query={query}",
@@ -160,3 +162,22 @@ pub const RESPONSE: &str = r#"
         "ppx_purchasing_url": "https://purchasing.kobo.com"
     }
 }"#;
+
+pub const TESTS_RESPONSE: &str = r#"
+{
+  "Result": "Success",
+  "TestKey": "{test_key}",
+  "Tests": {}
+}
+"#;
+
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "PascalCase")]
+#[allow(unused)]
+pub struct TestRequest {
+    pub affiliate_name: String,
+    pub application_version: String,
+    pub platform_id: String,
+    pub serial_number: String,
+    pub test_key: String,
+}

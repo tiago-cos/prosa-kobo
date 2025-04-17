@@ -8,6 +8,15 @@ use std::sync::Arc;
 pub struct Server {
     pub host: String,
     pub port: u16,
+    pub announced_host: String,
+    pub announced_port: u16,
+}
+
+#[derive(Deserialize)]
+pub struct Prosa {
+    pub host: String,
+    pub port: u16,
+    pub scheme: String,
 }
 
 #[derive(Deserialize)]
@@ -15,6 +24,7 @@ pub struct Configuration {
     pub server: Server,
     pub database: Database,
     pub auth: Auth,
+    pub prosa: Prosa,
 }
 
 #[derive(Deserialize, Clone)]

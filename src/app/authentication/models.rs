@@ -22,9 +22,6 @@ pub enum AuthError {
     #[strum(message = "MissingAuth", detailed_message = "No authentication was provided.")]
     #[strum(props(StatusCode = "401"))]
     MissingAuth,
-    #[strum(message = "NotLinked", detailed_message = "This device is not associated with an API key.")]
-    #[strum(props(StatusCode = "403"))]
-    NotLinked,
     #[strum(message = "InternalError", detailed_message = "Internal error")]
     #[strum(props(StatusCode = "500"))]
     InternalError,
@@ -46,3 +43,25 @@ pub struct JWTClaims {
     pub device_id: String,
     pub exp: u64,
 }
+
+#[derive(Clone)]
+pub struct AuthToken {
+    pub device_id: String,
+    pub api_key: String,
+}
+
+//TODO add schema option
+pub const OAUTH_CONFIGS: &str =
+    r#"{ "token_endpoint": "http://{host}/oauth/connect/token?device_id={device_id}" }"#;
+
+//TODO put {jwt_duration} in expires_in
+pub const OAUTH_TOKEN: &str = r#"
+{
+  "id_token": "{jwt_token}",
+  "access_token": "{jwt_token}",
+  "expires_in": 60,
+  "token_type": "Bearer",
+  "refresh_token": "{jwt_token}",
+  "scope": "openid profile kobo_profile public_api_authenticated public_api_anonymous offline_access"
+}
+"#;

@@ -1,6 +1,6 @@
-use axum::{routing::any, Router};
-use crate::app::AppState;
 use super::proxy;
+use crate::app::AppState;
+use axum::{routing::any, Router};
 
 pub fn get_routes(state: AppState) -> Router {
     Router::new()

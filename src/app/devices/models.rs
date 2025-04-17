@@ -5,6 +5,7 @@ use sqlx::{
     sqlite::SqliteError,
 };
 use strum_macros::{EnumMessage, EnumProperty};
+
 type SqlxError = sqlx::Error;
 
 #[derive(EnumMessage, EnumProperty, Debug)]
@@ -63,6 +64,7 @@ impl From<&SqliteError> for DeviceError {
 
 #[derive(Deserialize)]
 #[serde(rename_all = "PascalCase")]
+#[allow(unused)]
 pub struct DeviceAuthRequest {
     pub affiliate_name: String,
     pub app_version: String,
@@ -97,6 +99,7 @@ impl DeviceAuthResponse {
 
 #[derive(Deserialize)]
 #[serde(rename_all = "PascalCase")]
+#[allow(unused)]
 pub struct RefreshTokenRequest {
     pub app_version: String,
     pub client_key: String,

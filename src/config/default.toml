@@ -1,6 +1,8 @@
 [server]
 host = "0.0.0.0"
 port = 5001
+announced_host = "192.168.0.1"
+announced_port = 5001
 
 [database]
 file_path = "database.db"
@@ -9,3 +11,8 @@ file_path = "database.db"
 secret_key = "admin_key"
 token_duration = 900
 refresh_token_duration = 3600
+
+[prosa]
+scheme = "http"
+host = "127.0.0.1"
+port = 5000

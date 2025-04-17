@@ -1,8 +1,9 @@
 mod authentication;
 mod devices;
 mod error;
-mod server;
 mod initialization;
 mod proxy;
+mod server;
+mod sync;
 
 pub use server::*;

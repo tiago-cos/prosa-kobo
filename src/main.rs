@@ -1,6 +1,7 @@
 use config::Configuration;
 
 mod app;
+mod client;
 mod config;
 mod database;
 

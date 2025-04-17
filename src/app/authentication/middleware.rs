@@ -1,5 +1,5 @@
 use super::{models::AuthError, service};
-use crate::app::{devices, error::KoboError, AppState};
+use crate::app::{authentication::models::AuthToken, devices, error::KoboError, AppState};
 use axum::{
     extract::{Request, State},
     http::{HeaderMap, HeaderValue},
@@ -22,10 +22,13 @@ pub async fn extract_token_middleware(
 
     let device = match devices::service::get_linked_device(&state.pool, &device_id).await {
         Some(device) => device,
-        _ => Err(AuthError::NotLinked)?,
+        _ => Err(AuthError::InvalidToken)?,
     };
 
-    request.extensions_mut().insert(device.api_key);
+    request.extensions_mut().insert(AuthToken {
+        device_id,
+        api_key: device.api_key,
+    });
     Ok(next.run(request).await)
 }
 
@@ -39,7 +42,7 @@ async fn handle_jwt(secret: &str, header: &HeaderValue) -> Result<String, AuthEr
         .and_then(|parts| Some((parts[0], parts[1])))
         .ok_or(AuthError::InvalidAuthHeader)?;
 
-    let token = service::verify_jwt(token, secret).await?;
+    let device_id = service::verify_jwt(token, secret).await?;
 
-    Ok(token)
+    Ok(device_id)
 }

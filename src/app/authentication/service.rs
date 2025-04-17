@@ -1,4 +1,4 @@
-use super::models::{AuthError, JWTClaims};
+use super::models::{AuthError, JWTClaims, OAUTH_CONFIGS, OAUTH_TOKEN};
 use base64::{prelude::BASE64_STANDARD, Engine};
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -30,4 +30,16 @@ pub async fn verify_jwt(token: &str, secret: &str) -> Result<String, AuthError> 
     let token = jsonwebtoken::decode::<JWTClaims>(&token, &key, &validation)?;
 
     Ok(token.claims.device_id)
+}
+
+pub async fn generate_oauth_config(host: &str, device_id: &str) -> String {
+    OAUTH_CONFIGS
+        .replace("{host}", &host)
+        .replace("{device_id}", &device_id)
+}
+
+pub async fn generate_oauth_token(jwt_token: &str, jwt_duration: u64) -> String {
+    OAUTH_TOKEN
+        .replace("{jwt_token}", &jwt_token)
+        .replace("{jwt_duration}", &jwt_duration.to_string())
 }
