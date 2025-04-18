@@ -16,3 +16,6 @@ refresh_token_duration = 3600
 scheme = "http"
 host = "127.0.0.1"
 port = 5000
+
+[token]
+expiration = 60
