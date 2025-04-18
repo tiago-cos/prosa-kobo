@@ -57,7 +57,9 @@ pub async fn proxy_handler(
         }
 
         //TODO remove
-        //println!("{} {}", key, value);
+        if target_uri.contains("/book-images/") {
+            println!("{} {}", key, value);
+        }
 
         if request_without_body.is_some() {
             request_without_body = Some(request_without_body.unwrap().header(key, value));

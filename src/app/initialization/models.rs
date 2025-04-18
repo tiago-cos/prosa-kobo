@@ -1,5 +1,6 @@
 use serde::Deserialize;
 
+//TODO check if quality and grayscale information is really needed in images url
 pub const RESPONSE: &str = r#"
 {
     "Resources": {
@@ -77,7 +78,7 @@ pub const RESPONSE: &str = r#"
         "assets": "http://{host}/v1/assets",
         "affiliaterequest": "http://{host}/v1/affiliate",
         "notebooks": "http://{host}/api/internal/notebooks",
-        "image_host": "//{host}/book-images/",
+        "image_host": "http://{host}/images/",
         "store_host": "www.kobo.com",
         "store_home": "www.kobo.com/{region}/{language}",
         "social_authorization_host": "https://social.kobobooks.com:8443",
@@ -103,8 +104,8 @@ pub const RESPONSE: &str = r#"
         "redeem_interstitial_page": "https://www.kobo.com",
         "love_dashboard_page": "https://www.kobo.com/{region}/{language}/kobosuperpoints",
         "help_page": "http://www.kobo.com/help",
-        "image_url_template": "http://{host}/book-images/{ImageId}/{Width}/{Height}/false/image.jpg",
-        "image_url_quality_template": "http://{host}/book-images/{ImageId}/{Width}/{Height}/{Quality}/{IsGreyscale}/image.jpg",
+        "image_url_template": "http://{host}/images/{ImageId}?device_id={device_id}",
+        "image_url_quality_template": "http://{host}/images/{ImageId}?device_id={device_id}",
         "customer_care_live_chat": "https://v2.zopim.com/widget/livechat.html?key=Y6gwUmnu4OATxN3Tli4Av9bYN319BTdO",
         "audiobook_landing_page": "https://www.kobo.com/{region}/{language}/audiobooks",
         "userguide_host": "https://ereaderfiles.kobo.com",
