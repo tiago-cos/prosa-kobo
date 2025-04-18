@@ -41,9 +41,6 @@ pub async fn verify_token(pool: &SqlitePool, token: &str) -> Result<(), TokenErr
         return Err(TokenError::InvalidToken);
     }
 
-    //TODO delete
-    println!("Token actually matches");
-
     data::delete_token(&pool, token).await;
 
     Ok(())

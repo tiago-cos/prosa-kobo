@@ -8,17 +8,18 @@ use crate::{
 };
 use chrono::{DateTime, Utc};
 use sqlx::SqlitePool;
+use std::time::{SystemTime, UNIX_EPOCH};
 
-//TODO dont forget the last modified cookie
 pub async fn translate_sync(
     pool: &SqlitePool,
     client: &Client,
+    since: Option<i64>,
     server_url: &str,
     download_expiration: i64,
     api_key: &str,
 ) -> Vec<NewEntitlementResponse> {
     let sync_response = client
-        .sync_device(api_key)
+        .sync_device(since, api_key)
         .expect("Sync response should not fail");
 
     let mut translated_response = Vec::new();
@@ -51,6 +52,15 @@ pub async fn translate_sync(
     }
 
     translated_response
+}
+
+pub async fn create_new_sync_token() -> String {
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("Time went backwards")
+        .as_millis();
+
+    now.to_string()
 }
 
 pub fn unix_millis_to_string(timestamp_millis: i64) -> String {

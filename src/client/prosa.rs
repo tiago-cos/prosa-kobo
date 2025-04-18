@@ -32,8 +32,8 @@ impl Client {
         }
     }
 
-    pub fn sync_device(&self, api_key: &str) -> Result<SyncResponse, Error> {
-        self.sync_client.sync_device(&self.url, api_key)
+    pub fn sync_device(&self, since: Option<i64>, api_key: &str) -> Result<SyncResponse, Error> {
+        self.sync_client.sync_device(&self.url, since, api_key)
     }
 
     pub fn fetch_metadata(&self, book_id: &str, api_key: &str) -> Result<MetadataResponse, Error> {

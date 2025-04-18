@@ -1,27 +1,43 @@
 use super::service;
 use crate::app::{authentication::AuthToken, error::KoboError, AppState};
-use axum::{extract::State, response::IntoResponse, Extension, Json};
+use axum::{
+    extract::State,
+    http::{HeaderMap, HeaderValue},
+    response::IntoResponse,
+    Extension, Json,
+};
 
 pub async fn device_sync_handler(
     State(state): State<AppState>,
+    headers: HeaderMap,
     Extension(token): Extension<AuthToken>,
 ) -> Result<impl IntoResponse, KoboError> {
-    //TODO remove
-    println!("TRIGGERED SYNC");
-
     let server_url = format!(
         "http://{}:{}",
         state.config.server.announced_host, state.config.server.announced_port
     );
 
+    let since = headers
+        .get("X-Kobo-Synctoken")
+        .map(|s| s.to_str().ok())
+        .flatten()
+        .map(|s| s.parse::<i64>().ok())
+        .flatten();
+
     let response = service::translate_sync(
         &state.pool,
         &state.prosa_client,
+        since,
         &server_url,
         state.config.token.expiration,
         &token.api_key,
     )
     .await;
 
-    Ok(Json(response))
+    let mut headers = HeaderMap::new();
+    let sync_header =
+        HeaderValue::from_str(&service::create_new_sync_token().await).expect("Failed to create sync header");
+    headers.insert("X-Kobo-Synctoken", sync_header);
+
+    Ok((headers, Json(response)))
 }

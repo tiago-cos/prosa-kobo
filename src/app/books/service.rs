@@ -32,9 +32,6 @@ async fn verify_token(pool: &SqlitePool, book_id: &str, token: &str) -> Result<S
         return Err(TokenError::InvalidToken);
     }
 
-    //TODO remove
-    println!("Token book_id matches. Api key: {}", api_key);
-
     tokens::verify_token(pool, token).await?;
 
     Ok(api_key)

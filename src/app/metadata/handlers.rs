@@ -11,9 +11,6 @@ pub async fn metadata_handler(
     Path(book_id): Path<String>,
     Extension(token): Extension<AuthToken>,
 ) -> Result<impl IntoResponse, KoboError> {
-    //TODO remove
-    println!("TRIGGERED METADATA");
-
     let server_url = format!(
         "http://{}:{}",
         state.config.server.announced_host, state.config.server.announced_port
