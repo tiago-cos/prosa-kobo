@@ -1,6 +1,5 @@
 use serde::Deserialize;
 
-//TODO check if quality and grayscale information is really needed in images url
 pub const RESPONSE: &str = r#"
 {
     "Resources": {

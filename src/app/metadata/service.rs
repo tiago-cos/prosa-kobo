@@ -1,6 +1,8 @@
 use super::{BookMetadata, DownloadUrl};
 use crate::{app::books, client::prosa::Client};
+use base64::{prelude::BASE64_URL_SAFE_NO_PAD, Engine};
 use chrono::{DateTime, Utc};
+use rand::RngCore;
 use sqlx::SqlitePool;
 use urlencoding::encode;
 
@@ -39,4 +41,12 @@ pub fn unix_millis_to_string(timestamp_millis: i64) -> String {
     );
 
     formatted
+}
+
+pub fn random_string(len: usize) -> String {
+    let mut bytes = vec![0u8; len];
+    rand::rng().fill_bytes(&mut bytes);
+    let mut random = BASE64_URL_SAFE_NO_PAD.encode(bytes);
+    random.truncate(len);
+    random
 }

@@ -8,7 +8,10 @@ use crate::{
 };
 use chrono::{DateTime, Utc};
 use sqlx::SqlitePool;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::{
+    collections::HashSet,
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 pub async fn translate_sync(
     pool: &SqlitePool,
@@ -24,7 +27,19 @@ pub async fn translate_sync(
 
     let mut translated_response = Vec::new();
 
+    let mut book_ids = HashSet::new();
+
     for book_id in sync_response.file {
+        book_ids.insert(book_id);
+    }
+    for book_id in sync_response.cover {
+        book_ids.insert(book_id);
+    }
+    for book_id in sync_response.metadata {
+        book_ids.insert(book_id);
+    }
+
+    for book_id in book_ids {
         let state_response = client
             .fetch_state(&book_id, api_key)
             .expect("State response should not fail");

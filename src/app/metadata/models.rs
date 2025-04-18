@@ -3,7 +3,7 @@ use serde_with::skip_serializing_none;
 
 use crate::client::MetadataResponse;
 
-use super::service::unix_millis_to_string;
+use super::service::{random_string, unix_millis_to_string};
 
 #[skip_serializing_none]
 #[derive(Serialize)]
@@ -132,7 +132,6 @@ impl BookMetadata {
             })
             .collect();
 
-        //TODO see if series name as id ruins anything
         let series = metadata.series.map(|s| Series {
             id: s.title.clone(),
             name: s.title,
@@ -163,7 +162,7 @@ impl BookMetadata {
             subtitle: metadata.subtitle,
             genre: None,
             slug: None,
-            cover_image_id: book_id.to_string(),
+            cover_image_id: format!("{}[[{}]]", book_id, random_string(6)),
             is_social_enabled: true,
             work_id: book_id.to_string(),
             external_ids: Vec::new(),

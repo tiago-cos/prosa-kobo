@@ -2,6 +2,7 @@ use crate::{
     app::{authentication::AuthError, devices},
     client::prosa::Client,
 };
+use regex::Regex;
 use sqlx::SqlitePool;
 
 pub async fn download_cover(
@@ -14,6 +15,9 @@ pub async fn download_cover(
         Some(device) => device.api_key,
         _ => Err(AuthError::InvalidToken)?,
     };
+
+    let re = Regex::new(r"\[\[.*?\]\]").expect("Failed to create regex");
+    let book_id = re.replace_all(book_id, "").to_string();
 
     let cover = client
         .download_cover(&book_id, &api_key)
