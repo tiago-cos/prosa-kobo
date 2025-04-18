@@ -1,11 +1,18 @@
 use serde::Deserialize;
-use ureq::Error;
+use ureq::{Agent, Error};
 
 pub struct StateClient;
 
 impl StateClient {
-    pub fn fetch_state(&self, url: &str, book_id: &str, api_key: &str) -> Result<StateResponse, Error> {
-        let mut result = ureq::get(format!("{}/books/{}/state", url, book_id))
+    pub fn fetch_state(
+        &self,
+        url: &str,
+        agent: &Agent,
+        book_id: &str,
+        api_key: &str,
+    ) -> Result<StateResponse, Error> {
+        let mut result = agent
+            .get(format!("{}/books/{}/state", url, book_id))
             .header("api-key", api_key)
             .call()?
             .body_mut()

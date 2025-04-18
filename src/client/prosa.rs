@@ -9,10 +9,11 @@ use super::{
 use crate::app::AppState;
 use axum::extract::FromRef;
 use std::sync::Arc;
-use ureq::Error;
+use ureq::{Agent, Error};
 
 pub struct Client {
     url: String,
+    agent: Agent,
     sync_client: SyncClient,
     metadata_client: MetadataClient,
     state_client: StateClient,
@@ -22,8 +23,11 @@ pub struct Client {
 
 impl Client {
     pub fn new(scheme: &str, url: &str, port: u16) -> Self {
+        let agent: Agent = Agent::config_builder().build().into();
+
         Client {
             url: format!("{}://{}:{}", scheme, url, port),
+            agent,
             sync_client: SyncClient {},
             metadata_client: MetadataClient {},
             state_client: StateClient {},
@@ -33,27 +37,33 @@ impl Client {
     }
 
     pub fn sync_device(&self, since: Option<i64>, api_key: &str) -> Result<SyncResponse, Error> {
-        self.sync_client.sync_device(&self.url, since, api_key)
+        self.sync_client
+            .sync_device(&self.url, &self.agent, since, api_key)
     }
 
     pub fn fetch_metadata(&self, book_id: &str, api_key: &str) -> Result<MetadataResponse, Error> {
-        self.metadata_client.fetch_metadata(&self.url, book_id, api_key)
+        self.metadata_client
+            .fetch_metadata(&self.url, &self.agent, book_id, api_key)
     }
 
     pub fn fetch_size(&self, book_id: &str, api_key: &str) -> Result<u64, Error> {
-        self.metadata_client.fetch_size(&self.url, book_id, api_key)
+        self.metadata_client
+            .fetch_size(&self.url, &self.agent, book_id, api_key)
     }
 
     pub fn fetch_state(&self, book_id: &str, api_key: &str) -> Result<StateResponse, Error> {
-        self.state_client.fetch_state(&self.url, book_id, api_key)
+        self.state_client
+            .fetch_state(&self.url, &self.agent, book_id, api_key)
     }
 
     pub fn download_book(&self, book_id: &str, api_key: &str) -> Result<Vec<u8>, Error> {
-        self.book_client.download_book(&self.url, book_id, api_key)
+        self.book_client
+            .download_book(&self.url, &self.agent, book_id, api_key)
     }
 
     pub fn download_cover(&self, book_id: &str, api_key: &str) -> Result<Vec<u8>, Error> {
-        self.cover_client.download_cover(&self.url, book_id, api_key)
+        self.cover_client
+            .download_cover(&self.url, &self.agent, book_id, api_key)
     }
 }
 

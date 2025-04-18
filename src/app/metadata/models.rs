@@ -1,11 +1,7 @@
-use serde::Serialize;
-use serde_with::skip_serializing_none;
-
-use crate::client::MetadataResponse;
-
 use super::service::{random_string, unix_millis_to_string};
+use crate::client::MetadataResponse;
+use serde::Serialize;
 
-#[skip_serializing_none]
 #[derive(Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct BookMetadata {
@@ -42,7 +38,6 @@ pub struct BookMetadata {
     pub locale: Locale,
 }
 
-#[skip_serializing_none]
 #[derive(Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Publisher {
@@ -50,7 +45,6 @@ pub struct Publisher {
     imprint: Option<String>,
 }
 
-#[skip_serializing_none]
 #[derive(Serialize, Clone)]
 #[serde(rename_all = "PascalCase")]
 pub struct Contributor {
@@ -58,7 +52,6 @@ pub struct Contributor {
     role: String,
 }
 
-#[skip_serializing_none]
 #[derive(Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct DownloadUrl {
@@ -81,7 +74,6 @@ impl DownloadUrl {
     }
 }
 
-#[skip_serializing_none]
 #[derive(Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Series {
@@ -91,7 +83,6 @@ pub struct Series {
     pub number_float: f32,
 }
 
-#[skip_serializing_none]
 #[derive(Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct CurrentDisplayPrice {
@@ -99,14 +90,12 @@ pub struct CurrentDisplayPrice {
     pub currency_code: String,
 }
 
-#[skip_serializing_none]
 #[derive(Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct CurrentLoveDisplayPrice {
     pub total_amount: i64,
 }
 
-#[skip_serializing_none]
 #[derive(Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Locale {

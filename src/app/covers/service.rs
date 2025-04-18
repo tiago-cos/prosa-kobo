@@ -21,7 +21,7 @@ pub async fn download_cover(
 
     let cover = client
         .download_cover(&book_id, &api_key)
-        .expect("Download should not fail");
+        .map_err(|_| AuthError::InternalError)?;
 
     Ok(cover)
 }

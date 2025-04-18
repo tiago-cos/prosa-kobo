@@ -1,12 +1,19 @@
 use std::io::Read;
-use ureq::Error;
+use ureq::{Agent, Error};
 
 pub struct BookClient;
 
 impl BookClient {
-    pub fn download_book(&self, url: &str, book_id: &str, api_key: &str) -> Result<Vec<u8>, Error> {
+    pub fn download_book(
+        &self,
+        url: &str,
+        agent: &Agent,
+        book_id: &str,
+        api_key: &str,
+    ) -> Result<Vec<u8>, Error> {
         let mut body: Vec<u8> = Vec::new();
-        ureq::get(format!("{}/books/{}", url, book_id))
+        agent
+            .get(format!("{}/books/{}", url, book_id))
             .header("api-key", api_key)
             .call()?
             .into_body()

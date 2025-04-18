@@ -17,9 +17,8 @@ pub async fn translate_metadata(
     let size_response = client
         .fetch_size(&book_id, api_key)
         .expect("Size response should not fail");
-    let metadata_response = client
-        .fetch_metadata(&book_id, api_key)
-        .expect("Metadata response should not fail");
+    let metadata_response = client.fetch_metadata(&book_id, api_key).unwrap_or_default();
+
     let download_token = books::generate_token(pool, book_id, download_expiration, api_key).await;
     let download_token = encode(&download_token).to_string();
     let download_url = format!("{}/books/{}?token={}", server_url, book_id, download_token);
