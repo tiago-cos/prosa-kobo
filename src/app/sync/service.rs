@@ -2,7 +2,8 @@ use super::models::NewEntitlementResponse;
 use crate::{
     app::{
         metadata::{self},
-        sync::models::{BookEntitlement, ReadingState},
+        state::{self},
+        sync::models::BookEntitlement,
     },
     client::prosa::Client,
 };
@@ -27,32 +28,13 @@ pub async fn translate_sync(
 
     let mut translated_response = Vec::new();
 
-    let mut book_ids = HashSet::new();
+    let mut books_to_update: HashSet<String> = sync_response.file.into_iter().collect();
+    books_to_update.extend(sync_response.cover);
+    books_to_update.extend(sync_response.metadata);
 
-    for book_id in sync_response.file {
-        book_ids.insert(book_id);
-    }
-    for book_id in sync_response.cover {
-        book_ids.insert(book_id);
-    }
-    for book_id in sync_response.metadata {
-        book_ids.insert(book_id);
-    }
-
-    for book_id in book_ids {
-        let state_response = client
-            .fetch_state(&book_id, api_key)
-            .expect("State response should not fail");
-        let state_location = state_response.location.as_ref();
-
+    for book_id in books_to_update {
         let entitlement = BookEntitlement::new(&book_id, false);
-        let reading_state = ReadingState::new(
-            &book_id,
-            &state_response.statistics.reading_status,
-            state_location.and_then(|l| l.tag.clone()),
-            state_location.and_then(|l| l.source.clone()),
-        );
-
+        let reading_state = state::service::translate_get_state(client, &book_id, api_key).await;
         let metadata = metadata::service::translate_metadata(
             pool,
             client,

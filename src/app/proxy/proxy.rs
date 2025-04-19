@@ -57,7 +57,7 @@ pub async fn proxy_handler(
         }
 
         //TODO remove
-        if target_uri.contains("/book-images/") {
+        if method == Method::DELETE {
             println!("{} {}", key, value);
         }
 

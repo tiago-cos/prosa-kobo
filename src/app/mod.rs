@@ -7,6 +7,7 @@ mod initialization;
 mod metadata;
 mod proxy;
 mod server;
+mod state;
 mod sync;
 mod tokens;
 

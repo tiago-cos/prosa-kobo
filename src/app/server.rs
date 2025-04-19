@@ -1,4 +1,4 @@
-use super::{authentication, books, covers, devices, initialization, metadata, proxy, sync};
+use super::{authentication, books, covers, devices, initialization, metadata, proxy, state, sync};
 use crate::{client::prosa::Client, config::Configuration};
 use axum::Router;
 use sqlx::SqlitePool;
@@ -35,6 +35,7 @@ pub async fn run(config: Configuration, pool: SqlitePool) {
         .merge(metadata::routes::get_routes(state.clone()))
         .merge(books::routes::get_routes(state.clone()))
         .merge(covers::routes::get_routes(state.clone()))
+        .merge(state::routes::get_routes(state.clone()))
         .merge(proxy::routes::get_routes(state.clone()));
 
     let listener = TcpListener::bind(host).await.unwrap();

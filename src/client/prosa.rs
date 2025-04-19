@@ -56,6 +56,25 @@ impl Client {
             .fetch_state(&self.url, &self.agent, book_id, api_key)
     }
 
+    pub fn update_state(
+        &self,
+        book_id: &str,
+        tag: Option<String>,
+        source: Option<String>,
+        reading_status: &str,
+        api_key: &str,
+    ) -> Result<(), Error> {
+        self.state_client.update_state(
+            &self.url,
+            &self.agent,
+            book_id,
+            tag,
+            source,
+            reading_status,
+            api_key,
+        )
+    }
+
     pub fn download_book(&self, book_id: &str, api_key: &str) -> Result<Vec<u8>, Error> {
         self.book_client
             .download_book(&self.url, &self.agent, book_id, api_key)
