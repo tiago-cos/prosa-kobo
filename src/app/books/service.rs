@@ -36,3 +36,9 @@ async fn verify_token(pool: &SqlitePool, book_id: &str, token: &str) -> Result<S
 
     Ok(api_key)
 }
+
+pub async fn delete_book(client: &Client, book_id: &str, api_key: &str) {
+    client
+        .delete_book(&book_id, &api_key)
+        .expect("Delete should not fail");
+}

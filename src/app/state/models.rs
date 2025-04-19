@@ -107,6 +107,12 @@ impl ReadingState {
     }
 }
 
+impl Default for ReadingState {
+    fn default() -> Self {
+        ReadingState::new("placeholder", "Reading", None, None)
+    }
+}
+
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "PascalCase")]
 pub struct UpdateStateRequest {

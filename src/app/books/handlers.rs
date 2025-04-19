@@ -1,8 +1,10 @@
 use super::service;
-use crate::app::{error::KoboError, tokens::TokenError, AppState};
+use crate::app::{authentication::AuthToken, error::KoboError, tokens::TokenError, AppState, ProsaClient};
 use axum::{
     extract::{Path, Query, State},
+    http::StatusCode,
     response::IntoResponse,
+    Extension,
 };
 use std::collections::HashMap;
 
@@ -18,4 +20,14 @@ pub async fn download_book_handler(
 
     let book = service::download_book(&state.pool, &state.prosa_client, &book_id, &book_token).await?;
     Ok(book)
+}
+
+pub async fn delete_book_handler(
+    State(client): State<ProsaClient>,
+    Path(book_id): Path<String>,
+    Extension(token): Extension<AuthToken>,
+) -> Result<impl IntoResponse, KoboError> {
+    service::delete_book(&client, &book_id, &token.api_key).await;
+
+    Ok(StatusCode::NO_CONTENT)
 }

@@ -2,7 +2,7 @@ use super::service::{random_string, unix_millis_to_string};
 use crate::client::MetadataResponse;
 use serde::Serialize;
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 #[serde(rename_all = "PascalCase")]
 pub struct BookMetadata {
     pub cross_revision_id: String,
@@ -38,21 +38,21 @@ pub struct BookMetadata {
     pub locale: Locale,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 #[serde(rename_all = "PascalCase")]
 pub struct Publisher {
     name: Option<String>,
     imprint: Option<String>,
 }
 
-#[derive(Serialize, Clone)]
+#[derive(Serialize, Clone, Debug)]
 #[serde(rename_all = "PascalCase")]
 pub struct Contributor {
     name: String,
     role: String,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 #[serde(rename_all = "PascalCase")]
 pub struct DownloadUrl {
     drm_type: String,
@@ -74,7 +74,7 @@ impl DownloadUrl {
     }
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 #[serde(rename_all = "PascalCase")]
 pub struct Series {
     pub id: String,
@@ -83,20 +83,20 @@ pub struct Series {
     pub number_float: f32,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 #[serde(rename_all = "PascalCase")]
 pub struct CurrentDisplayPrice {
     pub total_amount: i64,
     pub currency_code: String,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 #[serde(rename_all = "PascalCase")]
 pub struct CurrentLoveDisplayPrice {
     pub total_amount: i64,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 #[serde(rename_all = "PascalCase")]
 pub struct Locale {
     pub language_code: String,
@@ -174,5 +174,13 @@ impl BookMetadata {
             related_group_id: None,
             locale,
         }
+    }
+}
+
+impl Default for BookMetadata {
+    fn default() -> Self {
+        let metadata_response = MetadataResponse::default();
+        let download_url = DownloadUrl::new("placeholder", 1);
+        BookMetadata::new("placeholder", metadata_response, download_url)
     }
 }

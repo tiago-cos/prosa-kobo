@@ -1,8 +1,8 @@
 use super::models::NewEntitlementResponse;
 use crate::{
     app::{
-        metadata::{self},
-        state::{self},
+        metadata::{self, BookMetadata},
+        state::{self, models::ReadingState},
         sync::models::BookEntitlement,
     },
     client::prosa::Client,
@@ -46,6 +46,15 @@ pub async fn translate_sync(
         .await;
 
         translated_response.push(NewEntitlementResponse::new(entitlement, reading_state, metadata));
+    }
+
+    for book_id in sync_response.deleted {
+        let entitlement = BookEntitlement::new(&book_id, true);
+        let reading_state = ReadingState::default();
+        let metadata = BookMetadata::default();
+        let response = NewEntitlementResponse::new(entitlement, reading_state, metadata);
+
+        translated_response.push(response);
     }
 
     translated_response

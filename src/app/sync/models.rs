@@ -3,11 +3,13 @@ use crate::app::{metadata::BookMetadata, state::models::ReadingState};
 use serde::Serialize;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 #[serde(rename_all = "PascalCase")]
 pub struct NewEntitlementResponse {
     pub new_entitlement: NewEntitlement,
 }
+
+//TODO in book prosa client, if delete returns 404 book not found, don't panic
 
 impl NewEntitlementResponse {
     pub fn new(
@@ -24,7 +26,7 @@ impl NewEntitlementResponse {
     }
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 #[serde(rename_all = "PascalCase")]
 pub struct NewEntitlement {
     pub book_entitlement: BookEntitlement,
@@ -32,7 +34,7 @@ pub struct NewEntitlement {
     pub book_metadata: BookMetadata,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 #[serde(rename_all = "PascalCase")]
 pub struct BookEntitlement {
     pub active_period: ActivePeriod,
@@ -49,7 +51,7 @@ pub struct BookEntitlement {
     pub origin_category: String,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 #[serde(rename_all = "PascalCase")]
 pub struct ActivePeriod {
     pub from: String,

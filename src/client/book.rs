@@ -23,4 +23,13 @@ impl BookClient {
 
         Ok(body)
     }
+
+    pub fn delete_book(&self, url: &str, agent: &Agent, book_id: &str, api_key: &str) -> Result<(), Error> {
+        agent
+            .delete(format!("{}/books/{}", url, book_id))
+            .header("api-key", api_key)
+            .call()?;
+
+        Ok(())
+    }
 }

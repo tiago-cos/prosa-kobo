@@ -80,6 +80,11 @@ impl Client {
             .download_book(&self.url, &self.agent, book_id, api_key)
     }
 
+    pub fn delete_book(&self, book_id: &str, api_key: &str) -> Result<(), Error> {
+        self.book_client
+            .delete_book(&self.url, &self.agent, book_id, api_key)
+    }
+
     pub fn download_cover(&self, book_id: &str, api_key: &str) -> Result<Vec<u8>, Error> {
         self.cover_client
             .download_cover(&self.url, &self.agent, book_id, api_key)
