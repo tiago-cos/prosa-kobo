@@ -6,6 +6,8 @@ use axum::{
 use std::io::Read;
 use ureq::Agent;
 
+//TODO see how to deal with POST /analytics/event so that it doesn't keep growing. While we're at it, taking the rate 0 event from there.
+
 pub async fn proxy_handler(
     method: Method,
     uri: Uri,
@@ -57,7 +59,7 @@ pub async fn proxy_handler(
         }
 
         //TODO remove
-        if method == Method::DELETE {
+        if target_uri.contains("/rating/") {
             println!("{} {}", key, value);
         }
 
@@ -95,7 +97,18 @@ pub async fn proxy_handler(
         .expect("failed to read response body");
 
     //TODO remove
-    //println!("{} {} {} {:#?}", method, target_uri, status, String::from_utf8(body.clone()));
+    println!(
+        "{} {} {} {:#?}",
+        method,
+        target_uri,
+        status,
+        String::from_utf8(body.clone())
+    );
+
+    if method == Method::PATCH {
+        return StatusCode::NO_CONTENT;
+    }
+
     StatusCode::NOT_FOUND
     //(status, headers, "").into_response()
 }

@@ -138,3 +138,21 @@ pub const UPDATE_STATE_RESPONSE: &str = r#"
   ]
 }
 "#;
+
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "PascalCase")]
+pub struct EventResponse {
+    pub result: String,
+    pub accepted_events: Vec<String>,
+    pub rejected_events: Option<Vec<String>>,
+}
+
+impl EventResponse {
+    pub fn new(event_ids: Vec<String>) -> Self {
+        EventResponse {
+            result: "Success".to_string(),
+            accepted_events: event_ids,
+            rejected_events: None,
+        }
+    }
+}

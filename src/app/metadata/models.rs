@@ -1,5 +1,5 @@
-use super::service::{random_string, unix_millis_to_string};
-use crate::client::MetadataResponse;
+use super::service::random_string;
+use crate::{app::state::service::unix_millis_to_string, client::ProsaMetadata};
 use serde::Serialize;
 
 #[derive(Serialize, Debug)]
@@ -105,7 +105,7 @@ pub struct Locale {
 }
 
 impl BookMetadata {
-    pub fn new(book_id: &str, metadata: MetadataResponse, download_url: DownloadUrl) -> Self {
+    pub fn new(book_id: &str, metadata: ProsaMetadata, download_url: DownloadUrl) -> Self {
         let publisher = Publisher {
             name: metadata.publisher.clone(),
             imprint: metadata.publisher,
@@ -179,7 +179,7 @@ impl BookMetadata {
 
 impl Default for BookMetadata {
     fn default() -> Self {
-        let metadata_response = MetadataResponse::default();
+        let metadata_response = ProsaMetadata::default();
         let download_url = DownloadUrl::new("placeholder", 1);
         BookMetadata::new("placeholder", metadata_response, download_url)
     }

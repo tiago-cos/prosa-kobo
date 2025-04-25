@@ -12,6 +12,8 @@ pub async fn device_sync_handler(
     headers: HeaderMap,
     Extension(token): Extension<AuthToken>,
 ) -> Result<impl IntoResponse, KoboError> {
+    //TODO remove
+    println!("SYNCING");
     let server_url = format!(
         "http://{}:{}",
         state.config.server.announced_host, state.config.server.announced_port
@@ -24,6 +26,11 @@ pub async fn device_sync_handler(
         .map(|s| s.parse::<i64>().ok())
         .flatten();
 
+    let mut headers = HeaderMap::new();
+    let sync_header =
+        HeaderValue::from_str(&service::create_new_sync_token().await).expect("Failed to create sync header");
+    headers.insert("X-Kobo-Synctoken", sync_header);
+
     let response = service::translate_sync(
         &state.pool,
         &state.prosa_client,
@@ -33,11 +40,6 @@ pub async fn device_sync_handler(
         &token.api_key,
     )
     .await;
-
-    let mut headers = HeaderMap::new();
-    let sync_header =
-        HeaderValue::from_str(&service::create_new_sync_token().await).expect("Failed to create sync header");
-    headers.insert("X-Kobo-Synctoken", sync_header);
 
     Ok((headers, Json(response)))
 }

@@ -10,13 +10,13 @@ impl StateClient {
         agent: &Agent,
         book_id: &str,
         api_key: &str,
-    ) -> Result<StateResponse, Error> {
+    ) -> Result<ProsaState, Error> {
         let result = agent
             .get(format!("{}/books/{}/state", url, book_id))
             .header("api-key", api_key)
             .call()?
             .body_mut()
-            .read_json::<StateResponse>()?;
+            .read_json::<ProsaState>()?;
 
         Ok(result)
     }
@@ -32,16 +32,16 @@ impl StateClient {
         api_key: &str,
     ) -> Result<(), Error> {
         let request_location = match source {
-            Some(s) => Some(LocationResponse { tag, source: Some(s) }),
+            Some(s) => Some(ProsaLocation { tag, source: Some(s) }),
             None => None,
         };
 
-        let request_statistics = StatisticsResponse {
+        let request_statistics = ProsaStatistics {
             rating: None,
             reading_status: reading_status.to_string(),
         };
 
-        let request = StateResponse {
+        let request = ProsaState {
             location: request_location,
             statistics: request_statistics,
         };
@@ -53,22 +53,45 @@ impl StateClient {
 
         Ok(())
     }
+
+    pub fn update_rating(
+        &self,
+        url: &str,
+        agent: &Agent,
+        book_id: &str,
+        rating: u8,
+        api_key: &str,
+    ) -> Result<(), Error> {
+        let mut previous_state = self.fetch_state(url, agent, book_id, api_key)?;
+
+        previous_state.statistics.rating = match rating {
+            0 => None,
+            r => Some(r.into()),
+        };
+
+        agent
+            .put(format!("{}/books/{}/state", url, book_id))
+            .header("api-key", api_key)
+            .send_json(previous_state)?;
+
+        Ok(())
+    }
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-pub struct LocationResponse {
+pub struct ProsaLocation {
     pub tag: Option<String>,
     pub source: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-pub struct StatisticsResponse {
+pub struct ProsaStatistics {
     pub rating: Option<f32>,
     pub reading_status: String,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-pub struct StateResponse {
-    pub location: Option<LocationResponse>,
-    pub statistics: StatisticsResponse,
+pub struct ProsaState {
+    pub location: Option<ProsaLocation>,
+    pub statistics: ProsaStatistics,
 }

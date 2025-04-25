@@ -24,7 +24,12 @@ pub async fn create_tables(pool: &SqlitePool) {
             api_key TEXT NOT NULL,
             FOREIGN KEY(token) REFERENCES download_tokens(token) ON DELETE CASCADE,
             PRIMARY KEY(book_id, token)
-    )   ;
+        );
+
+        CREATE TABLE IF NOT EXISTS etags (
+            book_id TEXT PRIMARY KEY NOT NULL,
+            etag TEXT NOT NULL
+        );
         "#,
     )
     .execute(pool)
@@ -39,6 +44,7 @@ pub async fn clear_tables(pool: &SqlitePool) {
         DROP TABLE IF EXISTS download_tokens;
         DROP TABLE IF EXISTS linked_devices;
         DROP TABLE IF EXISTS unlinked_devices;
+        DROP TABLE IF EXISTS etags;
         "#,
     )
     .execute(pool)

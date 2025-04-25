@@ -1,6 +1,7 @@
 use super::models::NewEntitlementResponse;
 use crate::{
     app::{
+        annotations,
         metadata::{self, BookMetadata},
         state::{self, models::ReadingState},
         sync::models::BookEntitlement,
@@ -14,6 +15,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
+//TODO see why the publisher isn't being sent when adding the ember in the ashes book
 pub async fn translate_sync(
     pool: &SqlitePool,
     client: &Client,
@@ -55,6 +57,10 @@ pub async fn translate_sync(
         let response = NewEntitlementResponse::new(entitlement, reading_state, metadata);
 
         translated_response.push(response);
+    }
+
+    for book_id in sync_response.annotations {
+        annotations::service::update_etag(pool, &book_id).await;
     }
 
     translated_response

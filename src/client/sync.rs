@@ -10,22 +10,23 @@ impl SyncClient {
         agent: &Agent,
         since: Option<i64>,
         api_key: &str,
-    ) -> Result<SyncResponse, Error> {
+    ) -> Result<ProsaSync, Error> {
         let mut request = agent.get(format!("{}/sync", url)).header("api-key", api_key);
 
         if let Some(since) = since {
             request = request.query("since", since.to_string());
         }
 
-        request.call()?.body_mut().read_json::<SyncResponse>()
+        request.call()?.body_mut().read_json::<ProsaSync>()
     }
 }
 
 #[derive(Deserialize, Debug)]
-pub struct SyncResponse {
+pub struct ProsaSync {
     pub file: Vec<String>,
     pub metadata: Vec<String>,
     pub cover: Vec<String>,
     pub state: Vec<String>,
+    pub annotations: Vec<String>,
     pub deleted: Vec<String>,
 }

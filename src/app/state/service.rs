@@ -1,4 +1,4 @@
-use super::models::{ReadingState, UPDATE_STATE_RESPONSE};
+use super::models::{EventResponse, ReadingState, UPDATE_STATE_RESPONSE};
 use crate::client::prosa::Client;
 use chrono::{DateTime, Utc};
 use regex::Regex;
@@ -26,6 +26,10 @@ pub async fn translate_get_state(client: &Client, book_id: &str, api_key: &str) 
 }
 
 //TODO verify if having a status: unread book with active location causes bugs
+//TODO it can indeed cause bugs
+//TODO okay, maybe not, but it glitches when on titlepage and tag is kobo.1.1 (or doesn't exist in general)
+//TODO probably revert prosa to reject only the tag if it is not present, but keep the source.
+//TODO Probably best if we just add an exception to the title page. Or just verify if it even matters that the error happens at all
 pub async fn translate_update_state(
     client: &Client,
     book_id: &str,
@@ -75,4 +79,33 @@ pub fn unix_millis_to_string(timestamp_millis: i64) -> String {
     );
 
     formatted
+}
+
+pub async fn translate_events(client: &Client, events: Value, api_key: &str) -> EventResponse {
+    let mut ids: Vec<String> = Vec::new();
+
+    for event in events["Events"].as_array().expect("Object should be an array") {
+        let id = event["Id"].as_str().expect("Id should be present");
+        let event_type = event["EventType"].as_str().expect("EventType should be present");
+
+        ids.push(id.to_string());
+
+        if event_type != "RateBook" {
+            continue;
+        }
+
+        let book_id = event["Attributes"]["volumeid"]
+            .as_str()
+            .expect("BookId should be present");
+        let rating = event["Metrics"]["stars"]
+            .as_u64()
+            .expect("Rating should be present");
+        let rating: u8 = rating.try_into().expect("Rating should be small");
+
+        client
+            .update_rating(book_id, rating, api_key)
+            .expect("Rating request should not fail");
+    }
+
+    EventResponse::new(ids)
 }

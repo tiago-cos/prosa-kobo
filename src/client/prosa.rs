@@ -1,10 +1,11 @@
 use super::{
+    annotations::{AnnotationsClient, ProsaAnnotation},
     book::BookClient,
     cover::CoverClient,
-    metadata::{MetadataClient, MetadataResponse},
+    metadata::{MetadataClient, ProsaMetadata},
     state::StateClient,
-    sync::{SyncClient, SyncResponse},
-    StateResponse,
+    sync::{ProsaSync, SyncClient},
+    ProsaAnnotationRequest, ProsaState,
 };
 use crate::app::AppState;
 use axum::extract::FromRef;
@@ -19,6 +20,7 @@ pub struct Client {
     state_client: StateClient,
     book_client: BookClient,
     cover_client: CoverClient,
+    annotations_client: AnnotationsClient,
 }
 
 impl Client {
@@ -33,15 +35,16 @@ impl Client {
             state_client: StateClient {},
             book_client: BookClient {},
             cover_client: CoverClient {},
+            annotations_client: AnnotationsClient {},
         }
     }
 
-    pub fn sync_device(&self, since: Option<i64>, api_key: &str) -> Result<SyncResponse, Error> {
+    pub fn sync_device(&self, since: Option<i64>, api_key: &str) -> Result<ProsaSync, Error> {
         self.sync_client
             .sync_device(&self.url, &self.agent, since, api_key)
     }
 
-    pub fn fetch_metadata(&self, book_id: &str, api_key: &str) -> Result<MetadataResponse, Error> {
+    pub fn fetch_metadata(&self, book_id: &str, api_key: &str) -> Result<ProsaMetadata, Error> {
         self.metadata_client
             .fetch_metadata(&self.url, &self.agent, book_id, api_key)
     }
@@ -51,7 +54,7 @@ impl Client {
             .fetch_size(&self.url, &self.agent, book_id, api_key)
     }
 
-    pub fn fetch_state(&self, book_id: &str, api_key: &str) -> Result<StateResponse, Error> {
+    pub fn fetch_state(&self, book_id: &str, api_key: &str) -> Result<ProsaState, Error> {
         self.state_client
             .fetch_state(&self.url, &self.agent, book_id, api_key)
     }
@@ -75,6 +78,11 @@ impl Client {
         )
     }
 
+    pub fn update_rating(&self, book_id: &str, rating: u8, api_key: &str) -> Result<(), Error> {
+        self.state_client
+            .update_rating(&self.url, &self.agent, book_id, rating, api_key)
+    }
+
     pub fn download_book(&self, book_id: &str, api_key: &str) -> Result<Vec<u8>, Error> {
         self.book_client
             .download_book(&self.url, &self.agent, book_id, api_key)
@@ -88,6 +96,53 @@ impl Client {
     pub fn download_cover(&self, book_id: &str, api_key: &str) -> Result<Vec<u8>, Error> {
         self.cover_client
             .download_cover(&self.url, &self.agent, book_id, api_key)
+    }
+
+    pub fn list_annotations(&self, book_id: &str, api_key: &str) -> Result<Vec<String>, Error> {
+        self.annotations_client
+            .list_annotations(&self.url, &self.agent, book_id, api_key)
+    }
+
+    pub fn get_annotation(
+        &self,
+        book_id: &str,
+        annotation_id: &str,
+        api_key: &str,
+    ) -> Result<ProsaAnnotation, Error> {
+        self.annotations_client
+            .get_annotation(&self.url, &self.agent, book_id, annotation_id, api_key)
+    }
+
+    pub fn add_annotation(
+        &self,
+        book_id: &str,
+        annotation: ProsaAnnotationRequest,
+        api_key: &str,
+    ) -> Result<String, Error> {
+        self.annotations_client
+            .add_annotation(&self.url, &self.agent, book_id, annotation, api_key)
+    }
+
+    pub fn patch_annotation(
+        &self,
+        book_id: &str,
+        annotation_id: &str,
+        note: &str,
+        api_key: &str,
+    ) -> Result<(), Error> {
+        self.annotations_client.patch_annotation(
+            &self.url,
+            &self.agent,
+            book_id,
+            annotation_id,
+            note,
+            api_key,
+        )
+    }
+
+    pub fn delete_annotation(&self, book_id: &str, annotation_id: &str, api_key: &str) -> Result<(), Error> {
+        self.annotations_client
+            .delete_annotation(&self.url, &self.agent, book_id, annotation_id, api_key)
     }
 }
 

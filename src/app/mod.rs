@@ -1,3 +1,4 @@
+mod annotations;
 mod authentication;
 mod books;
 mod covers;
