@@ -2,6 +2,7 @@ use super::models::NewEntitlementResponse;
 use crate::{
     app::{
         annotations,
+        error::KoboError,
         metadata::{self, BookMetadata},
         state::{self, models::ReadingState},
         sync::models::BookEntitlement,
@@ -23,10 +24,8 @@ pub async fn translate_sync(
     server_url: &str,
     download_expiration: i64,
     api_key: &str,
-) -> Vec<NewEntitlementResponse> {
-    let sync_response = client
-        .sync_device(since, api_key)
-        .expect("Sync response should not fail");
+) -> Result<Vec<NewEntitlementResponse>, KoboError> {
+    let sync_response = client.sync_device(since, api_key)?;
 
     let mut translated_response = Vec::new();
 
@@ -36,7 +35,7 @@ pub async fn translate_sync(
 
     for book_id in books_to_update {
         let entitlement = BookEntitlement::new(&book_id, false);
-        let reading_state = state::service::translate_get_state(client, &book_id, api_key).await;
+        let reading_state = state::service::translate_get_state(client, &book_id, api_key).await?;
         let metadata = metadata::service::translate_metadata(
             pool,
             client,
@@ -45,7 +44,7 @@ pub async fn translate_sync(
             download_expiration,
             api_key,
         )
-        .await;
+        .await?;
 
         translated_response.push(NewEntitlementResponse::new(entitlement, reading_state, metadata));
     }
@@ -63,7 +62,7 @@ pub async fn translate_sync(
         annotations::service::update_etag(pool, &book_id).await;
     }
 
-    translated_response
+    Ok(translated_response)
 }
 
 pub async fn create_new_sync_token() -> String {

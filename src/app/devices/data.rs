@@ -1,7 +1,6 @@
 use super::models::{DeviceError, LinkedDevice, UnlinkedDevice};
 use sqlx::SqlitePool;
 
-//TODO might have an issue with using i64 for timestamp
 pub async fn add_unlinked_device(pool: &SqlitePool, device_id: &str, timestamp: i64) -> () {
     sqlx::query(
         r#"

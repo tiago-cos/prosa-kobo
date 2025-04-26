@@ -6,6 +6,8 @@ use axum::Router;
 use sqlx::SqlitePool;
 use std::sync::Arc;
 use tokio::net::TcpListener;
+use tower_http::trace::TraceLayer;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 pub type Config = Arc<Configuration>;
 pub type Pool = Arc<SqlitePool>;
@@ -19,6 +21,12 @@ pub struct AppState {
 }
 
 pub async fn run(config: Configuration, pool: SqlitePool) {
+    //TODO remove tracing
+    tracing_subscriber::registry()
+        .with(EnvFilter::new("debug"))
+        .with(tracing_subscriber::fmt::layer())
+        .init();
+
     let state = AppState {
         prosa_client: Arc::new(Client::new(
             &config.prosa.scheme,
@@ -39,7 +47,8 @@ pub async fn run(config: Configuration, pool: SqlitePool) {
         .merge(covers::routes::get_routes(state.clone()))
         .merge(state::routes::get_routes(state.clone()))
         .merge(annotations::routes::get_routes(state.clone()))
-        .merge(proxy::routes::get_routes(state.clone()));
+        .merge(proxy::routes::get_routes(state.clone()))
+        .layer(TraceLayer::new_for_http());
 
     let listener = TcpListener::bind(host).await.unwrap();
     axum::serve(listener, app).await.unwrap();

@@ -24,7 +24,7 @@ pub async fn metadata_handler(
         state.config.token.expiration,
         &token.api_key,
     )
-    .await;
+    .await?;
 
     Ok(Json(vec![response]))
 }

@@ -43,7 +43,7 @@ async fn handle_jwt(secret: &str, header: &HeaderValue) -> Result<String, AuthEr
         .collect::<Vec<_>>()
         .get(0..2)
         .and_then(|parts| Some((parts[0], parts[1])))
-        .ok_or(AuthError::InvalidAuthHeader)?;
+        .ok_or_else(|| AuthError::InvalidAuthHeader)?;
 
     let device_id = service::verify_jwt(token, secret).await?;
 

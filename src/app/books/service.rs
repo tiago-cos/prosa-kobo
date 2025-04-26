@@ -1,6 +1,9 @@
 use super::data;
 use crate::{
-    app::tokens::{self, TokenError},
+    app::{
+        error::KoboError,
+        tokens::{self, TokenError},
+    },
     client::prosa::Client,
 };
 use sqlx::SqlitePool;
@@ -10,11 +13,9 @@ pub async fn download_book(
     client: &Client,
     book_id: &str,
     token: &str,
-) -> Result<Vec<u8>, TokenError> {
+) -> Result<Vec<u8>, KoboError> {
     let api_key = verify_token(pool, book_id, token).await?;
-    let book = client
-        .download_book(&book_id, &api_key)
-        .expect("Download should not fail");
+    let book = client.download_book(&book_id, &api_key)?;
     Ok(book)
 }
 
@@ -37,8 +38,7 @@ async fn verify_token(pool: &SqlitePool, book_id: &str, token: &str) -> Result<S
     Ok(api_key)
 }
 
-pub async fn delete_book(client: &Client, book_id: &str, api_key: &str) {
-    client
-        .delete_book(&book_id, &api_key)
-        .expect("Delete should not fail");
+pub async fn delete_book(client: &Client, book_id: &str, api_key: &str) -> Result<(), KoboError> {
+    client.delete_book(&book_id, &api_key)?;
+    Ok(())
 }

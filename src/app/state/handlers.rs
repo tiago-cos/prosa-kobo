@@ -12,7 +12,7 @@ pub async fn get_state_handler(
     Path(book_id): Path<String>,
     Extension(token): Extension<AuthToken>,
 ) -> Result<impl IntoResponse, KoboError> {
-    let response = service::translate_get_state(&client, &book_id, &token.api_key).await;
+    let response = service::translate_get_state(&client, &book_id, &token.api_key).await?;
 
     Ok(Json(vec![response]))
 }
@@ -25,7 +25,7 @@ pub async fn update_state_handler(
     Json(request): Json<UpdateStateRequest>,
 ) -> Result<impl IntoResponse, KoboError> {
     let state = request.reading_states.first().expect("State should be present");
-    let response = service::translate_update_state(&client, &book_id, state, &token.api_key).await;
+    let response = service::translate_update_state(&client, &book_id, state, &token.api_key).await?;
 
     Ok(Json(response))
 }
@@ -50,7 +50,7 @@ pub async fn events_handler(
     Extension(token): Extension<AuthToken>,
     Json(events): Json<Value>,
 ) -> Result<impl IntoResponse, KoboError> {
-    let response = service::translate_events(&client, events, &token.api_key).await;
+    let response = service::translate_events(&client, events, &token.api_key).await?;
 
     Ok(Json(response))
 }

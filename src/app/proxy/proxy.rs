@@ -3,10 +3,7 @@ use axum::{
     http::{header, HeaderMap, Method, StatusCode, Uri},
     response::IntoResponse,
 };
-use std::io::Read;
 use ureq::Agent;
-
-//TODO see how to deal with POST /analytics/event so that it doesn't keep growing. While we're at it, taking the rate 0 event from there.
 
 pub async fn proxy_handler(
     method: Method,
@@ -68,9 +65,8 @@ pub async fn proxy_handler(
         }
     }
 
+    /*
     let mut response = if let Some(request) = request_with_body {
-        //TODO remove
-        println!("{:#?}", String::from_utf8(body.clone().to_vec()));
         request.send(body.to_vec()).expect("failed to send request")
     } else {
         request_without_body
@@ -94,16 +90,7 @@ pub async fn proxy_handler(
         .into_reader()
         .take(50000000)
         .read_to_end(&mut body)
-        .expect("failed to read response body");
-
-    //TODO remove
-    println!(
-        "{} {} {} {:#?}",
-        method,
-        target_uri,
-        status,
-        String::from_utf8(body.clone())
-    );
+        .expect("failed to read response body");*/
 
     if method == Method::PATCH {
         return StatusCode::NO_CONTENT;

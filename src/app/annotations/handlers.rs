@@ -16,7 +16,7 @@ pub async fn check_for_changes_handler(
 ) -> Result<impl IntoResponse, KoboError> {
     //TODO remove
     println!("CHECKING FOR CHANGES {:#?}", request);
-    let changed = service::filter_changed(&pool, request).await;
+    let changed = service::get_changed_annotations(&pool, request).await;
 
     Ok(Json(changed))
 }
@@ -25,11 +25,12 @@ pub async fn get_annotations_handler(
     State(state): State<AppState>,
     Path(book_id): Path<String>,
     Extension(token): Extension<AuthToken>,
-) -> impl IntoResponse {
+) -> Result<impl IntoResponse, KoboError> {
     //TODO remove
     println!("GETTING ANNOTATIONS: {}", book_id);
-    let annotations = service::get_annotations(&state.prosa_client, &book_id, &token.api_key).await;
-    let etag = service::get_etag(&state.pool, &book_id).await;
+
+    let annotations = service::get_annotations(&state.prosa_client, &book_id, &token.api_key).await?;
+    let etag = service::get_etag(&state.pool, &book_id).await?;
 
     let mut headers = HeaderMap::new();
     headers.insert(
@@ -37,7 +38,8 @@ pub async fn get_annotations_handler(
         HeaderValue::from_str(&etag).expect("Failed to create header"),
     );
 
-    (headers, Json(annotations)).into_response()
+    let response = (headers, Json(annotations)).into_response();
+    Ok(response)
 }
 
 pub async fn patch_annotations_handler(
@@ -45,8 +47,9 @@ pub async fn patch_annotations_handler(
     Path(book_id): Path<String>,
     Extension(token): Extension<AuthToken>,
     Json(request): Json<PatchAnnotationsRequest>,
-) -> impl IntoResponse {
+) -> Result<impl IntoResponse, KoboError> {
     //TODO remove
     println!("POSTING ANNOTATIONS: {}", book_id);
-    service::patch_annotations(&client, &book_id, request, &token.api_key).await
+    service::patch_annotations(&client, &book_id, request, &token.api_key).await?;
+    Ok(())
 }
