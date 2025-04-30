@@ -112,8 +112,6 @@ impl From<ProsaAnnotation> for Annotation {
 
 impl From<Annotation> for ProsaAnnotationRequest {
     fn from(annotation: Annotation) -> Self {
-        //TODO remove
-        println!("{:#?}", annotation.location.span.start_path);
         ProsaAnnotationRequest {
             source: annotation.location.span.chapter_filename,
             start_tag: annotation

@@ -9,5 +9,4 @@ mod sync;
 pub use annotations::ProsaAnnotation;
 pub use annotations::ProsaAnnotationRequest;
 pub use metadata::ProsaMetadata;
-pub use state::ProsaLocation;
 pub use state::ProsaState;

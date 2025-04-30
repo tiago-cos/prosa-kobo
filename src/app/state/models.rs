@@ -53,7 +53,6 @@ pub struct Location {
     pub source: String,
 }
 
-//TODO check in timestamp being now in each object does not ruin anything
 impl ReadingState {
     pub fn new(book_id: &str, status: &str, tag: Option<String>, source: Option<String>) -> Self {
         let now: i64 = SystemTime::now()

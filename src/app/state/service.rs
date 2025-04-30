@@ -1,8 +1,5 @@
 use super::models::{EventResponse, ReadingState, UPDATE_STATE_RESPONSE};
-use crate::{
-    app::error::KoboError,
-    client::{prosa::Client, ProsaLocation},
-};
+use crate::{app::error::KoboError, client::prosa::Client};
 use chrono::{DateTime, Utc};
 use regex::Regex;
 use serde_json::Value;
@@ -32,20 +29,12 @@ pub async fn translate_get_state(
     Ok(state)
 }
 
-//TODO verify if having a status: unread book with active location causes bugs
-//TODO it can indeed cause bugs
-//TODO okay, maybe not, but it glitches when on titlepage and tag is kobo.1.1 (or doesn't exist in general)
-//TODO probably revert prosa to reject only the tag if it is not present, but keep the source.
-//TODO Probably best if we just add an exception to the title page. Or just verify if it even matters that the error happens at all
 pub async fn translate_update_state(
     client: &Client,
     book_id: &str,
     state: &ReadingState,
     api_key: &str,
 ) -> Result<Value, KoboError> {
-    //TODO remove
-    println!("{:#?}", state);
-    let mut previous_state = client.fetch_state(book_id, api_key)?;
     let location = state.current_bookmark.location.as_ref();
     let status = match state.status_info.status.as_ref() {
         "Finished" => "Read".to_string(),
@@ -63,33 +52,17 @@ pub async fn translate_update_state(
         }
     });
 
-    let tag = location.and_then(|l| Some(l.value.clone()));
-
-    previous_state.statistics.reading_status = status;
-    if tag.is_some() || source.is_some() {
-        let loc = previous_state.location.get_or_insert(ProsaLocation {
-            tag: None,
-            source: None,
-        });
-
-        if let Some(s) = source {
-            loc.source = Some(s);
-        }
-        if let Some(t) = tag.clone() {
-            loc.tag = Some(t);
-        }
-    }
-
-    if tag.unwrap_or_default() == "kobo.1.1"
-        && (state.current_bookmark.progress_percent == 0 || state.current_bookmark.progress_percent == 100)
-    {
-        previous_state.location.as_mut().map(|l| l.tag = None);
-    }
-
-    client.update_state(&book_id, &previous_state, api_key)?;
+    client.patch_state(
+        &book_id,
+        location.and_then(|l| Some(l.value.clone())),
+        source,
+        &status,
+        api_key,
+    )?;
 
     let response = &UPDATE_STATE_RESPONSE.replace("{book_id}", book_id);
     let response = serde_json::from_str(&response).expect("Failed to convert to JSON");
+
     Ok(response)
 }
 

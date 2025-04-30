@@ -21,24 +21,35 @@ impl StateClient {
         Ok(result)
     }
 
-    pub fn update_state(
+    pub fn patch_state(
         &self,
         url: &str,
         agent: &Agent,
         book_id: &str,
-        state: &ProsaState,
+        tag: Option<String>,
+        source: Option<String>,
+        reading_status: &str,
         api_key: &str,
     ) -> Result<(), Error> {
-        //TODO remove
-        println!("{:#?}", state);
-        //TODO restore
-        let response = agent
-            .put(format!("{}/books/{}/state", url, book_id))
-            .header("api-key", api_key)
-            .send_json(state)?;
+        let request_location = match source {
+            Some(s) => Some(ProsaLocation { tag, source: Some(s) }),
+            None => None,
+        };
 
-        //TODO remove
-        println!("{:#?}", response);
+        let request_statistics = ProsaStatistics {
+            rating: None,
+            reading_status: reading_status.to_string(),
+        };
+
+        let request = ProsaState {
+            location: request_location,
+            statistics: request_statistics,
+        };
+
+        agent
+            .patch(format!("{}/books/{}/state", url, book_id))
+            .header("api-key", api_key)
+            .send_json(request)?;
 
         Ok(())
     }

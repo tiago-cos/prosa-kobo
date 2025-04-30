@@ -95,18 +95,30 @@ impl Client {
         Ok(result)
     }
 
-    pub fn update_state(&self, book_id: &str, state: &ProsaState, api_key: &str) -> Result<(), ClientError> {
-        let result = self
-            .state_client
-            .update_state(&self.url, &self.agent, book_id, state, api_key)?;
-        Ok(result)
+    pub fn patch_state(
+        &self,
+        book_id: &str,
+        tag: Option<String>,
+        source: Option<String>,
+        reading_status: &str,
+        api_key: &str,
+    ) -> Result<(), ClientError> {
+        self.state_client.patch_state(
+            &self.url,
+            &self.agent,
+            book_id,
+            tag,
+            source,
+            reading_status,
+            api_key,
+        )?;
+        Ok(())
     }
 
     pub fn update_rating(&self, book_id: &str, rating: u8, api_key: &str) -> Result<(), ClientError> {
-        let result = self
-            .state_client
+        self.state_client
             .update_rating(&self.url, &self.agent, book_id, rating, api_key)?;
-        Ok(result)
+        Ok(())
     }
 
     pub fn download_book(&self, book_id: &str, api_key: &str) -> Result<Vec<u8>, ClientError> {
@@ -117,10 +129,9 @@ impl Client {
     }
 
     pub fn delete_book(&self, book_id: &str, api_key: &str) -> Result<(), ClientError> {
-        let result = self
-            .book_client
+        self.book_client
             .delete_book(&self.url, &self.agent, book_id, api_key)?;
-        Ok(result)
+        Ok(())
     }
 
     pub fn download_cover(&self, book_id: &str, api_key: &str) -> Result<Vec<u8>, ClientError> {
@@ -189,14 +200,9 @@ impl Client {
         annotation_id: &str,
         api_key: &str,
     ) -> Result<(), ClientError> {
-        let result = self.annotations_client.delete_annotation(
-            &self.url,
-            &self.agent,
-            book_id,
-            annotation_id,
-            api_key,
-        )?;
-        Ok(result)
+        self.annotations_client
+            .delete_annotation(&self.url, &self.agent, book_id, annotation_id, api_key)?;
+        Ok(())
     }
 }
 

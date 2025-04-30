@@ -31,9 +31,6 @@ pub async fn proxy_handler(
         .build()
         .into();
 
-    //TODO remove
-    println!("{} {}", method, target_uri);
-
     let mut request_with_body = match method {
         Method::POST => Some(agent.post(&target_uri)),
         Method::PUT => Some(agent.put(&target_uri)),
@@ -53,11 +50,6 @@ pub async fn proxy_handler(
 
         if request_with_body.is_some() {
             request_with_body = Some(request_with_body.unwrap().header(key, value));
-        }
-
-        //TODO remove
-        if target_uri.contains("/rating/") {
-            println!("{} {}", key, value);
         }
 
         if request_without_body.is_some() {

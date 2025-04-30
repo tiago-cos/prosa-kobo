@@ -44,8 +44,6 @@ impl AnnotationsClient {
         annotation: ProsaAnnotationRequest,
         api_key: &str,
     ) -> Result<String, Error> {
-        //TODO remove
-        println!("{:#?}", annotation);
         agent
             .post(format!("{}/books/{}/annotations", url, book_id))
             .header("api-key", api_key)
@@ -63,8 +61,6 @@ impl AnnotationsClient {
         note: &str,
         api_key: &str,
     ) -> Result<(), Error> {
-        //TODO remove
-        println!("UPDATE ANNOTATION: {:#?}", annotation_id);
         let request = format!("{{\"note\": \"{}\"}}", note);
         agent
             .patch(format!("{}/books/{}/annotations/{}", url, book_id, annotation_id))
