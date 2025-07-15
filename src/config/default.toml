@@ -8,7 +8,7 @@ announced_port = 5001
 file_path = "database.db"
 
 [auth]
-secret_key = "admin_key"
+secret_key = "secret_key"
 token_duration = 900
 refresh_token_duration = 3600
 
@@ -17,5 +17,6 @@ scheme = "http"
 host = "127.0.0.1"
 port = 5000
 
-[token]
-expiration = 60
+[download_token]
+book_expiration = 60
+cover_expiration = 3600

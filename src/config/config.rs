@@ -20,8 +20,9 @@ pub struct Prosa {
 }
 
 #[derive(Deserialize)]
-pub struct Token {
-    pub expiration: i64,
+pub struct DownloadToken {
+    pub book_expiration: i64,
+    pub cover_expiration: i64,
 }
 
 #[derive(Deserialize)]
@@ -30,7 +31,7 @@ pub struct Configuration {
     pub database: Database,
     pub auth: Auth,
     pub prosa: Prosa,
-    pub token: Token,
+    pub download_token: DownloadToken,
 }
 
 #[derive(Deserialize, Clone)]

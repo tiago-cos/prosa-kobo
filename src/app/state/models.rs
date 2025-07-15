@@ -2,6 +2,15 @@ use super::service::unix_millis_to_string;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use std::time::{SystemTime, UNIX_EPOCH};
+use strum_macros::{EnumMessage, EnumProperty};
+
+#[derive(EnumMessage, EnumProperty, Debug)]
+pub enum StateError {
+    #[strum(message = "MissingProductId")]
+    #[strum(detailed_message = "A product ID must be provided.")]
+    #[strum(props(StatusCode = "400"))]
+    MissingProductId,
+}
 
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug)]
@@ -138,20 +147,73 @@ pub const UPDATE_STATE_RESPONSE: &str = r#"
 }
 "#;
 
+#[skip_serializing_none]
 #[derive(Serialize, Debug)]
 #[serde(rename_all = "PascalCase")]
-pub struct EventResponse {
-    pub result: String,
-    pub accepted_events: Vec<String>,
-    pub rejected_events: Option<Vec<String>>,
+pub struct RatingResponse {
+    pub items: Vec<Rating>,
+    pub total_page_count: u8,
+    pub current_page_index: u8,
 }
 
-impl EventResponse {
-    pub fn new(event_ids: Vec<String>) -> Self {
-        EventResponse {
-            result: "Success".to_string(),
-            accepted_events: event_ids,
-            rejected_events: None,
+impl RatingResponse {
+    pub fn new(book_id: &str, rating: Option<u8>) -> Self {
+        let items = match rating {
+            None => vec![],
+            Some(r) => vec![Rating::new(book_id, r)],
+        };
+
+        RatingResponse {
+            items,
+            total_page_count: 1,
+            current_page_index: 1,
         }
     }
 }
+
+#[skip_serializing_none]
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "PascalCase")]
+pub struct Rating {
+    pub id: String,
+    pub revision_id: String,
+    pub product_id: String,
+    pub cross_revision_id: String,
+    pub publication_id: String,
+    pub title: Option<String>,
+    pub body: Option<String>,
+    pub author_display_name: Option<String>,
+    pub rating: u8,
+    pub creation_date: Option<String>,
+    pub likes: u8,
+    pub dislikes: u8,
+}
+
+impl Rating {
+    pub fn new(book_id: &str, rating: u8) -> Self {
+        Rating {
+            id: book_id.to_string(),
+            revision_id: book_id.to_string(),
+            product_id: book_id.to_string(),
+            cross_revision_id: book_id.to_string(),
+            publication_id: "00000000-0000-0000-0000-000000000000".to_string(),
+            title: None,
+            body: Some("".to_string()),
+            author_display_name: None,
+            rating,
+            creation_date: None,
+            likes: 0,
+            dislikes: 0,
+        }
+    }
+}
+
+pub const REVIEWS_MOCK_RESPONSE: &str = r#"
+{
+    "ReviewSummary": {},
+    "Cursor": "1",
+    "Items": [],
+    "TotalPageCount": 10,
+    "CurrentPageIndex": 1
+}
+"#;

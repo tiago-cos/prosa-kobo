@@ -18,15 +18,6 @@ impl MetadataClient {
             .body_mut()
             .read_json::<ProsaMetadata>()
     }
-
-    pub fn fetch_size(&self, url: &str, agent: &Agent, book_id: &str, api_key: &str) -> Result<u64, Error> {
-        agent
-            .get(format!("{}/books/{}/size", url, book_id))
-            .header("api-key", api_key)
-            .call()?
-            .body_mut()
-            .read_json::<u64>()
-    }
 }
 
 #[derive(Deserialize, Debug)]

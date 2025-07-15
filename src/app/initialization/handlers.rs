@@ -6,8 +6,6 @@ pub async fn device_initialization_handler(
     State(config): State<Config>,
     Extension(token): Extension<AuthToken>,
 ) -> impl IntoResponse {
-    //TODO remove
-    println!("INITIALIZATION");
     let host = format!(
         "{}:{}",
         &config.server.announced_host, &config.server.announced_port

@@ -1,5 +1,5 @@
-use super::service::random_string;
 use crate::{app::state::service::unix_millis_to_string, client::ProsaMetadata};
+use isolang::Language;
 use serde::Serialize;
 
 #[derive(Serialize, Debug)]
@@ -105,7 +105,7 @@ pub struct Locale {
 }
 
 impl BookMetadata {
-    pub fn new(book_id: &str, metadata: ProsaMetadata, download_url: DownloadUrl) -> Self {
+    pub fn new(book_id: &str, metadata: ProsaMetadata) -> Self {
         let publisher = Publisher {
             name: metadata.publisher.clone(),
             imprint: metadata.publisher,
@@ -136,9 +136,14 @@ impl BookMetadata {
         let current_love_display_price = CurrentLoveDisplayPrice { total_amount: 0 };
 
         let locale = Locale {
-            language_code: metadata.language.clone().unwrap_or("eng".to_string()),
+            language_code: "".to_string(),
             script_code: "".to_string(),
             country_code: "".to_string(),
+        };
+
+        let language = match metadata.language {
+            Some(l) if l.len() > 3 => Language::from_name(&l).map(|l| l.to_639_3().to_string()),
+            l => l,
         };
 
         BookMetadata {
@@ -146,12 +151,14 @@ impl BookMetadata {
             revision_id: book_id.to_string(),
             publisher,
             publication_date: metadata.publication_date.map(unix_millis_to_string),
-            language: metadata.language,
+            language: language,
             isbn: metadata.isbn,
             subtitle: metadata.subtitle,
             genre: None,
             slug: None,
-            cover_image_id: format!("{}[[{}]]", book_id, random_string(6)),
+            // TODO check if we can do the same thing as in the books and append a one time use password instead of appending the device_id
+            // We append a random string to the cover id to make the kobo refetch the cover in the case of a cover update. If the id stays the same, the kobo won't refetch the cover, even if it has changed.
+            cover_image_id: book_id.to_string(),
             is_social_enabled: true,
             work_id: book_id.to_string(),
             external_ids: Vec::new(),
@@ -164,7 +171,7 @@ impl BookMetadata {
             title: metadata.title,
             description: metadata.description,
             categories: Vec::new(),
-            download_urls: vec![download_url],
+            download_urls: vec![],
             contributors: contributors.iter().map(|c| c.name.clone()).collect(),
             series,
             current_display_price,
@@ -180,7 +187,6 @@ impl BookMetadata {
 impl Default for BookMetadata {
     fn default() -> Self {
         let metadata_response = ProsaMetadata::default();
-        let download_url = DownloadUrl::new("placeholder", 1);
-        BookMetadata::new("placeholder", metadata_response, download_url)
+        BookMetadata::new("placeholder", metadata_response)
     }
 }

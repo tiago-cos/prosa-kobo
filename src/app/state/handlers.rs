@@ -1,7 +1,14 @@
+use std::collections::HashMap;
+
 use super::{models::UpdateStateRequest, service};
-use crate::app::{authentication::AuthToken, error::KoboError, ProsaClient};
+use crate::app::{
+    authentication::AuthToken,
+    error::KoboError,
+    state::models::{StateError, REVIEWS_MOCK_RESPONSE},
+    ProsaClient,
+};
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     response::IntoResponse,
     Extension, Json,
 };
@@ -45,12 +52,33 @@ pub async fn update_state_handler(
 //New things: In the annotation requests from kobo -> server, the kobo only includes added annotations since the last 204 response from the server annotations endpoint.
 //If an annotation was deleted between the last 204 response, the kobo will send the annotation id in a deleted array.
 
-pub async fn events_handler(
+pub async fn update_rating_handler(
     State(client): State<ProsaClient>,
     Extension(token): Extension<AuthToken>,
-    Json(events): Json<Value>,
+    Path((book_id, rating)): Path<(String, u8)>,
 ) -> Result<impl IntoResponse, KoboError> {
-    let response = service::translate_events(&client, events, &token.api_key).await?;
+    service::translate_update_rating(&client, &book_id, rating, &token.api_key).await?;
+
+    Ok(())
+}
+
+pub async fn get_rating_handler(
+    State(client): State<ProsaClient>,
+    Extension(token): Extension<AuthToken>,
+    Query(params): Query<HashMap<String, String>>,
+) -> Result<impl IntoResponse, KoboError> {
+    let book_id = match params.get("ProductIds") {
+        Some(id) => id,
+        None => return Err(StateError::MissingProductId.into()),
+    };
+
+    let response = service::translate_get_rating(&client, book_id, &token.api_key).await?;
+
+    Ok(Json(response))
+}
+
+pub async fn get_reviews_mock_handler() -> Result<impl IntoResponse, KoboError> {
+    let response: Value = serde_json::from_str(&REVIEWS_MOCK_RESPONSE).expect("Failed to convert to JSON");
 
     Ok(Json(response))
 }

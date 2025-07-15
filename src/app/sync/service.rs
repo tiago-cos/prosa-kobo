@@ -22,7 +22,8 @@ pub async fn translate_sync(
     client: &Client,
     since: Option<i64>,
     server_url: &str,
-    download_expiration: i64,
+    book_expiration: i64,
+    cover_expiration: i64,
     api_key: &str,
 ) -> Result<Vec<NewEntitlementResponse>, KoboError> {
     let sync_response = client.sync_device(since, api_key)?;
@@ -41,7 +42,8 @@ pub async fn translate_sync(
             client,
             &book_id,
             server_url,
-            download_expiration,
+            book_expiration,
+            cover_expiration,
             api_key,
         )
         .await?;

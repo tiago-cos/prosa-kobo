@@ -1,5 +1,7 @@
 use super::service;
-use crate::app::{annotations, authentication::AuthToken, error::KoboError, tokens::TokenError, AppState};
+use crate::app::{
+    annotations, authentication::AuthToken, books::models::BookTokenError, error::KoboError, AppState,
+};
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
@@ -15,7 +17,7 @@ pub async fn download_book_handler(
 ) -> Result<impl IntoResponse, KoboError> {
     let book_token = match params.get("token") {
         Some(t) => t,
-        None => return Err(TokenError::InvalidToken.into()),
+        None => return Err(BookTokenError::InvalidToken.into()),
     };
 
     let book = service::download_book(&state.pool, &state.prosa_client, &book_id, &book_token).await?;

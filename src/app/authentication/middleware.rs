@@ -22,7 +22,7 @@ pub async fn extract_token_middleware(
 
     let device = match devices::service::get_linked_device(&state.pool, &device_id).await {
         Some(device) => device,
-        _ => Err(AuthError::InvalidToken)?,
+        _ => Err(AuthError::UnauthenticatedDevice)?,
     };
 
     request.extensions_mut().insert(AuthToken {
@@ -34,9 +34,6 @@ pub async fn extract_token_middleware(
 
 async fn handle_jwt(secret: &str, header: &HeaderValue) -> Result<String, AuthError> {
     let header = header.to_str().expect("Failed to convert jwt header to string");
-
-    //TODO remove
-    println!("AUTH ATTEMPT: {}", header);
 
     let (_, token) = header
         .split_whitespace()

@@ -6,12 +6,15 @@ use crate::app::error::KoboError;
 use base64::{prelude::BASE64_STANDARD, Engine};
 use sha2::{Digest, Sha256};
 use sqlx::SqlitePool;
+use std::time::{SystemTime, UNIX_EPOCH};
 
-pub async fn add_unlinked_device(pool: &SqlitePool, device_id: &str, timestamp: i64) -> () {
-    let linked_device = data::get_linked_device(pool, device_id).await;
-    if linked_device.is_none() {
-        data::add_unlinked_device(pool, device_id, timestamp).await;
-    }
+pub async fn add_unlinked_device(pool: &SqlitePool, device_id: &str) -> () {
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("Time went backwards")
+        .as_secs() as i64;
+
+    data::add_unlinked_device(pool, device_id, now).await;
 }
 
 pub async fn get_unlinked_devices(pool: &SqlitePool) -> Vec<UnlinkedDevice> {
@@ -23,25 +26,28 @@ pub async fn link_device(pool: &SqlitePool, device_id: &str, api_key: &str) -> R
         return Err(DeviceError::InvalidApiKey.into());
     }
 
-    data::get_unlinked_device(pool, device_id).await?;
+    if data::get_unlinked_device(pool, device_id).await.is_none() {
+        return Err(DeviceError::DeviceNotFound.into());
+    }
+
     data::add_linked_device(pool, device_id, api_key).await?;
     data::remove_unlinked_device(pool, device_id).await?;
 
     Ok(())
 }
 
-pub async fn unlink_device(
-    pool: &SqlitePool,
-    device_id: &str,
-    api_key: &str,
-    timestamp: i64,
-) -> Result<(), KoboError> {
+pub async fn unlink_device(pool: &SqlitePool, device_id: &str, api_key: &str) -> Result<(), KoboError> {
     if !is_valid_api_key(api_key) {
         return Err(DeviceError::InvalidApiKey.into());
     }
 
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("Time went backwards")
+        .as_secs() as i64;
+
     data::remove_linked_device(pool, device_id, api_key).await?;
-    data::add_unlinked_device(pool, device_id, timestamp).await;
+    data::add_unlinked_device(pool, device_id, now).await;
 
     Ok(())
 }
@@ -56,6 +62,10 @@ pub async fn get_linked_devices(pool: &SqlitePool, api_key: &str) -> Result<Vec<
 
 pub async fn get_linked_device(pool: &SqlitePool, device_id: &str) -> Option<LinkedDevice> {
     data::get_linked_device(pool, device_id).await
+}
+
+pub async fn get_unlinked_device(pool: &SqlitePool, device_id: &str) -> Option<UnlinkedDevice> {
+    data::get_unlinked_device(pool, device_id).await
 }
 
 pub async fn generate_device_id(device_id: &str, user_key: &str) -> String {

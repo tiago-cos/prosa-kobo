@@ -11,22 +11,19 @@ use axum::{
     response::IntoResponse,
     Json,
 };
-use std::{
-    collections::HashMap,
-    time::{SystemTime, UNIX_EPOCH},
-};
+use std::collections::HashMap;
 
 pub async fn device_auth_handler(
     State(state): State<AppState>,
     Json(body): Json<DeviceAuthRequest>,
 ) -> impl IntoResponse {
     let device_id = service::generate_device_id(&body.device_id, &body.user_key).await;
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("Time went backwards")
-        .as_secs() as i64;
 
-    service::add_unlinked_device(&state.pool, &device_id, now).await;
+    let linked_device = service::get_linked_device(&state.pool, &body.device_id).await;
+    let unlinked_device = service::get_unlinked_device(&state.pool, &body.device_id).await;
+    if linked_device.is_none() && unlinked_device.is_none() {
+        service::add_unlinked_device(&state.pool, &device_id).await;
+    }
 
     let secret = &state.config.auth.secret_key;
     let token_duration = &state.config.auth.token_duration;
@@ -86,11 +83,6 @@ pub async fn unlink_device_handler(
     State(pool): State<Pool>,
     Json(body): Json<LinkDeviceRequest>,
 ) -> Result<(), KoboError> {
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("Time went backwards")
-        .as_secs() as i64;
-
-    service::unlink_device(&pool, &body.device_id, &body.api_key, now).await?;
+    service::unlink_device(&pool, &body.device_id, &body.api_key).await?;
     Ok(())
 }

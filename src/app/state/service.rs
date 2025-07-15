@@ -1,5 +1,8 @@
-use super::models::{EventResponse, ReadingState, UPDATE_STATE_RESPONSE};
-use crate::{app::error::KoboError, client::prosa::Client};
+use super::models::{ReadingState, UPDATE_STATE_RESPONSE};
+use crate::{
+    app::{error::KoboError, state::models::RatingResponse},
+    client::prosa::Client,
+};
 use chrono::{DateTime, Utc};
 use regex::Regex;
 use serde_json::Value;
@@ -66,35 +69,25 @@ pub async fn translate_update_state(
     Ok(response)
 }
 
-pub async fn translate_events(
+pub async fn translate_update_rating(
     client: &Client,
-    events: Value,
+    book_id: &str,
+    rating: u8,
     api_key: &str,
-) -> Result<EventResponse, KoboError> {
-    let mut ids: Vec<String> = Vec::new();
+) -> Result<(), KoboError> {
+    client.update_rating(book_id, rating, api_key)?;
 
-    for event in events["Events"].as_array().expect("Object should be an array") {
-        let id = event["Id"].as_str().expect("Id should be present");
-        let event_type = event["EventType"].as_str().expect("EventType should be present");
+    Ok(())
+}
 
-        ids.push(id.to_string());
+pub async fn translate_get_rating(
+    client: &Client,
+    book_id: &str,
+    api_key: &str,
+) -> Result<RatingResponse, KoboError> {
+    let rating = client.fetch_rating(book_id, api_key)?;
 
-        if event_type != "RateBook" {
-            continue;
-        }
-
-        let book_id = event["Attributes"]["volumeid"]
-            .as_str()
-            .expect("BookId should be present");
-        let rating = event["Metrics"]["stars"]
-            .as_u64()
-            .expect("Rating should be present");
-        let rating: u8 = rating.try_into().expect("Rating should be small");
-
-        client.update_rating(book_id, rating, api_key)?;
-    }
-
-    Ok(EventResponse::new(ids))
+    Ok(RatingResponse::new(book_id, rating))
 }
 
 pub fn unix_millis_to_string(timestamp_millis: i64) -> String {

@@ -21,7 +21,8 @@ pub async fn metadata_handler(
         &state.prosa_client,
         &book_id,
         &server_url,
-        state.config.token.expiration,
+        state.config.download_token.book_expiration,
+        state.config.download_token.cover_expiration,
         &token.api_key,
     )
     .await?;

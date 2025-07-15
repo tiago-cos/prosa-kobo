@@ -66,7 +66,7 @@ export async function unlinkDevice(device_id: string, api_key: string) {
 
 
 export async function authDevice(deviceId?: string, userKey?: string) {
-    let req = request(SERVER_URL).post("/devices/auth");
+    let req = request(SERVER_URL).post("/v1/auth/device");
 
     if (!deviceId)
         deviceId = randomString(16);
@@ -81,6 +81,6 @@ export async function authDevice(deviceId?: string, userKey?: string) {
 }
 
 export async function authRefreshDevice(refreshToken: string) {
-    let req = request(SERVER_URL).post("/devices/auth/refresh");
+    let req = request(SERVER_URL).post("/v1/auth/refresh");
     return req.send(await generateDeviceAuthRefreshRequest(refreshToken));
 }

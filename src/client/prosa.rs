@@ -7,7 +7,7 @@ use super::{
     sync::{ProsaSync, SyncClient},
     ProsaAnnotationRequest, ProsaState,
 };
-use crate::app::AppState;
+use crate::{app::AppState, client::book::ProsaBookFileMetadata};
 use axum::extract::FromRef;
 use std::sync::Arc;
 use strum_macros::{EnumMessage, EnumProperty};
@@ -81,10 +81,14 @@ impl Client {
         Ok(result)
     }
 
-    pub fn fetch_size(&self, book_id: &str, api_key: &str) -> Result<u64, ClientError> {
+    pub fn fetch_book_file_metadata(
+        &self,
+        book_id: &str,
+        api_key: &str,
+    ) -> Result<ProsaBookFileMetadata, ClientError> {
         let result = self
-            .metadata_client
-            .fetch_size(&self.url, &self.agent, book_id, api_key)?;
+            .book_client
+            .fetch_book_file_metadata(&self.url, &self.agent, book_id, api_key)?;
         Ok(result)
     }
 
@@ -119,6 +123,13 @@ impl Client {
         self.state_client
             .update_rating(&self.url, &self.agent, book_id, rating, api_key)?;
         Ok(())
+    }
+
+    pub fn fetch_rating(&self, book_id: &str, api_key: &str) -> Result<Option<u8>, ClientError> {
+        let result = self
+            .state_client
+            .fetch_rating(&self.url, &self.agent, book_id, api_key)?;
+        Ok(result)
     }
 
     pub fn download_book(&self, book_id: &str, api_key: &str) -> Result<Vec<u8>, ClientError> {

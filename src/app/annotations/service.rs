@@ -62,9 +62,6 @@ pub async fn get_annotations(
 
     let annotations: Vec<Annotation> = annotations.into_iter().map(|a| a.into()).collect();
 
-    //TODO remove
-    println!("{:#?}", annotations);
-
     Ok(GetAnnotationsResponse::new(annotations))
 }
 

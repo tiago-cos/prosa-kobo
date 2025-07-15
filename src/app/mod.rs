@@ -10,6 +10,6 @@ mod proxy;
 mod server;
 mod state;
 mod sync;
-mod tokens;
+mod tracing;
 
 pub use server::*;

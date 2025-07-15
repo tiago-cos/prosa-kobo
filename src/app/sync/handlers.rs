@@ -12,9 +12,6 @@ pub async fn device_sync_handler(
     headers: HeaderMap,
     Extension(token): Extension<AuthToken>,
 ) -> Result<impl IntoResponse, KoboError> {
-    //TODO remove
-    println!("SYNCING");
-
     let server_url = format!(
         "http://{}:{}",
         state.config.server.announced_host, state.config.server.announced_port
@@ -37,7 +34,8 @@ pub async fn device_sync_handler(
         &state.prosa_client,
         since,
         &server_url,
-        state.config.token.expiration,
+        state.config.download_token.book_expiration,
+        state.config.download_token.cover_expiration,
         &token.api_key,
     )
     .await?;

@@ -76,6 +76,18 @@ impl StateClient {
 
         Ok(())
     }
+
+    pub fn fetch_rating(
+        &self,
+        url: &str,
+        agent: &Agent,
+        book_id: &str,
+        api_key: &str,
+    ) -> Result<Option<u8>, Error> {
+        let state = self.fetch_state(url, agent, book_id, api_key)?;
+        let rating = state.statistics.rating.map(|s| s.round() as u8);
+        Ok(rating)
+    }
 }
 
 #[derive(Deserialize, Serialize, Debug)]

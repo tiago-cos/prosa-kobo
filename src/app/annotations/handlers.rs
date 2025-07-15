@@ -14,8 +14,6 @@ pub async fn check_for_changes_handler(
     State(pool): State<Pool>,
     Json(request): Json<Vec<CheckContentRequest>>,
 ) -> Result<impl IntoResponse, KoboError> {
-    //TODO remove
-    println!("CHECKING FOR CHANGES {:#?}", request);
     let changed = service::get_changed_annotations(&pool, request).await;
 
     Ok(Json(changed))
@@ -26,9 +24,6 @@ pub async fn get_annotations_handler(
     Path(book_id): Path<String>,
     Extension(token): Extension<AuthToken>,
 ) -> Result<impl IntoResponse, KoboError> {
-    //TODO remove
-    println!("GETTING ANNOTATIONS: {}", book_id);
-
     let annotations = service::get_annotations(&state.prosa_client, &book_id, &token.api_key).await?;
     let etag = service::get_etag(&state.pool, &book_id).await?;
 
@@ -48,8 +43,6 @@ pub async fn patch_annotations_handler(
     Extension(token): Extension<AuthToken>,
     Json(request): Json<PatchAnnotationsRequest>,
 ) -> Result<impl IntoResponse, KoboError> {
-    //TODO remove
-    println!("POSTING ANNOTATIONS: {}", book_id);
     service::patch_annotations(&client, &book_id, request, &token.api_key).await?;
     Ok(())
 }

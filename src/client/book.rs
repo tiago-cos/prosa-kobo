@@ -1,3 +1,4 @@
+use serde::Deserialize;
 use std::io::Read;
 use ureq::{Agent, Error};
 
@@ -32,4 +33,25 @@ impl BookClient {
 
         Ok(())
     }
+
+    pub fn fetch_book_file_metadata(
+        &self,
+        url: &str,
+        agent: &Agent,
+        book_id: &str,
+        api_key: &str,
+    ) -> Result<ProsaBookFileMetadata, Error> {
+        agent
+            .get(format!("{}/books/{}/file-metadata", url, book_id))
+            .header("api-key", api_key)
+            .call()?
+            .body_mut()
+            .read_json::<ProsaBookFileMetadata>()
+    }
+}
+
+#[derive(Deserialize, Debug)]
+pub struct ProsaBookFileMetadata {
+    pub owner_id: String,
+    pub file_size: u64,
 }

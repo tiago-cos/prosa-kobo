@@ -22,6 +22,9 @@ pub enum AuthError {
     #[strum(message = "MissingAuth", detailed_message = "No authentication was provided.")]
     #[strum(props(StatusCode = "401"))]
     MissingAuth,
+    #[strum(message = "UnauthenticatedDevice", detailed_message = "Device is recognized, but is unauthenticated.")]
+    #[strum(props(StatusCode = "401"))]
+    UnauthenticatedDevice,
     #[strum(message = "InternalError", detailed_message = "Internal error")]
     #[strum(props(StatusCode = "500"))]
     InternalError,

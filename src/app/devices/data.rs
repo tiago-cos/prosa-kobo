@@ -4,7 +4,7 @@ use sqlx::SqlitePool;
 pub async fn add_unlinked_device(pool: &SqlitePool, device_id: &str, timestamp: i64) -> () {
     sqlx::query(
         r#"
-        INSERT OR IGNORE INTO unlinked_devices (device_id, timestamp)
+        INSERT INTO unlinked_devices (device_id, timestamp)
         VALUES ($1, $2)
         "#,
     )
@@ -34,8 +34,8 @@ pub async fn remove_unlinked_device(pool: &SqlitePool, device_id: &str) -> Resul
     Ok(())
 }
 
-pub async fn get_unlinked_device(pool: &SqlitePool, device_id: &str) -> Result<UnlinkedDevice, DeviceError> {
-    let device: UnlinkedDevice = sqlx::query_as(
+pub async fn get_unlinked_device(pool: &SqlitePool, device_id: &str) -> Option<UnlinkedDevice> {
+    let device: Option<UnlinkedDevice> = sqlx::query_as(
         r#"
         SELECT device_id, timestamp
         FROM unlinked_devices
@@ -43,10 +43,11 @@ pub async fn get_unlinked_device(pool: &SqlitePool, device_id: &str) -> Result<U
         "#,
     )
     .bind(device_id)
-    .fetch_one(pool)
-    .await?;
+    .fetch_optional(pool)
+    .await
+    .expect("Failed to fetch unlinked device");
 
-    Ok(device)
+    device
 }
 
 pub async fn get_unlinked_devices(pool: &SqlitePool) -> Vec<UnlinkedDevice> {
