@@ -4,15 +4,6 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
-use strum_macros::{EnumMessage, EnumProperty};
-
-#[derive(EnumMessage, EnumProperty, Debug)]
-pub enum AnnotationError {
-    #[strum(message = "AnnotationNotFound")]
-    #[strum(detailed_message = "The requested annotation does not exist or is not accessible.")]
-    #[strum(props(StatusCode = "404"))]
-    AnnotationNotFound,
-}
 
 #[derive(Deserialize, Debug)]
 pub struct CheckContentRequest {

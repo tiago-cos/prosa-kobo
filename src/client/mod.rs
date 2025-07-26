@@ -3,6 +3,7 @@ mod book;
 mod cover;
 mod metadata;
 pub mod prosa;
+mod shelf;
 mod state;
 mod sync;
 

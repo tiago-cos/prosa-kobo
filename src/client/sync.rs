@@ -23,10 +23,23 @@ impl SyncClient {
 
 #[derive(Deserialize, Debug)]
 pub struct ProsaSync {
+    pub book: ProsaBookSync,
+    pub shelf: ProsaShelfSync,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct ProsaBookSync {
     pub file: Vec<String>,
     pub metadata: Vec<String>,
     pub cover: Vec<String>,
     pub state: Vec<String>,
     pub annotations: Vec<String>,
+    pub deleted: Vec<String>,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct ProsaShelfSync {
+    pub metadata: Vec<String>,
+    pub contents: Vec<String>,
     pub deleted: Vec<String>,
 }

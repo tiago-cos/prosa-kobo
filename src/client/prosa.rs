@@ -7,7 +7,13 @@ use super::{
     sync::{ProsaSync, SyncClient},
     ProsaAnnotationRequest, ProsaState,
 };
-use crate::{app::AppState, client::book::ProsaBookFileMetadata};
+use crate::{
+    app::AppState,
+    client::{
+        book::ProsaBookFileMetadata,
+        shelf::{ProsaShelfMetadata, ShelfClient},
+    },
+};
 use axum::extract::FromRef;
 use std::sync::Arc;
 use strum_macros::{EnumMessage, EnumProperty};
@@ -49,6 +55,7 @@ pub struct Client {
     book_client: BookClient,
     cover_client: CoverClient,
     annotations_client: AnnotationsClient,
+    shelf_client: ShelfClient,
 }
 
 impl Client {
@@ -64,6 +71,7 @@ impl Client {
             book_client: BookClient {},
             cover_client: CoverClient {},
             annotations_client: AnnotationsClient {},
+            shelf_client: ShelfClient {},
         }
     }
 
@@ -213,6 +221,70 @@ impl Client {
     ) -> Result<(), ClientError> {
         self.annotations_client
             .delete_annotation(&self.url, &self.agent, book_id, annotation_id, api_key)?;
+        Ok(())
+    }
+
+    pub fn create_shelf(
+        &self,
+        shelf_name: &str,
+        owner_id: Option<String>,
+        api_key: &str,
+    ) -> Result<String, ClientError> {
+        let result = self
+            .shelf_client
+            .create_shelf(&self.url, &self.agent, shelf_name, owner_id, api_key)?;
+        Ok(result)
+    }
+
+    pub fn get_shelf_metadata(
+        &self,
+        shelf_id: &str,
+        api_key: &str,
+    ) -> Result<ProsaShelfMetadata, ClientError> {
+        let result = self
+            .shelf_client
+            .get_shelf_metadata(&self.url, &self.agent, shelf_id, api_key)?;
+        Ok(result)
+    }
+
+    pub fn update_shelf_name(
+        &self,
+        shelf_id: &str,
+        shelf_name: &str,
+        api_key: &str,
+    ) -> Result<(), ClientError> {
+        self.shelf_client
+            .update_shelf_name(&self.url, &self.agent, shelf_id, shelf_name, api_key)?;
+        Ok(())
+    }
+
+    pub fn delete_shelf(&self, shelf_id: &str, api_key: &str) -> Result<(), ClientError> {
+        self.shelf_client
+            .delete_shelf(&self.url, &self.agent, shelf_id, api_key)?;
+        Ok(())
+    }
+
+    pub fn add_book_to_shelf(&self, shelf_id: &str, book_id: &str, api_key: &str) -> Result<(), ClientError> {
+        self.shelf_client
+            .add_book_to_shelf(&self.url, &self.agent, shelf_id, book_id, api_key)?;
+        Ok(())
+    }
+
+    pub fn list_books_in_shelf(&self, shelf_id: &str, api_key: &str) -> Result<Vec<String>, ClientError> {
+        let result = self
+            .shelf_client
+            .list_books_in_shelf(&self.url, &self.agent, shelf_id, api_key)?;
+        Ok(result)
+    }
+
+    pub fn delete_book_from_shelf(
+        &self,
+        shelf_id: &str,
+        book_id: &str,
+        api_key: &str,
+    ) -> Result<(), ClientError> {
+        self.shelf_client
+            .delete_book_from_shelf(&self.url, &self.agent, shelf_id, book_id, api_key)?;
         Ok(())
     }
 }

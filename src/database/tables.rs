@@ -25,7 +25,6 @@ pub async fn create_tables(pool: &SqlitePool) {
             book_id TEXT NOT NULL,
             token TEXT NOT NULL,
             api_key TEXT NOT NULL,
-            expiration BIGINT NOT NULL,
             PRIMARY KEY(book_id, token)
         );
 

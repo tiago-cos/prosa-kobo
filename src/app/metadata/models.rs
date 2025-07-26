@@ -156,8 +156,8 @@ impl BookMetadata {
             subtitle: metadata.subtitle,
             genre: None,
             slug: None,
-            // TODO check if we can do the same thing as in the books and append a one time use password instead of appending the device_id
-            // We append a random string to the cover id to make the kobo refetch the cover in the case of a cover update. If the id stays the same, the kobo won't refetch the cover, even if it has changed.
+            // Note: To make Kobo devices refetch a cover image, the cover ID must change.
+            // If it stays the same, the device will use the stored version.
             cover_image_id: book_id.to_string(),
             is_social_enabled: true,
             work_id: book_id.to_string(),

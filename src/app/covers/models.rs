@@ -17,7 +17,6 @@ pub enum CoverTokenError {
 #[derive(FromRow)]
 pub struct CoverToken {
     pub book_id: String,
-    pub expiration: i64,
     pub api_key: String,
 }
 

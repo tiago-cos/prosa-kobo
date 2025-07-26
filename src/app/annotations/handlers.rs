@@ -25,7 +25,7 @@ pub async fn get_annotations_handler(
     Extension(token): Extension<AuthToken>,
 ) -> Result<impl IntoResponse, KoboError> {
     let annotations = service::get_annotations(&state.prosa_client, &book_id, &token.api_key).await?;
-    let etag = service::get_etag(&state.pool, &book_id).await?;
+    let etag = service::get_etag(&state.pool, &book_id).await;
 
     let mut headers = HeaderMap::new();
     headers.insert(

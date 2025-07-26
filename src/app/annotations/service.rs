@@ -1,8 +1,6 @@
 use super::{
     data,
-    models::{
-        Annotation, AnnotationError, CheckContentRequest, GetAnnotationsResponse, PatchAnnotationsRequest,
-    },
+    models::{Annotation, CheckContentRequest, GetAnnotationsResponse, PatchAnnotationsRequest},
 };
 use crate::{
     app::{error::KoboError, ProsaClient},
@@ -12,14 +10,19 @@ use base64::{prelude::BASE64_STANDARD, Engine};
 use rand::RngCore;
 use sqlx::SqlitePool;
 
-pub async fn get_etag(pool: &SqlitePool, book_id: &str) -> Result<String, AnnotationError> {
+pub async fn get_etag(pool: &SqlitePool, book_id: &str) -> String {
+    match data::get_etag(pool, book_id).await {
+        Some(tag) => return tag,
+        None => update_etag(pool, book_id).await,
+    };
+
     data::get_etag(pool, book_id)
         .await
-        .ok_or_else(|| AnnotationError::AnnotationNotFound)
+        .expect("Etag should be present")
 }
 
 pub async fn update_etag(pool: &SqlitePool, book_id: &str) -> () {
-    let mut random = [0u8, 32];
+    let mut random = [0u8; 32];
     rand::rng().fill_bytes(&mut random);
     let etag = BASE64_STANDARD.encode(random);
 
@@ -36,7 +39,10 @@ pub async fn get_changed_annotations(pool: &SqlitePool, books: Vec<CheckContentR
     for book in books {
         let etag = match data::get_etag(pool, &book.content_id).await {
             Some(tag) => tag,
-            None => continue,
+            None => {
+                data::update_etag(pool, &book.content_id, &book.etag).await;
+                continue;
+            }
         };
 
         if etag != book.etag {

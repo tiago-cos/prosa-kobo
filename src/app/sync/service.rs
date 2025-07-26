@@ -4,8 +4,9 @@ use crate::{
         annotations,
         error::KoboError,
         metadata::{self, BookMetadata},
+        shelves::models::{DeletedShelfResponse, NewShelfResponse},
         state::{self, models::ReadingState},
-        sync::models::BookEntitlement,
+        sync::models::{BookEntitlement, SyncItem},
     },
     client::prosa::Client,
 };
@@ -23,16 +24,17 @@ pub async fn translate_sync(
     since: Option<i64>,
     server_url: &str,
     book_expiration: i64,
-    cover_expiration: i64,
     api_key: &str,
-) -> Result<Vec<NewEntitlementResponse>, KoboError> {
+) -> Result<Vec<SyncItem>, KoboError> {
     let sync_response = client.sync_device(since, api_key)?;
 
-    let mut translated_response = Vec::new();
+    let mut translated_response: Vec<SyncItem> = Vec::new();
 
-    let mut books_to_update: HashSet<String> = sync_response.file.into_iter().collect();
-    books_to_update.extend(sync_response.cover);
-    books_to_update.extend(sync_response.metadata);
+    // Handle books
+
+    let mut books_to_update: HashSet<String> = sync_response.book.file.into_iter().collect();
+    books_to_update.extend(sync_response.book.cover);
+    books_to_update.extend(sync_response.book.metadata);
 
     for book_id in books_to_update {
         let entitlement = BookEntitlement::new(&book_id, false);
@@ -43,25 +45,49 @@ pub async fn translate_sync(
             &book_id,
             server_url,
             book_expiration,
-            cover_expiration,
             api_key,
         )
         .await?;
 
-        translated_response.push(NewEntitlementResponse::new(entitlement, reading_state, metadata));
-    }
-
-    for book_id in sync_response.deleted {
-        let entitlement = BookEntitlement::new(&book_id, true);
-        let reading_state = ReadingState::default();
-        let metadata = BookMetadata::default();
-        let response = NewEntitlementResponse::new(entitlement, reading_state, metadata);
+        let response =
+            SyncItem::Entitlement(NewEntitlementResponse::new(entitlement, reading_state, metadata));
 
         translated_response.push(response);
     }
 
-    for book_id in sync_response.annotations {
+    for book_id in sync_response.book.deleted {
+        let entitlement = BookEntitlement::new(&book_id, true);
+        let reading_state = ReadingState::default();
+        let metadata = BookMetadata::default();
+        let response =
+            SyncItem::Entitlement(NewEntitlementResponse::new(entitlement, reading_state, metadata));
+
+        translated_response.push(response);
+    }
+
+    // Handle annotations
+
+    for book_id in sync_response.book.annotations {
         annotations::service::update_etag(pool, &book_id).await;
+    }
+
+    // Handle shelfs
+
+    let mut shelfs_to_update: HashSet<String> = sync_response.shelf.metadata.into_iter().collect();
+    shelfs_to_update.extend(sync_response.shelf.contents);
+
+    for shelf_id in shelfs_to_update {
+        let name = client.get_shelf_metadata(&shelf_id, api_key)?.name;
+        let books = client.list_books_in_shelf(&shelf_id, api_key)?;
+        let response = SyncItem::NewShelf(NewShelfResponse::new(&shelf_id, &name, &books));
+
+        translated_response.push(response);
+    }
+
+    for shelf_id in sync_response.shelf.deleted {
+        let response = SyncItem::DeletedShelf(DeletedShelfResponse::new(&shelf_id));
+
+        translated_response.push(response);
     }
 
     Ok(translated_response)

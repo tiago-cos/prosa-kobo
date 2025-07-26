@@ -35,7 +35,6 @@ pub async fn device_sync_handler(
         since,
         &server_url,
         state.config.download_token.book_expiration,
-        state.config.download_token.cover_expiration,
         &token.api_key,
     )
     .await?;

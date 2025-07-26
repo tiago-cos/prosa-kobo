@@ -8,6 +8,7 @@ mod initialization;
 mod metadata;
 mod proxy;
 mod server;
+mod shelves;
 mod state;
 mod sync;
 mod tracing;

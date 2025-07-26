@@ -1,7 +1,19 @@
 use super::service::unix_millis_to_string;
-use crate::app::{metadata::BookMetadata, state::models::ReadingState};
+use crate::app::{
+    metadata::BookMetadata,
+    shelves::models::{DeletedShelfResponse, NewShelfResponse},
+    state::models::ReadingState,
+};
 use serde::Serialize;
 use std::time::{SystemTime, UNIX_EPOCH};
+
+#[derive(Serialize, Debug)]
+#[serde(untagged)]
+pub enum SyncItem {
+    Entitlement(NewEntitlementResponse),
+    NewShelf(NewShelfResponse),
+    DeletedShelf(DeletedShelfResponse),
+}
 
 #[derive(Serialize, Debug)]
 #[serde(rename_all = "PascalCase")]

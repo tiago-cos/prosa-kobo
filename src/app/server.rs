@@ -1,7 +1,11 @@
 use super::{
     annotations, authentication, books, covers, devices, initialization, metadata, proxy, state, sync,
 };
-use crate::{app::tracing, client::prosa::Client, config::Configuration};
+use crate::{
+    app::{shelves, tracing},
+    client::prosa::Client,
+    config::Configuration,
+};
 use axum::{middleware::from_fn, Router};
 use sqlx::SqlitePool;
 use std::sync::Arc;
@@ -42,6 +46,7 @@ pub async fn run(config: Configuration, pool: SqlitePool) {
         .merge(covers::routes::get_routes(state.clone()))
         .merge(state::routes::get_routes(state.clone()))
         .merge(annotations::routes::get_routes(state.clone()))
+        .merge(shelves::routes::get_routes(state.clone()))
         .merge(proxy::routes::get_routes(state.clone()))
         .layer(from_fn(tracing::log_layer));
 
