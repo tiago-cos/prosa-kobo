@@ -1,6 +1,7 @@
 use super::models::{AuthError, JWTClaims, OAUTH_CONFIGS, OAUTH_TOKEN};
 use base64::{prelude::BASE64_STANDARD, Engine};
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
+use serde_json::Value;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 #[rustfmt::skip]
@@ -32,14 +33,18 @@ pub async fn verify_jwt(token: &str, secret: &str) -> Result<String, AuthError> 
     Ok(token.claims.device_id)
 }
 
-pub async fn generate_oauth_config(host: &str, device_id: &str) -> String {
-    OAUTH_CONFIGS
+pub async fn generate_oauth_config(host: &str, device_id: &str) -> Value {
+    let json_string = OAUTH_CONFIGS
         .replace("{host}", &host)
-        .replace("{device_id}", &device_id)
+        .replace("{device_id}", &device_id);
+
+    serde_json::from_str(&json_string).expect("Failed to parse JSON")
 }
 
-pub async fn generate_oauth_token(jwt_token: &str, jwt_duration: u64) -> String {
-    OAUTH_TOKEN
+pub async fn generate_oauth_token(jwt_token: &str, jwt_duration: u64) -> Value {
+    let json_string = OAUTH_TOKEN
         .replace("{jwt_token}", &jwt_token)
-        .replace("{jwt_duration}", &jwt_duration.to_string())
+        .replace("{jwt_duration}", &jwt_duration.to_string());
+
+    serde_json::from_str(&json_string).expect("Failed to parse JSON")
 }

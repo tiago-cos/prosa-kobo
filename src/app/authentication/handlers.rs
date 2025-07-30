@@ -1,7 +1,12 @@
-use crate::app::{authentication::service, Config};
+use crate::app::{
+    authentication::{models::AuthError, service},
+    error::KoboError,
+    Config,
+};
 use axum::{
     extract::{Path, Query, State},
     response::IntoResponse,
+    Json,
 };
 use std::collections::HashMap;
 
@@ -13,16 +18,19 @@ pub async fn oauth_configs_handler(
         "{}:{}",
         &config.server.announced_host, &config.server.announced_port
     );
-    service::generate_oauth_config(&host, &device_id).await
+
+    Json(service::generate_oauth_config(&host, &device_id).await)
 }
 
 pub async fn oauth_token_handler(
     State(config): State<Config>,
     Query(params): Query<HashMap<String, String>>,
-) -> impl IntoResponse {
-    let device_id = params.get("device_id").expect("device_id should be present");
+) -> Result<impl IntoResponse, KoboError> {
+    let device_id = params.get("device_id").ok_or(AuthError::MissingDeviceId)?;
+
     let jwt_token =
         service::generate_jwt(&config.auth.secret_key, device_id, &config.auth.token_duration).await;
 
-    service::generate_oauth_token(&jwt_token, config.auth.token_duration).await
+    let response = Json(service::generate_oauth_token(&jwt_token, config.auth.token_duration).await);
+    Ok(response)
 }
