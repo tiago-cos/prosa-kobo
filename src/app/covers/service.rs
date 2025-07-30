@@ -28,6 +28,7 @@ pub async fn generate_token(pool: &SqlitePool, book_id: &str, api_key: &str) -> 
     rand::rng().fill_bytes(&mut bytes);
     let token = BASE64_URL_SAFE.encode(bytes);
 
+    data::delete_token(pool, book_id).await;
     data::add_token(pool, book_id, &token, api_key).await;
 
     token

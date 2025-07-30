@@ -9,6 +9,7 @@ pub async fn generate_initialization_response(host: &str, device_id: &str) -> Va
     serde_json::from_str(&response).expect("Failed to parse JSON")
 }
 
-pub async fn generate_tests_response(test_key: &str) -> String {
-    TESTS_RESPONSE.replace("{test_key}", test_key)
+pub async fn generate_tests_response(test_key: &str) -> Value {
+    let response = TESTS_RESPONSE.replace("{test_key}", test_key);
+    serde_json::from_str(&response).expect("Failed to parse JSON")
 }

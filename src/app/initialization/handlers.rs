@@ -1,5 +1,5 @@
 use super::{models::TestRequest, service};
-use crate::app::{authentication::AuthToken, initialization::service::generate_tests_response, Config};
+use crate::app::{authentication::AuthToken, Config};
 use axum::{extract::State, response::IntoResponse, Extension, Json};
 
 pub async fn device_initialization_handler(
@@ -14,5 +14,5 @@ pub async fn device_initialization_handler(
 }
 
 pub async fn tests_handler(Json(request): Json<TestRequest>) -> impl IntoResponse {
-    generate_tests_response(&request.test_key).await
+    Json(service::generate_tests_response(&request.test_key).await)
 }

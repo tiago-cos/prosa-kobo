@@ -30,3 +30,16 @@ pub async fn get_token(pool: &SqlitePool, token: &str) -> Result<CoverToken, Cov
 
     Ok(token)
 }
+
+pub async fn delete_token(pool: &SqlitePool, book_id: &str) -> () {
+    sqlx::query(
+        r#"
+        DELETE FROM cover_tokens
+        WHERE book_id = $1
+        "#,
+    )
+    .bind(book_id)
+    .execute(pool)
+    .await
+    .expect("Failed to delete cover token");
+}

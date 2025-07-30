@@ -6,7 +6,7 @@ use crate::{
     client::prosa::Client,
     config::Configuration,
 };
-use axum::{middleware::from_fn, Router};
+use axum::{http::StatusCode, middleware::from_fn, routing::get, Router};
 use sqlx::SqlitePool;
 use std::sync::Arc;
 use tokio::net::TcpListener;
@@ -37,6 +37,7 @@ pub async fn run(config: Configuration, pool: SqlitePool) {
 
     let host = format!("{}:{}", &state.config.server.host, &state.config.server.port);
     let app = Router::new()
+        .route("/health", get(|| async { StatusCode::NO_CONTENT }))
         .merge(devices::routes::get_routes(state.clone()))
         .merge(initialization::routes::get_routes(state.clone()))
         .merge(sync::routes::get_routes(state.clone()))
