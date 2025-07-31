@@ -4,7 +4,7 @@ use crate::{
         books::models::{BookTokenError, BOOK_TOKEN_SIZE},
         error::KoboError,
     },
-    client::prosa::Client,
+    client::prosa::{Client, ClientError},
 };
 use base64::{prelude::BASE64_URL_SAFE, Engine};
 use rand::RngCore;
@@ -23,7 +23,12 @@ pub async fn download_book(
 }
 
 pub async fn delete_book(client: &Client, book_id: &str, api_key: &str) -> Result<(), KoboError> {
-    client.delete_book(&book_id, &api_key)?;
+    match client.delete_book(&book_id, &api_key) {
+        Ok(()) => (),
+        Err(ClientError::NotFound) => (),
+        e => e?,
+    };
+
     Ok(())
 }
 
