@@ -26,12 +26,12 @@ pub async fn link_device(pool: &SqlitePool, device_id: &str, api_key: &str) -> R
         return Err(DeviceError::InvalidApiKey.into());
     }
 
-    if data::get_unlinked_device(pool, device_id).await.is_none() {
-        return Err(DeviceError::DeviceNotFound.into());
+    if data::get_linked_device(pool, device_id).await.is_some() {
+        return Err(DeviceError::DeviceAlreadyLinked.into());
     }
 
-    data::add_linked_device(pool, device_id, api_key).await?;
     data::remove_unlinked_device(pool, device_id).await?;
+    data::add_linked_device(pool, device_id, api_key).await?;
 
     Ok(())
 }
@@ -39,6 +39,10 @@ pub async fn link_device(pool: &SqlitePool, device_id: &str, api_key: &str) -> R
 pub async fn unlink_device(pool: &SqlitePool, device_id: &str, api_key: &str) -> Result<(), KoboError> {
     if !is_valid_api_key(api_key) {
         return Err(DeviceError::InvalidApiKey.into());
+    }
+
+    if data::get_unlinked_device(pool, device_id).await.is_some() {
+        return Err(DeviceError::DeviceAlreadyUnlinked.into());
     }
 
     let now = SystemTime::now()

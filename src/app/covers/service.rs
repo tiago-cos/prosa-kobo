@@ -24,7 +24,7 @@ pub async fn download_cover(
 }
 
 pub async fn generate_token(pool: &SqlitePool, book_id: &str, api_key: &str) -> String {
-    let mut bytes = vec![0u8; COVER_TOKEN_SIZE * 8];
+    let mut bytes = vec![0u8; COVER_TOKEN_SIZE];
     rand::rng().fill_bytes(&mut bytes);
     let token = BASE64_URL_SAFE.encode(bytes);
 

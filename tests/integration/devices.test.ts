@@ -1,5 +1,5 @@
 import { INVALID_TOKEN, randomString } from '../utils/common';
-import { authDevice, authRefreshDevice, DEVICE_NOT_FOUND, getLinkedDevices, getUnlinkedDevices, INVALID_API_KEY, linkDevice, MISSING_API_KEY, unlinkDevice } from '../utils/kobont/devices';
+import { authDevice, authRefreshDevice, DEVICE_ALREADY_LINKED, DEVICE_ALREADY_UNLINKED, DEVICE_NOT_FOUND, getLinkedDevices, getUnlinkedDevices, INVALID_API_KEY, linkDevice, MISSING_API_KEY, unlinkDevice } from '../utils/kobont/devices';
 
 describe('Device auth', () => {
   test('Simple', async () => {
@@ -74,8 +74,22 @@ describe('Device linking', () => {
     expect(linkResponse.body.message).toBe(DEVICE_NOT_FOUND);
   });
 
+  test('Link already linked device', async () => {
+    const apiKey = randomString(16);
+
+    const { response: authResponse, deviceId } = await authDevice();
+    expect(authResponse.status).toBe(200);
+
+    let linkResponse = await linkDevice(deviceId, apiKey);
+    expect(linkResponse.status).toBe(200);
+
+    linkResponse = await linkDevice(deviceId, apiKey);
+    expect(linkResponse.status).toBe(409);
+    expect(linkResponse.body.message).toBe(DEVICE_ALREADY_LINKED);
+  });
+
   test('Link device invalid key', async () => {
-    let linkResponse = await linkDevice('non-existent', 'this is as invalid key');
+    let linkResponse = await linkDevice('non-existent', 'this is an invalid key');
     expect(linkResponse.status).toBe(400);
     expect(linkResponse.body.message).toBe(INVALID_API_KEY);
   });
@@ -84,6 +98,15 @@ describe('Device linking', () => {
     let unlinkResponse = await unlinkDevice('non-existent', 'dummyKey');
     expect(unlinkResponse.status).toBe(404);
     expect(unlinkResponse.body.message).toBe(DEVICE_NOT_FOUND);
+  });
+
+  test('Unlink already unlinked device', async () => {
+    const { response: authResponse, deviceId } = await authDevice();
+    expect(authResponse.status).toBe(200);
+
+    let unlinkResponse = await unlinkDevice(deviceId, 'dummyKey');
+    expect(unlinkResponse.status).toBe(409);
+    expect(unlinkResponse.body.message).toBe(DEVICE_ALREADY_UNLINKED);
   });
 
   test('Unlink device invalid key', async () => {

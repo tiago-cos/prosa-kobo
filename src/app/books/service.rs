@@ -28,7 +28,7 @@ pub async fn delete_book(client: &Client, book_id: &str, api_key: &str) -> Resul
 }
 
 pub async fn generate_token(pool: &SqlitePool, book_id: &str, expiration: i64, api_key: &str) -> String {
-    let mut bytes = vec![0u8; BOOK_TOKEN_SIZE * 8];
+    let mut bytes = vec![0u8; BOOK_TOKEN_SIZE];
     rand::rng().fill_bytes(&mut bytes);
     let token = BASE64_URL_SAFE.encode(bytes);
 

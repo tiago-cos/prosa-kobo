@@ -4,6 +4,7 @@ import { MIDDLEWARE_URL, randomString } from '../common';
 
 export const DEVICE_NOT_FOUND = 'The requested device does not exist or is not accessible.';
 export const DEVICE_ALREADY_LINKED = 'This device is already linked.';
+export const DEVICE_ALREADY_UNLINKED = 'This device is already unlinked.';
 export const INVALID_API_KEY = 'The provided api key is invalid.';
 export const MISSING_API_KEY = 'The api key must be provided.';
 

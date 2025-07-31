@@ -18,6 +18,10 @@ pub enum DeviceError {
     #[strum(detailed_message = "This device is already linked.")]
     #[strum(props(StatusCode = "409"))]
     DeviceAlreadyLinked,
+    #[strum(message = "DeviceAlreadyUnlinked")]
+    #[strum(detailed_message = "This device is already unlinked.")]
+    #[strum(props(StatusCode = "409"))]
+    DeviceAlreadyUnlinked,
     #[strum(message = "InvalidApiKey")]
     #[strum(detailed_message = "The provided api key is invalid.")]
     #[strum(props(StatusCode = "400"))]
