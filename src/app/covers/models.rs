@@ -17,7 +17,7 @@ pub enum CoverTokenError {
 #[derive(FromRow)]
 pub struct CoverToken {
     pub book_id: String,
-    pub api_key: String,
+    pub device_id: String,
 }
 
 impl From<SqlxError> for CoverTokenError {

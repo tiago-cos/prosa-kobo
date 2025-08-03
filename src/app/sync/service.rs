@@ -25,6 +25,7 @@ pub async fn translate_sync(
     server_url: &str,
     book_expiration: i64,
     api_key: &str,
+    device_id: &str,
 ) -> Result<Vec<SyncItem>, KoboError> {
     let sync_response = client.sync_device(since, api_key)?;
 
@@ -46,6 +47,7 @@ pub async fn translate_sync(
             server_url,
             book_expiration,
             api_key,
+            device_id,
         )
         .await?;
 

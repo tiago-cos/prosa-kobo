@@ -2,6 +2,7 @@ use super::data;
 use crate::{
     app::{
         books::models::{BookTokenError, BOOK_TOKEN_SIZE},
+        devices,
         error::KoboError,
     },
     client::prosa::{Client, ClientError},
@@ -22,17 +23,24 @@ pub async fn download_book(
     Ok(book)
 }
 
-pub async fn delete_book(client: &Client, book_id: &str, api_key: &str) -> Result<(), KoboError> {
+pub async fn delete_book(
+    pool: &SqlitePool,
+    client: &Client,
+    book_id: &str,
+    api_key: &str,
+) -> Result<(), KoboError> {
     match client.delete_book(&book_id, &api_key) {
         Ok(()) => (),
         Err(ClientError::NotFound) => (),
         e => e?,
     };
 
+    data::delete_book_tokens(pool, book_id).await;
+
     Ok(())
 }
 
-pub async fn generate_token(pool: &SqlitePool, book_id: &str, expiration: i64, api_key: &str) -> String {
+pub async fn generate_token(pool: &SqlitePool, book_id: &str, expiration: i64, device_id: &str) -> String {
     let mut bytes = vec![0u8; BOOK_TOKEN_SIZE];
     rand::rng().fill_bytes(&mut bytes);
     let token = BASE64_URL_SAFE.encode(bytes);
@@ -46,7 +54,7 @@ pub async fn generate_token(pool: &SqlitePool, book_id: &str, expiration: i64, a
 
     let expiration = now + expiration;
 
-    data::add_token(pool, book_id, &token, api_key, expiration).await;
+    data::add_token(pool, book_id, &token, device_id, expiration).await;
 
     token
 }
@@ -70,7 +78,12 @@ async fn verify_token(pool: &SqlitePool, book_id: &str, token: &str) -> Result<S
         return Err(BookTokenError::InvalidToken);
     }
 
+    let api_key = match devices::service::get_linked_device(pool, &verifier.device_id).await {
+        Some(d) => d.api_key,
+        None => return Err(BookTokenError::InvalidToken),
+    };
+
     data::delete_token(&pool, token).await;
 
-    Ok(verifier.api_key)
+    Ok(api_key)
 }

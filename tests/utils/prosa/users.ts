@@ -1,5 +1,5 @@
 import request from 'supertest';
-import { randomString, PROSA_URL } from '../common';
+import { PROSA_URL, randomString } from '../common';
 
 export const INVALID_CREDENTIALS = 'Invalid credentials provided.';
 export const INVALID_USERNAME_PASSWORD = 'Username and password must not contain special characters.';

@@ -18,7 +18,7 @@ pub enum BookTokenError {
 pub struct BookToken {
     pub book_id: String,
     pub expiration: i64,
-    pub api_key: String,
+    pub device_id: String,
 }
 
 impl From<SqlxError> for BookTokenError {

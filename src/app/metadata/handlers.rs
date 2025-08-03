@@ -23,6 +23,7 @@ pub async fn metadata_handler(
         &server_url,
         state.config.download_token.book_expiration,
         &token.api_key,
+        &token.device_id,
     )
     .await?;
 

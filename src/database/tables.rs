@@ -16,7 +16,7 @@ pub async fn create_tables(pool: &SqlitePool) {
         CREATE TABLE IF NOT EXISTS book_tokens (
             book_id TEXT NOT NULL,
             token TEXT NOT NULL,
-            api_key TEXT NOT NULL,
+            device_id TEXT NOT NULL,
             expiration BIGINT NOT NULL,
             PRIMARY KEY(book_id, token)
         );
@@ -24,7 +24,7 @@ pub async fn create_tables(pool: &SqlitePool) {
         CREATE TABLE IF NOT EXISTS cover_tokens (
             book_id TEXT NOT NULL,
             token TEXT NOT NULL,
-            api_key TEXT NOT NULL,
+            device_id TEXT NOT NULL,
             PRIMARY KEY(book_id, token)
         );
 
