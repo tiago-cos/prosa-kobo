@@ -6,10 +6,14 @@ use strum_macros::{EnumMessage, EnumProperty};
 
 #[derive(EnumMessage, EnumProperty, Debug)]
 pub enum StateError {
-    #[strum(message = "MissingProductId")]
-    #[strum(detailed_message = "A product ID must be provided.")]
+    #[strum(message = "MissingBookId")]
+    #[strum(detailed_message = "A book ID must be provided.")]
     #[strum(props(StatusCode = "400"))]
     MissingProductId,
+    #[strum(message = "MissingState")]
+    #[strum(detailed_message = "A state must be provided.")]
+    #[strum(props(StatusCode = "400"))]
+    MissingState,
 }
 
 #[skip_serializing_none]

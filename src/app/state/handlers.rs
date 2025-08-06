@@ -31,7 +31,11 @@ pub async fn update_state_handler(
     Extension(token): Extension<AuthToken>,
     Json(request): Json<UpdateStateRequest>,
 ) -> Result<impl IntoResponse, KoboError> {
-    let state = request.reading_states.first().expect("State should be present");
+    let state = request
+        .reading_states
+        .first()
+        .ok_or_else(|| StateError::MissingState)?;
+
     let response = service::translate_update_state(&client, &book_id, state, &token.api_key).await?;
 
     Ok(Json(response))
