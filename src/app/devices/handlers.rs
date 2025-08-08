@@ -5,11 +5,11 @@ use super::{
     },
     service,
 };
-use crate::app::{authentication, error::KoboError, AppState, Pool};
+use crate::app::{AppState, Pool, authentication, error::KoboError};
 use axum::{
+    Json,
     extract::{Query, State},
     response::IntoResponse,
-    Json,
 };
 use std::collections::HashMap;
 

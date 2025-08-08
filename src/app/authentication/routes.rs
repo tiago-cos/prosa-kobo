@@ -1,8 +1,8 @@
 use super::handlers;
 use crate::app::AppState;
 use axum::{
-    routing::{get, post},
     Router,
+    routing::{get, post},
 };
 
 #[rustfmt::skip]

@@ -1,5 +1,5 @@
 use super::{models::AuthError, service};
-use crate::app::{authentication::models::AuthToken, devices, error::KoboError, AppState};
+use crate::app::{AppState, authentication::models::AuthToken, devices, error::KoboError};
 use axum::{
     extract::{Request, State},
     http::{HeaderMap, HeaderValue},

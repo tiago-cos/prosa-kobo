@@ -1,15 +1,15 @@
 use axum::{
-    body::{to_bytes, Body},
+    body::{Body, to_bytes},
     extract::Request,
     middleware::Next,
     response::Response,
 };
 use log::{error, info};
 use tracing_subscriber::{
+    EnvFilter,
     fmt::{layer, time::ChronoUtc},
     layer::SubscriberExt,
     util::SubscriberInitExt,
-    EnvFilter,
 };
 
 use crate::app::error::ErrorResponse;

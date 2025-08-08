@@ -1,13 +1,13 @@
 use super::data;
 use crate::{
     app::{
-        books::models::{BookTokenError, BOOK_TOKEN_SIZE},
+        books::models::{BOOK_TOKEN_SIZE, BookTokenError},
         devices,
         error::KoboError,
     },
     client::prosa::{Client, ClientError},
 };
-use base64::{prelude::BASE64_URL_SAFE, Engine};
+use base64::{Engine, prelude::BASE64_URL_SAFE};
 use rand::RngCore;
 use sqlx::SqlitePool;
 use std::time::{SystemTime, UNIX_EPOCH};

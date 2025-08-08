@@ -1,5 +1,5 @@
 use super::models::{AuthError, JWTClaims, OAUTH_CONFIGS, OAUTH_TOKEN};
-use base64::{prelude::BASE64_STANDARD, Engine};
+use base64::{Engine, prelude::BASE64_STANDARD};
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 use serde_json::Value;
 use std::time::{SystemTime, UNIX_EPOCH};

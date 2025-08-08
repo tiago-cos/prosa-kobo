@@ -1,7 +1,7 @@
 use super::tables::{clear_tables, create_tables};
 use crate::app::AppState;
 use axum::extract::FromRef;
-use sqlx::{sqlite::SqliteConnectOptions, Pool, Sqlite, SqlitePool};
+use sqlx::{Pool, Sqlite, SqlitePool, sqlite::SqliteConnectOptions};
 use std::sync::Arc;
 
 #[allow(dead_code)]

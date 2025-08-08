@@ -1,6 +1,6 @@
 use super::handlers;
 use crate::app::AppState;
-use axum::{extract::DefaultBodyLimit, routing::get, Router};
+use axum::{Router, extract::DefaultBodyLimit, routing::get};
 
 #[rustfmt::skip]
 pub fn get_routes(state: AppState) -> Router {

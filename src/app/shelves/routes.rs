@@ -1,9 +1,9 @@
 use super::handlers;
-use crate::app::{authentication::middleware::extract_token_middleware, AppState};
+use crate::app::{AppState, authentication::middleware::extract_token_middleware};
 use axum::{
+    Router,
     middleware::from_fn_with_state,
     routing::{delete, post, put},
-    Router,
 };
 
 #[rustfmt::skip]

@@ -1,11 +1,11 @@
 use super::{
+    ProsaAnnotationRequest, ProsaState,
     annotations::{AnnotationsClient, ProsaAnnotation},
     book::BookClient,
     cover::CoverClient,
     metadata::{MetadataClient, ProsaMetadata},
     state::StateClient,
     sync::{ProsaSync, SyncClient},
-    ProsaAnnotationRequest, ProsaState,
 };
 use crate::{
     app::AppState,

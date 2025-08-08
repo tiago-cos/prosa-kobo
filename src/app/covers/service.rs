@@ -2,14 +2,14 @@ use crate::{
     app::{
         covers::{
             data,
-            models::{CoverTokenError, COVER_TOKEN_SIZE},
+            models::{COVER_TOKEN_SIZE, CoverTokenError},
         },
         devices,
         error::KoboError,
     },
     client::prosa::Client,
 };
-use base64::{prelude::BASE64_URL_SAFE, Engine};
+use base64::{Engine, prelude::BASE64_URL_SAFE};
 use rand::RngCore;
 use sqlx::SqlitePool;
 

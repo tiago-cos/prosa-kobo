@@ -2,8 +2,8 @@ use super::{BookMetadata, DownloadUrl};
 use crate::{
     app::{books, covers, error::KoboError},
     client::{
-        prosa::{Client, ClientError},
         ProsaMetadata,
+        prosa::{Client, ClientError},
     },
 };
 use sqlx::SqlitePool;

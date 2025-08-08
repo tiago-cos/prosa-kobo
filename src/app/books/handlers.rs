@@ -1,12 +1,12 @@
 use super::service;
 use crate::app::{
-    annotations, authentication::AuthToken, books::models::BookTokenError, error::KoboError, AppState,
+    AppState, annotations, authentication::AuthToken, books::models::BookTokenError, error::KoboError,
 };
 use axum::{
+    Extension,
     extract::{Path, Query, State},
     http::StatusCode,
     response::IntoResponse,
-    Extension,
 };
 use std::collections::HashMap;
 

@@ -1,6 +1,6 @@
 use super::{models::TestRequest, service};
-use crate::app::{authentication::AuthToken, Config};
-use axum::{extract::State, response::IntoResponse, Extension, Json};
+use crate::app::{Config, authentication::AuthToken};
+use axum::{Extension, Json, extract::State, response::IntoResponse};
 
 pub async fn device_initialization_handler(
     State(config): State<Config>,

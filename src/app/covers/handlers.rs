@@ -1,5 +1,5 @@
 use super::service;
-use crate::app::{covers::models::CoverTokenError, error::KoboError, AppState};
+use crate::app::{AppState, covers::models::CoverTokenError, error::KoboError};
 use axum::{
     extract::{Path, Query, State},
     response::IntoResponse,

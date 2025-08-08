@@ -1,9 +1,9 @@
 use super::service;
-use crate::app::{authentication::AuthToken, error::KoboError, AppState};
+use crate::app::{AppState, authentication::AuthToken, error::KoboError};
 use axum::{
+    Extension, Json,
     extract::{Path, State},
     response::IntoResponse,
-    Extension, Json,
 };
 
 pub async fn metadata_handler(

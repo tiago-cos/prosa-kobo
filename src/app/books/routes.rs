@@ -1,10 +1,10 @@
 use super::handlers;
-use crate::app::{authentication::middleware::extract_token_middleware, AppState};
+use crate::app::{AppState, authentication::middleware::extract_token_middleware};
 use axum::{
+    Router,
     extract::DefaultBodyLimit,
     middleware::from_fn_with_state,
     routing::{delete, get},
-    Router,
 };
 
 #[rustfmt::skip]

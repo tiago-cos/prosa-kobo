@@ -1,12 +1,12 @@
 use crate::app::{
+    Config,
     authentication::{models::AuthError, service},
     error::KoboError,
-    Config,
 };
 use axum::{
+    Json,
     extract::{Path, Query, State},
     response::IntoResponse,
-    Json,
 };
 use std::collections::HashMap;
 

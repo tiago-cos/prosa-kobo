@@ -1,6 +1,6 @@
 use super::handlers;
-use crate::app::{authentication::middleware::extract_token_middleware, AppState};
-use axum::{middleware::from_fn_with_state, routing::get, Router};
+use crate::app::{AppState, authentication::middleware::extract_token_middleware};
+use axum::{Router, middleware::from_fn_with_state, routing::get};
 
 //TODO in prosa, make goodreads metadata extractor try to extract the title and author from prosa database, only fallback to epub metadata if not present
 

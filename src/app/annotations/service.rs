@@ -3,10 +3,10 @@ use super::{
     models::{Annotation, CheckContentRequest, GetAnnotationsResponse, PatchAnnotationsRequest},
 };
 use crate::{
-    app::{error::KoboError, ProsaClient},
-    client::{prosa::ClientError, ProsaAnnotation},
+    app::{ProsaClient, error::KoboError},
+    client::{ProsaAnnotation, prosa::ClientError},
 };
-use base64::{prelude::BASE64_STANDARD, Engine};
+use base64::{Engine, prelude::BASE64_STANDARD};
 use rand::RngCore;
 use sqlx::SqlitePool;
 
@@ -83,6 +83,8 @@ pub async fn patch_annotations(
 
         if let Err(ClientError::Conflict) = result {
             client.patch_annotation(book_id, &annotation.id, note, api_key)?;
+        } else {
+            result?;
         }
     }
 

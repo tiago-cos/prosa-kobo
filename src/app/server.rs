@@ -6,7 +6,7 @@ use crate::{
     client::prosa::Client,
     config::Configuration,
 };
-use axum::{http::StatusCode, middleware::from_fn, routing::get, Router};
+use axum::{Router, http::StatusCode, middleware::from_fn, routing::get};
 use sqlx::SqlitePool;
 use std::sync::Arc;
 use tokio::net::TcpListener;

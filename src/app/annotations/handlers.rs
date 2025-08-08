@@ -2,12 +2,12 @@ use super::{
     models::{CheckContentRequest, PatchAnnotationsRequest},
     service,
 };
-use crate::app::{authentication::AuthToken, error::KoboError, AppState, Pool, ProsaClient};
+use crate::app::{AppState, Pool, ProsaClient, authentication::AuthToken, error::KoboError};
 use axum::{
-    extract::{Path, State},
-    http::{HeaderMap, HeaderValue},
-    response::IntoResponse,
     Extension, Json,
+    extract::{Path, State},
+    http::{HeaderMap, HeaderValue, StatusCode},
+    response::IntoResponse,
 };
 
 pub async fn check_for_changes_handler(
@@ -44,5 +44,5 @@ pub async fn patch_annotations_handler(
     Json(request): Json<PatchAnnotationsRequest>,
 ) -> Result<impl IntoResponse, KoboError> {
     service::patch_annotations(&client, &book_id, request, &token.api_key).await?;
-    Ok(())
+    Ok(StatusCode::NO_CONTENT)
 }

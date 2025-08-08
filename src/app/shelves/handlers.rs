@@ -1,4 +1,5 @@
 use crate::app::{
+    AppState,
     authentication::AuthToken,
     error::KoboError,
     shelves::{
@@ -7,13 +8,12 @@ use crate::app::{
         },
         service,
     },
-    AppState,
 };
 use axum::{
+    Extension, Json,
     extract::{Path, State},
     http::StatusCode,
     response::IntoResponse,
-    Extension, Json,
 };
 
 pub async fn create_shelf_handler(
