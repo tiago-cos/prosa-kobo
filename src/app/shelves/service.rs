@@ -1,4 +1,7 @@
-use crate::{app::error::KoboError, client::prosa::Client};
+use crate::{
+    app::error::KoboError,
+    client::prosa::{Client, ClientError},
+};
 
 pub async fn translate_add_shelf(
     client: &Client,
@@ -20,7 +23,11 @@ pub async fn translate_add_book_to_shelf(
 }
 
 pub async fn translate_delete_shelf(client: &Client, shelf_id: &str, api_key: &str) -> Result<(), KoboError> {
-    client.delete_shelf(shelf_id, api_key)?;
+    match client.delete_shelf(shelf_id, api_key) {
+        Ok(()) => (),
+        Err(ClientError::NotFound) => (),
+        e => e?,
+    }
     Ok(())
 }
 
@@ -40,6 +47,10 @@ pub async fn translate_delete_book_from_shelf(
     book_id: &str,
     api_key: &str,
 ) -> Result<(), KoboError> {
-    client.delete_book_from_shelf(shelf_id, book_id, api_key)?;
+    match client.delete_book_from_shelf(shelf_id, book_id, api_key) {
+        Ok(()) => (),
+        Err(ClientError::NotFound) => (),
+        e => e?,
+    }
     Ok(())
 }
