@@ -1,8 +1,7 @@
 export const MIDDLEWARE_URL = 'http://localhost:5001';
 export const PROSA_URL = 'http://localhost:5000';
-export const ANNOUNCED_HOST = '192.168.93.72:5001';
+export const ANNOUNCED_HOST = '192.168.93.83:5001';
 export const BOOK_DIR = 'books/';
-export const COVERS_DIR = 'covers/';
 
 export const INVALID_TOKEN = 'Invalid token';
 export const UNAUTHENTICATED = 'No authentication was provided.';

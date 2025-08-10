@@ -21,8 +21,6 @@ pub struct NewEntitlementResponse {
     pub new_entitlement: NewEntitlement,
 }
 
-//TODO in book prosa client, if delete returns 404 book not found, don't panic
-
 impl NewEntitlementResponse {
     pub fn new(
         book_entitlement: BookEntitlement,

@@ -1,7 +1,7 @@
 import request from 'supertest';
 import { MIDDLEWARE_URL } from '../common';
 
-export type checkContentRequest = {
+type checkContentRequest = {
   ContentId: string;
   etag: string;
 };

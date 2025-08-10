@@ -8,6 +8,7 @@ use std::sync::Arc;
 pub struct Server {
     pub host: String,
     pub port: u16,
+    pub announced_scheme: String,
     pub announced_host: String,
     pub announced_port: u16,
 }

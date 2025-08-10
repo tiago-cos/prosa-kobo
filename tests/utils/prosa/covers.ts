@@ -1,8 +1,6 @@
 import request from 'supertest';
 import { PROSA_URL } from '../common';
 
-export const COVER_NOT_FOUND = 'The requested cover does not exist or is not accessible.';
-
 export async function getCover(book_id: string, auth?: { jwt?: string; apiKey?: string }) {
   let req = request(PROSA_URL).get(`/books/${book_id}/cover`);
 

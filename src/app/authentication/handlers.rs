@@ -19,7 +19,9 @@ pub async fn oauth_configs_handler(
         &config.server.announced_host, &config.server.announced_port
     );
 
-    Json(service::generate_oauth_config(&host, &device_id).await)
+    let scheme = &config.server.announced_scheme;
+
+    Json(service::generate_oauth_config(&host, &device_id, scheme).await)
 }
 
 pub async fn oauth_token_handler(

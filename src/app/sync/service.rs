@@ -17,7 +17,6 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-//TODO see why the publisher isn't being sent when adding the ember in the ashes book
 pub async fn translate_sync(
     pool: &SqlitePool,
     client: &Client,
