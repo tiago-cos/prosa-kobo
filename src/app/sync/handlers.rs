@@ -14,7 +14,7 @@ pub async fn device_sync_handler(
 ) -> Result<impl IntoResponse, KoboError> {
     let server_url = format!(
         "http://{}:{}",
-        state.config.server.announced_host, state.config.server.announced_port
+        state.config.server.public.host, state.config.server.public.port
     );
 
     let since = headers

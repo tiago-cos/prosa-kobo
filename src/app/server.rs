@@ -35,7 +35,10 @@ pub async fn run(config: Configuration, pool: SqlitePool) {
 
     tracing::init_logging();
 
-    let host = format!("{}:{}", &state.config.server.host, &state.config.server.port);
+    let host = format!(
+        "{}:{}",
+        &state.config.server.bind.host, &state.config.server.bind.port
+    );
     let app = Router::new()
         .route("/health", get(|| async { StatusCode::NO_CONTENT }))
         .merge(devices::routes::get_routes(state.clone()))

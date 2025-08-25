@@ -14,12 +14,9 @@ pub async fn oauth_configs_handler(
     State(config): State<Config>,
     Path(device_id): Path<String>,
 ) -> impl IntoResponse {
-    let host = format!(
-        "{}:{}",
-        &config.server.announced_host, &config.server.announced_port
-    );
+    let host = format!("{}:{}", &config.server.public.host, &config.server.public.port);
 
-    let scheme = &config.server.announced_scheme;
+    let scheme = &config.server.public.scheme;
 
     Json(service::generate_oauth_config(&host, &device_id, scheme))
 }

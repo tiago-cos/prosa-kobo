@@ -1,9 +1,11 @@
-[server]
+[server.bind]
 host = "0.0.0.0"
 port = 5001
-announced_scheme = "http"
-announced_host = "192.168.0.1"
-announced_port = 5001
+
+[server.public]
+scheme = "http"
+host = "192.168.0.1"
+port = 5001
 
 [database]
 file_path = "database.db"

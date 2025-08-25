@@ -6,10 +6,7 @@ pub async fn device_initialization_handler(
     State(config): State<Config>,
     Extension(token): Extension<AuthToken>,
 ) -> impl IntoResponse {
-    let host = format!(
-        "{}:{}",
-        &config.server.announced_host, &config.server.announced_port
-    );
+    let host = format!("{}:{}", &config.server.public.host, &config.server.public.port);
     Json(service::generate_initialization_response(&host, &token.device_id))
 }
 
