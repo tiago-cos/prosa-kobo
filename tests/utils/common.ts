@@ -1,6 +1,6 @@
-export const MIDDLEWARE_URL = 'http://localhost:5001';
-export const PROSA_URL = 'http://localhost:5000';
-export const ANNOUNCED_HOST = '192.168.93.83:5001';
+export const MIDDLEWARE_URL = requiredEnv('MIDDLEWARE_URL');
+export const PROSA_URL = requiredEnv('PROSA_URL');
+export const ANNOUNCED_HOST = requiredEnv('ANNOUNCED_HOST');
 export const BOOK_DIR = 'books/';
 
 export const INVALID_TOKEN = 'Invalid token';
@@ -19,4 +19,13 @@ export function randomString(length: number) {
 
 export function wait(seconds: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, seconds * 1000));
+}
+
+function requiredEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) {
+    console.error(`Missing required environment variable: ${name}`);
+    process.exit(1);
+  }
+  return value;
 }

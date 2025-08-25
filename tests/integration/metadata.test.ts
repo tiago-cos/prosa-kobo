@@ -15,7 +15,7 @@ describe('Metadata', () => {
     expect(uploadResponse.status).toBe(200);
 
     // Wait for metadata to be extracted
-    await wait(0.5);
+    await wait(1.0);
 
     const createApiKeyResponse = await createApiKey(userId, 'Test Key', ['Read'], undefined, { jwt: registerResponse.body.jwt_token });
     expect(createApiKeyResponse.status).toBe(200);
@@ -39,7 +39,7 @@ describe('Metadata', () => {
     const userId = registerResponse.body.user_id;
 
     // Wait for metadata to be extracted
-    await wait(0.5);
+    await wait(1.0);
 
     const createApiKeyResponse = await createApiKey(userId, 'Test Key', ['Read'], undefined, { jwt: registerResponse.body.jwt_token });
     expect(createApiKeyResponse.status).toBe(200);
@@ -63,7 +63,7 @@ describe('Metadata', () => {
     expect(uploadResponse.status).toBe(200);
 
     // Wait for metadata to be extracted
-    await wait(0.5);
+    await wait(1.0);
 
     const deleteMetadataResponse = await deleteMetadata(uploadResponse.text, { jwt: registerResponse.body.jwt_token });
     expect(deleteMetadataResponse.status).toBe(204);
@@ -93,7 +93,7 @@ describe('Metadata', () => {
     expect(uploadResponse.status).toBe(200);
 
     // Wait for metadata to be extracted
-    await wait(0.5);
+    await wait(1.0);
 
     const createApiKeyResponse = await createApiKey(userId, 'Test Key', ['Create', 'Update', 'Delete'], undefined, { jwt: registerResponse.body.jwt_token });
     expect(createApiKeyResponse.status).toBe(200);
