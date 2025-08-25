@@ -1,17 +1,17 @@
 use serde::Deserialize;
 use ureq::{Agent, Error};
 
-pub struct SyncClient;
+pub struct SyncClient {
+    pub url: String,
+    pub agent: Agent,
+}
 
 impl SyncClient {
-    pub fn sync_device(
-        &self,
-        url: &str,
-        agent: &Agent,
-        since: Option<i64>,
-        api_key: &str,
-    ) -> Result<ProsaSync, Error> {
-        let mut request = agent.get(format!("{}/sync", url)).header("api-key", api_key);
+    pub fn sync_device(&self, since: Option<i64>, api_key: &str) -> Result<ProsaSync, Error> {
+        let mut request = self
+            .agent
+            .get(format!("{}/sync", self.url))
+            .header("api-key", api_key);
 
         if let Some(since) = since {
             request = request.query("since", since.to_string());

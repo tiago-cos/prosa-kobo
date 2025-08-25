@@ -45,7 +45,7 @@ pub async fn log_layer(req: Request, next: Next) -> Response {
     };
 
     if status.is_success() || status.is_redirection() {
-        info!("{} {} [{}]", method, path, colored_code);
+        info!("{method} {path} [{colored_code}]");
     } else {
         let headers = response.headers().clone();
         let body = response.into_body();
@@ -57,9 +57,9 @@ pub async fn log_layer(req: Request, next: Next) -> Response {
         };
 
         if log_message.is_empty() {
-            error!("{} {} [{}]", method, path, colored_code);
+            error!("{method} {path} [{colored_code}]");
         } else {
-            error!("{} {} [{} - {}]", method, path, colored_code, log_message);
+            error!("{method} {path} [{colored_code} - {log_message}]");
         }
 
         let mut builder = Response::builder().status(status);
@@ -70,7 +70,7 @@ pub async fn log_layer(req: Request, next: Next) -> Response {
         }
 
         response = builder.body(Body::from(bytes)).unwrap();
-    };
+    }
 
     response
 }

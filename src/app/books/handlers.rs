@@ -15,12 +15,11 @@ pub async fn download_book_handler(
     Path(book_id): Path<String>,
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, KoboError> {
-    let book_token = match params.get("token") {
-        Some(t) => t,
-        None => return Err(BookTokenError::InvalidToken.into()),
+    let Some(book_token) = params.get("token") else {
+        return Err(BookTokenError::InvalidToken.into());
     };
 
-    let book = service::download_book(&state.pool, &state.prosa_client, &book_id, &book_token).await?;
+    let book = service::download_book(&state.pool, &state.prosa_client, &book_id, book_token).await?;
     Ok(book)
 }
 

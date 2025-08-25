@@ -14,7 +14,7 @@ pub async fn get_etag(pool: &SqlitePool, book_id: &str) -> String {
     match data::get_etag(pool, book_id).await {
         Some(tag) => return tag,
         None => update_etag(pool, book_id).await,
-    };
+    }
 
     data::get_etag(pool, book_id)
         .await
@@ -30,19 +30,16 @@ pub async fn update_etag(pool: &SqlitePool, book_id: &str) -> () {
 }
 
 pub async fn delete_etag(pool: &SqlitePool, book_id: &str) {
-    data::delete_etag(pool, book_id).await
+    data::delete_etag(pool, book_id).await;
 }
 
 pub async fn get_changed_annotations(pool: &SqlitePool, books: Vec<CheckContentRequest>) -> Vec<String> {
     let mut changed: Vec<String> = Vec::new();
 
     for book in books {
-        let etag = match data::get_etag(pool, &book.content_id).await {
-            Some(tag) => tag,
-            None => {
-                data::update_etag(pool, &book.content_id, &book.etag).await;
-                continue;
-            }
+        let Some(etag) = data::get_etag(pool, &book.content_id).await else {
+            data::update_etag(pool, &book.content_id, &book.etag).await;
+            continue;
         };
 
         if etag != book.etag {
@@ -53,7 +50,7 @@ pub async fn get_changed_annotations(pool: &SqlitePool, books: Vec<CheckContentR
     changed
 }
 
-pub async fn get_annotations(
+pub fn get_annotations(
     client: &ProsaClient,
     book_id: &str,
     api_key: &str,
@@ -66,12 +63,12 @@ pub async fn get_annotations(
         annotations.push(annotation);
     }
 
-    let annotations: Vec<Annotation> = annotations.into_iter().map(|a| a.into()).collect();
+    let annotations: Vec<Annotation> = annotations.into_iter().map(Into::into).collect();
 
     Ok(GetAnnotationsResponse::new(annotations))
 }
 
-pub async fn patch_annotations(
+pub fn patch_annotations(
     client: &ProsaClient,
     book_id: &str,
     request: PatchAnnotationsRequest,

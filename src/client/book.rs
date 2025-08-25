@@ -2,19 +2,16 @@ use serde::Deserialize;
 use std::io::Read;
 use ureq::{Agent, Error};
 
-pub struct BookClient;
+pub struct BookClient {
+    pub url: String,
+    pub agent: Agent,
+}
 
 impl BookClient {
-    pub fn download_book(
-        &self,
-        url: &str,
-        agent: &Agent,
-        book_id: &str,
-        api_key: &str,
-    ) -> Result<Vec<u8>, Error> {
+    pub fn download_book(&self, book_id: &str, api_key: &str) -> Result<Vec<u8>, Error> {
         let mut body: Vec<u8> = Vec::new();
-        agent
-            .get(format!("{}/books/{}", url, book_id))
+        self.agent
+            .get(format!("{}/books/{book_id}", self.url))
             .header("api-key", api_key)
             .call()?
             .into_body()
@@ -25,9 +22,9 @@ impl BookClient {
         Ok(body)
     }
 
-    pub fn delete_book(&self, url: &str, agent: &Agent, book_id: &str, api_key: &str) -> Result<(), Error> {
-        agent
-            .delete(format!("{}/books/{}", url, book_id))
+    pub fn delete_book(&self, book_id: &str, api_key: &str) -> Result<(), Error> {
+        self.agent
+            .delete(format!("{}/books/{book_id}", self.url))
             .header("api-key", api_key)
             .call()?;
 
@@ -36,13 +33,11 @@ impl BookClient {
 
     pub fn fetch_book_file_metadata(
         &self,
-        url: &str,
-        agent: &Agent,
         book_id: &str,
         api_key: &str,
     ) -> Result<ProsaBookFileMetadata, Error> {
-        agent
-            .get(format!("{}/books/{}/file-metadata", url, book_id))
+        self.agent
+            .get(format!("{}/books/{book_id}/file-metadata", self.url))
             .header("api-key", api_key)
             .call()?
             .body_mut()

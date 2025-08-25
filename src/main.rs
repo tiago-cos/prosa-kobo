@@ -1,3 +1,12 @@
+#![allow(clippy::unreadable_literal)]
+#![allow(clippy::cast_possible_wrap)]
+#![allow(clippy::struct_excessive_bools)]
+#![allow(clippy::struct_field_names)]
+#![allow(clippy::module_inception)]
+#![allow(clippy::large_enum_variant)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_sign_loss)]
+
 use config::Configuration;
 
 mod app;

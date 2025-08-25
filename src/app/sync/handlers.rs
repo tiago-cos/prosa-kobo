@@ -19,12 +19,10 @@ pub async fn device_sync_handler(
 
     let since = headers
         .get("X-Kobo-Synctoken")
-        .map(|s| s.to_str().ok())
-        .flatten()
-        .map(|s| s.parse::<i64>().ok())
-        .flatten();
+        .and_then(|s| s.to_str().ok())
+        .and_then(|s| s.parse::<i64>().ok());
 
-    let sync_token = service::create_new_sync_token().await;
+    let sync_token = service::create_new_sync_token();
     let mut headers = HeaderMap::new();
     let sync_header = HeaderValue::from_str(&sync_token).expect("Failed to create sync header");
     headers.insert("X-Kobo-Synctoken", sync_header);

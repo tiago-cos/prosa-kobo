@@ -5,7 +5,7 @@ use serde_json::Value;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 #[rustfmt::skip]
-pub async fn generate_jwt(secret: &str, device_id: &str, duration: &u64) -> String {
+pub fn generate_jwt(secret: &str, device_id: &str, duration: u64) -> String {
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("Failed to get time since epoch")
@@ -23,7 +23,7 @@ pub async fn generate_jwt(secret: &str, device_id: &str, duration: &u64) -> Stri
     BASE64_STANDARD.encode(token)
 }
 
-pub async fn verify_jwt(token: &str, secret: &str) -> Result<String, AuthError> {
+pub fn verify_jwt(token: &str, secret: &str) -> Result<String, AuthError> {
     let token = BASE64_STANDARD.decode(token).or(Err(AuthError::InvalidToken))?;
     let token = String::from_utf8(token).expect("Failed to convert token to string");
     let key = DecodingKey::from_secret(secret.as_ref());
@@ -33,18 +33,18 @@ pub async fn verify_jwt(token: &str, secret: &str) -> Result<String, AuthError> 
     Ok(token.claims.device_id)
 }
 
-pub async fn generate_oauth_config(host: &str, device_id: &str, scheme: &str) -> Value {
+pub fn generate_oauth_config(host: &str, device_id: &str, scheme: &str) -> Value {
     let json_string = OAUTH_CONFIGS
-        .replace("{host}", &host)
-        .replace("{device_id}", &device_id)
-        .replace("{scheme}", &scheme);
+        .replace("{host}", host)
+        .replace("{device_id}", device_id)
+        .replace("{scheme}", scheme);
 
     serde_json::from_str(&json_string).expect("Failed to parse JSON")
 }
 
-pub async fn generate_oauth_token(jwt_token: &str, jwt_duration: u64) -> Value {
+pub fn generate_oauth_token(jwt_token: &str, jwt_duration: u64) -> Value {
     let json_string = OAUTH_TOKEN
-        .replace("{jwt_token}", &jwt_token)
+        .replace("{jwt_token}", jwt_token)
         .replace("{jwt_duration}", &jwt_duration.to_string());
 
     serde_json::from_str(&json_string).expect("Failed to parse JSON")

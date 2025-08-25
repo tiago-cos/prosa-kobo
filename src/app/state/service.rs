@@ -7,12 +7,8 @@ use chrono::{DateTime, Utc};
 use regex::Regex;
 use serde_json::Value;
 
-pub async fn translate_get_state(
-    client: &Client,
-    book_id: &str,
-    api_key: &str,
-) -> Result<ReadingState, KoboError> {
-    let state_response = client.fetch_state(&book_id, api_key)?;
+pub fn translate_get_state(client: &Client, book_id: &str, api_key: &str) -> Result<ReadingState, KoboError> {
+    let state_response = client.fetch_state(book_id, api_key)?;
 
     let status = match state_response.statistics.reading_status.as_ref() {
         "Read" => "Finished".to_string(),
@@ -23,7 +19,7 @@ pub async fn translate_get_state(
     let state_location = state_response.location.as_ref();
 
     let state = ReadingState::new(
-        &book_id,
+        book_id,
         &status,
         state_location.and_then(|l| l.tag.clone()),
         state_location.and_then(|l| l.source.clone()),
@@ -32,7 +28,7 @@ pub async fn translate_get_state(
     Ok(state)
 }
 
-pub async fn translate_update_state(
+pub fn translate_update_state(
     client: &Client,
     book_id: &str,
     state: &ReadingState,
@@ -45,31 +41,31 @@ pub async fn translate_update_state(
         s => s.to_string(),
     };
 
-    let source = location.and_then(|l| {
+    let source = location.map(|l| {
         let re = Regex::new(r"!!").expect("Failed to create regex");
         let mut matches = re.find_iter(&l.source);
 
         match matches.next() {
-            Some(m) => return Some(l.source[m.end()..].to_string()),
-            _ => return Some(l.source.to_string()),
+            Some(m) => l.source[m.end()..].to_string(),
+            _ => l.source.to_string(),
         }
     });
 
     client.patch_state(
-        &book_id,
-        location.and_then(|l| Some(l.value.clone())),
+        book_id,
+        location.map(|l| l.value.clone()),
         source,
         &status,
         api_key,
     )?;
 
     let response = &UPDATE_STATE_RESPONSE.replace("{book_id}", book_id);
-    let response = serde_json::from_str(&response).expect("Failed to convert to JSON");
+    let response = serde_json::from_str(response).expect("Failed to convert to JSON");
 
     Ok(response)
 }
 
-pub async fn translate_update_rating(
+pub fn translate_update_rating(
     client: &Client,
     book_id: &str,
     rating: u8,
@@ -80,7 +76,7 @@ pub async fn translate_update_rating(
     Ok(())
 }
 
-pub async fn translate_get_rating(
+pub fn translate_get_rating(
     client: &Client,
     book_id: &str,
     api_key: &str,

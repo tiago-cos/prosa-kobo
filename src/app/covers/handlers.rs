@@ -11,11 +11,10 @@ pub async fn download_cover_handler(
     Path(book_id): Path<String>,
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, KoboError> {
-    let cover_token = match params.get("token") {
-        Some(t) => t,
-        None => return Err(CoverTokenError::InvalidToken.into()),
+    let Some(cover_token) = params.get("token") else {
+        return Err(CoverTokenError::InvalidToken.into());
     };
 
-    let cover = service::download_cover(&state.pool, &state.prosa_client, &book_id, &cover_token).await?;
+    let cover = service::download_cover(&state.pool, &state.prosa_client, &book_id, cover_token).await?;
     Ok(cover)
 }

@@ -38,7 +38,7 @@ pub async fn translate_sync(
 
     for book_id in books_to_update {
         let entitlement = BookEntitlement::new(&book_id, false);
-        let reading_state = state::service::translate_get_state(client, &book_id, api_key).await?;
+        let reading_state = state::service::translate_get_state(client, &book_id, api_key)?;
         let metadata = metadata::service::translate_metadata(
             pool,
             client,
@@ -94,7 +94,7 @@ pub async fn translate_sync(
     Ok(translated_response)
 }
 
-pub async fn create_new_sync_token() -> String {
+pub fn create_new_sync_token() -> String {
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("Time went backwards")

@@ -68,11 +68,11 @@ impl From<ProsaAnnotation> for Annotation {
             end_char: annotation.end_char + 1,
             end_path: format!("span#{}", annotation.end_tag)
                 .to_string()
-                .replace(".", "\\."),
+                .replace('.', "\\."),
             start_char: annotation.start_char,
             start_path: format!("span#{}", annotation.start_tag)
                 .to_string()
-                .replace(".", "\\."),
+                .replace('.', "\\."),
         };
 
         let location = AnnotationLocation { span };

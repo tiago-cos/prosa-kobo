@@ -21,7 +21,7 @@ pub async fn create_shelf_handler(
     Extension(token): Extension<AuthToken>,
     Json(request): Json<CreateShelfRequest>,
 ) -> Result<impl IntoResponse, KoboError> {
-    let shelf_id = service::translate_add_shelf(&state.prosa_client, &request.name, &token.api_key).await?;
+    let shelf_id = service::translate_add_shelf(&state.prosa_client, &request.name, &token.api_key)?;
 
     for book in request.items {
         service::translate_add_book_to_shelf(
@@ -29,8 +29,7 @@ pub async fn create_shelf_handler(
             &shelf_id,
             &book.revision_id,
             &token.api_key,
-        )
-        .await?;
+        )?;
     }
 
     Ok((StatusCode::CREATED, shelf_id))
@@ -41,7 +40,7 @@ pub async fn delete_shelf_handler(
     Path(shelf_id): Path<String>,
     Extension(token): Extension<AuthToken>,
 ) -> Result<impl IntoResponse, KoboError> {
-    service::translate_delete_shelf(&state.prosa_client, &shelf_id, &token.api_key).await?;
+    service::translate_delete_shelf(&state.prosa_client, &shelf_id, &token.api_key)?;
 
     Ok(())
 }
@@ -52,7 +51,7 @@ pub async fn rename_shelf_handler(
     Extension(token): Extension<AuthToken>,
     Json(request): Json<RenameShelfRequest>,
 ) -> Result<impl IntoResponse, KoboError> {
-    service::translate_rename_shelf(&state.prosa_client, &shelf_id, &request.name, &token.api_key).await?;
+    service::translate_rename_shelf(&state.prosa_client, &shelf_id, &request.name, &token.api_key)?;
 
     Ok(())
 }
@@ -69,8 +68,7 @@ pub async fn add_book_to_shelf_handler(
             &shelf_id,
             &book.revision_id,
             &token.api_key,
-        )
-        .await?;
+        )?;
     }
 
     Ok(StatusCode::CREATED)
@@ -88,8 +86,7 @@ pub async fn delete_books_from_shelf_handler(
             &shelf_id,
             &book.revision_id,
             &token.api_key,
-        )
-        .await?;
+        )?;
     }
 
     Ok(())

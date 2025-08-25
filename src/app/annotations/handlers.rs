@@ -24,7 +24,7 @@ pub async fn get_annotations_handler(
     Path(book_id): Path<String>,
     Extension(token): Extension<AuthToken>,
 ) -> Result<impl IntoResponse, KoboError> {
-    let annotations = service::get_annotations(&state.prosa_client, &book_id, &token.api_key).await?;
+    let annotations = service::get_annotations(&state.prosa_client, &book_id, &token.api_key)?;
     let etag = service::get_etag(&state.pool, &book_id).await;
 
     let mut headers = HeaderMap::new();
@@ -43,6 +43,6 @@ pub async fn patch_annotations_handler(
     Extension(token): Extension<AuthToken>,
     Json(request): Json<PatchAnnotationsRequest>,
 ) -> Result<impl IntoResponse, KoboError> {
-    service::patch_annotations(&client, &book_id, request, &token.api_key).await?;
+    service::patch_annotations(&client, &book_id, request, &token.api_key)?;
     Ok(StatusCode::NO_CONTENT)
 }

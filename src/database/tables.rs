@@ -2,7 +2,7 @@ use sqlx::SqlitePool;
 
 pub async fn create_tables(pool: &SqlitePool) {
     sqlx::query(
-        r#"
+        r"
         CREATE TABLE IF NOT EXISTS linked_devices (
             device_id TEXT PRIMARY KEY NOT NULL,
             api_key TEXT NOT NULL
@@ -32,7 +32,7 @@ pub async fn create_tables(pool: &SqlitePool) {
             book_id TEXT PRIMARY KEY NOT NULL,
             etag TEXT NOT NULL
         );
-        "#,
+        ",
     )
     .execute(pool)
     .await
@@ -41,13 +41,13 @@ pub async fn create_tables(pool: &SqlitePool) {
 
 pub async fn clear_tables(pool: &SqlitePool) {
     sqlx::query(
-        r#"
+        r"
         DROP TABLE IF EXISTS book_tokens;
         DROP TABLE IF EXISTS cover_tokens;
         DROP TABLE IF EXISTS linked_devices;
         DROP TABLE IF EXISTS unlinked_devices;
         DROP TABLE IF EXISTS etags;
-        "#,
+        ",
     )
     .execute(pool)
     .await

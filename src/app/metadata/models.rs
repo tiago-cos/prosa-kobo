@@ -130,15 +130,15 @@ impl BookMetadata {
 
         let current_display_price = CurrentDisplayPrice {
             total_amount: -1,
-            currency_code: "".to_string(),
+            currency_code: String::new(),
         };
 
         let current_love_display_price = CurrentLoveDisplayPrice { total_amount: 0 };
 
         let locale = Locale {
-            language_code: "".to_string(),
-            script_code: "".to_string(),
-            country_code: "".to_string(),
+            language_code: String::new(),
+            script_code: String::new(),
+            country_code: String::new(),
         };
 
         let language = match metadata.language {
@@ -151,7 +151,7 @@ impl BookMetadata {
             revision_id: book_id.to_string(),
             publisher,
             publication_date: metadata.publication_date.map(unix_millis_to_string),
-            language: language,
+            language,
             isbn: metadata.isbn,
             subtitle: metadata.subtitle,
             genre: None,

@@ -202,7 +202,7 @@ impl Rating {
             cross_revision_id: book_id.to_string(),
             publication_id: "00000000-0000-0000-0000-000000000000".to_string(),
             title: None,
-            body: Some("".to_string()),
+            body: Some(String::new()),
             author_display_name: None,
             rating,
             creation_date: None,

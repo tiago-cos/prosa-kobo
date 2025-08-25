@@ -33,7 +33,7 @@ impl IntoResponse for KoboError {
             .get_str("StatusCode")
             .expect("Failed to extract status code from error");
 
-        let status_code = StatusCode::from_str(&status_code).expect("Failed to parse status code from error");
+        let status_code = StatusCode::from_str(status_code).expect("Failed to parse status code from error");
 
         let response = ErrorResponse {
             error_code: message.to_string(),

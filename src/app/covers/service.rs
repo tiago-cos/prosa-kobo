@@ -20,7 +20,7 @@ pub async fn download_cover(
     cover_token: &str,
 ) -> Result<Vec<u8>, KoboError> {
     let api_key = verify_token(pool, book_id, cover_token).await?;
-    let cover = client.download_cover(&book_id, &api_key)?;
+    let cover = client.download_cover(book_id, &api_key)?;
     Ok(cover)
 }
 
@@ -36,9 +36,9 @@ pub async fn generate_token(pool: &SqlitePool, book_id: &str, device_id: &str) -
 }
 
 async fn verify_token(pool: &SqlitePool, book_id: &str, token: &str) -> Result<String, CoverTokenError> {
-    let verifier = data::get_token(&pool, token).await?;
+    let verifier = data::get_token(pool, token).await?;
 
-    if !(verifier.book_id == book_id) {
+    if verifier.book_id != book_id {
         return Err(CoverTokenError::InvalidToken);
     }
 

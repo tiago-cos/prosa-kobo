@@ -72,7 +72,7 @@ pub async fn get_unlinked_device(pool: &SqlitePool, device_id: &str) -> Option<U
     data::get_unlinked_device(pool, device_id).await
 }
 
-pub async fn generate_device_id(device_id: &str, user_key: &str) -> String {
+pub fn generate_device_id(device_id: &str, user_key: &str) -> String {
     let digest = Sha256::digest(device_id.to_owned() + user_key);
     BASE64_STANDARD.encode(digest)
 }
@@ -82,7 +82,6 @@ fn is_valid_api_key(key: &str) -> bool {
         return false;
     }
 
-    return key
-        .chars()
-        .all(|c| c.is_ascii_alphanumeric() || c == '+' || c == '/' || c == '=');
+    key.chars()
+        .all(|c| c.is_ascii_alphanumeric() || c == '+' || c == '/' || c == '=')
 }

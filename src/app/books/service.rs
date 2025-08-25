@@ -19,7 +19,7 @@ pub async fn download_book(
     book_token: &str,
 ) -> Result<Vec<u8>, KoboError> {
     let api_key = verify_token(pool, book_id, book_token).await?;
-    let book = client.download_book(&book_id, &api_key)?;
+    let book = client.download_book(book_id, &api_key)?;
     Ok(book)
 }
 
@@ -29,11 +29,10 @@ pub async fn delete_book(
     book_id: &str,
     api_key: &str,
 ) -> Result<(), KoboError> {
-    match client.delete_book(&book_id, &api_key) {
-        Ok(()) => (),
-        Err(ClientError::NotFound) => (),
+    match client.delete_book(book_id, api_key) {
+        Err(ClientError::NotFound) | Ok(()) => (),
         e => e?,
-    };
+    }
 
     data::delete_book_tokens(pool, book_id).await;
 
@@ -60,7 +59,7 @@ pub async fn generate_token(pool: &SqlitePool, book_id: &str, expiration: i64, d
 }
 
 async fn verify_token(pool: &SqlitePool, book_id: &str, token: &str) -> Result<String, BookTokenError> {
-    let verifier = data::get_token(&pool, token).await?;
+    let verifier = data::get_token(pool, token).await?;
 
     let now: i64 = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -70,11 +69,11 @@ async fn verify_token(pool: &SqlitePool, book_id: &str, token: &str) -> Result<S
         .expect("Failed to convert timestamp");
 
     if now > verifier.expiration {
-        data::delete_token(&pool, token).await;
+        data::delete_token(pool, token).await;
         return Err(BookTokenError::InvalidToken);
     }
 
-    if !(verifier.book_id == book_id) {
+    if verifier.book_id != book_id {
         return Err(BookTokenError::InvalidToken);
     }
 
@@ -83,7 +82,7 @@ async fn verify_token(pool: &SqlitePool, book_id: &str, token: &str) -> Result<S
         None => return Err(BookTokenError::InvalidToken),
     };
 
-    data::delete_token(&pool, token).await;
+    data::delete_token(pool, token).await;
 
     Ok(api_key)
 }

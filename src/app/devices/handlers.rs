@@ -17,7 +17,7 @@ pub async fn device_auth_handler(
     State(state): State<AppState>,
     Json(body): Json<DeviceAuthRequest>,
 ) -> impl IntoResponse {
-    let device_id = service::generate_device_id(&body.device_id, &body.user_key).await;
+    let device_id = service::generate_device_id(&body.device_id, &body.user_key);
 
     let linked_device = service::get_linked_device(&state.pool, &body.device_id).await;
     let unlinked_device = service::get_unlinked_device(&state.pool, &body.device_id).await;
@@ -26,11 +26,11 @@ pub async fn device_auth_handler(
     }
 
     let secret = &state.config.auth.secret_key;
-    let token_duration = &state.config.auth.token_duration;
-    let refresh_token_duration = &state.config.auth.refresh_token_duration;
+    let token_duration = state.config.auth.token_duration;
+    let refresh_token_duration = state.config.auth.refresh_token_duration;
 
-    let regular_token = authentication::generate_jwt(secret, &device_id, token_duration).await;
-    let refresh_token = authentication::generate_jwt(secret, &device_id, refresh_token_duration).await;
+    let regular_token = authentication::generate_jwt(secret, &device_id, token_duration);
+    let refresh_token = authentication::generate_jwt(secret, &device_id, refresh_token_duration);
 
     Json(DeviceAuthResponse::new(
         &regular_token,
@@ -44,12 +44,12 @@ pub async fn refresh_token_handler(
     Json(body): Json<RefreshTokenRequest>,
 ) -> Result<impl IntoResponse, KoboError> {
     let secret = &state.config.auth.secret_key;
-    let token_duration = &state.config.auth.token_duration;
-    let refresh_token_duration = &state.config.auth.refresh_token_duration;
-    let device_id = authentication::verify_jwt(&body.refresh_token, secret).await?;
+    let token_duration = state.config.auth.token_duration;
+    let refresh_token_duration = state.config.auth.refresh_token_duration;
+    let device_id = authentication::verify_jwt(&body.refresh_token, secret)?;
 
-    let regular_token = authentication::generate_jwt(secret, &device_id, token_duration).await;
-    let refresh_token = authentication::generate_jwt(secret, &device_id, refresh_token_duration).await;
+    let regular_token = authentication::generate_jwt(secret, &device_id, token_duration);
+    let refresh_token = authentication::generate_jwt(secret, &device_id, refresh_token_duration);
 
     Ok(Json(RefreshTokenResponse::new(&regular_token, &refresh_token)))
 }
@@ -70,12 +70,11 @@ pub async fn get_linked_devices_handler(
     State(pool): State<Pool>,
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, KoboError> {
-    let api_key = match params.get("api_key") {
-        Some(key) => key,
-        None => return Err(DeviceError::MissingApiKey.into()),
+    let Some(api_key) = params.get("api_key") else {
+        return Err(DeviceError::MissingApiKey.into());
     };
 
-    let device_list = service::get_linked_devices(&pool, &api_key).await?;
+    let device_list = service::get_linked_devices(&pool, api_key).await?;
     Ok(Json(device_list))
 }
 

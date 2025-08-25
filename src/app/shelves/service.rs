@@ -3,16 +3,12 @@ use crate::{
     client::prosa::{Client, ClientError},
 };
 
-pub async fn translate_add_shelf(
-    client: &Client,
-    shelf_name: &str,
-    api_key: &str,
-) -> Result<String, KoboError> {
+pub fn translate_add_shelf(client: &Client, shelf_name: &str, api_key: &str) -> Result<String, KoboError> {
     let shelf_id = client.create_shelf(shelf_name, None, api_key)?;
     Ok(shelf_id)
 }
 
-pub async fn translate_add_book_to_shelf(
+pub fn translate_add_book_to_shelf(
     client: &Client,
     shelf_id: &str,
     book_id: &str,
@@ -22,16 +18,15 @@ pub async fn translate_add_book_to_shelf(
     Ok(())
 }
 
-pub async fn translate_delete_shelf(client: &Client, shelf_id: &str, api_key: &str) -> Result<(), KoboError> {
+pub fn translate_delete_shelf(client: &Client, shelf_id: &str, api_key: &str) -> Result<(), KoboError> {
     match client.delete_shelf(shelf_id, api_key) {
-        Ok(()) => (),
-        Err(ClientError::NotFound) => (),
+        Err(ClientError::NotFound) | Ok(()) => (),
         e => e?,
     }
     Ok(())
 }
 
-pub async fn translate_rename_shelf(
+pub fn translate_rename_shelf(
     client: &Client,
     shelf_id: &str,
     shelf_name: &str,
@@ -41,15 +36,14 @@ pub async fn translate_rename_shelf(
     Ok(())
 }
 
-pub async fn translate_delete_book_from_shelf(
+pub fn translate_delete_book_from_shelf(
     client: &Client,
     shelf_id: &str,
     book_id: &str,
     api_key: &str,
 ) -> Result<(), KoboError> {
     match client.delete_book_from_shelf(shelf_id, book_id, api_key) {
-        Ok(()) => (),
-        Err(ClientError::NotFound) => (),
+        Err(ClientError::NotFound) | Ok(()) => (),
         e => e?,
     }
     Ok(())

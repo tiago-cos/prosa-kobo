@@ -16,7 +16,7 @@ pub async fn extract_token_middleware(
     let jwt_header = headers.get("Authorization");
 
     let device_id = match jwt_header {
-        Some(header) => handle_jwt(&state.config.auth.secret_key, header).await?,
+        Some(header) => handle_jwt(&state.config.auth.secret_key, header)?,
         _ => Err(AuthError::MissingAuth)?,
     };
 
@@ -32,17 +32,17 @@ pub async fn extract_token_middleware(
     Ok(next.run(request).await)
 }
 
-async fn handle_jwt(secret: &str, header: &HeaderValue) -> Result<String, AuthError> {
+fn handle_jwt(secret: &str, header: &HeaderValue) -> Result<String, AuthError> {
     let header = header.to_str().expect("Failed to convert jwt header to string");
 
     let (_, token) = header
         .split_whitespace()
         .collect::<Vec<_>>()
         .get(0..2)
-        .and_then(|parts| Some((parts[0], parts[1])))
-        .ok_or_else(|| AuthError::InvalidAuthHeader)?;
+        .map(|parts| (parts[0], parts[1]))
+        .ok_or(AuthError::InvalidAuthHeader)?;
 
-    let device_id = service::verify_jwt(token, secret).await?;
+    let device_id = service::verify_jwt(token, secret)?;
 
     Ok(device_id)
 }

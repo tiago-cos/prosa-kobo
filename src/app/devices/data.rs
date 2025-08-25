@@ -3,10 +3,10 @@ use sqlx::SqlitePool;
 
 pub async fn add_unlinked_device(pool: &SqlitePool, device_id: &str, timestamp: i64) -> () {
     sqlx::query(
-        r#"
+        r"
         INSERT INTO unlinked_devices (device_id, timestamp)
         VALUES ($1, $2)
-        "#,
+        ",
     )
     .bind(device_id)
     .bind(timestamp)
@@ -17,10 +17,10 @@ pub async fn add_unlinked_device(pool: &SqlitePool, device_id: &str, timestamp: 
 
 pub async fn remove_unlinked_device(pool: &SqlitePool, device_id: &str) -> Result<(), DeviceError> {
     let result = sqlx::query(
-        r#"
+        r"
         DELETE FROM unlinked_devices
         WHERE device_id = $1
-        "#,
+        ",
     )
     .bind(device_id)
     .execute(pool)
@@ -36,11 +36,11 @@ pub async fn remove_unlinked_device(pool: &SqlitePool, device_id: &str) -> Resul
 
 pub async fn get_unlinked_device(pool: &SqlitePool, device_id: &str) -> Option<UnlinkedDevice> {
     let device: Option<UnlinkedDevice> = sqlx::query_as(
-        r#"
+        r"
         SELECT device_id, timestamp
         FROM unlinked_devices
         WHERE device_id = $1
-        "#,
+        ",
     )
     .bind(device_id)
     .fetch_optional(pool)
@@ -52,10 +52,10 @@ pub async fn get_unlinked_device(pool: &SqlitePool, device_id: &str) -> Option<U
 
 pub async fn get_unlinked_devices(pool: &SqlitePool) -> Vec<UnlinkedDevice> {
     let devices: Vec<UnlinkedDevice> = sqlx::query_as(
-        r#"
+        r"
         SELECT device_id, timestamp
         FROM unlinked_devices
-        "#,
+        ",
     )
     .fetch_all(pool)
     .await
@@ -66,10 +66,10 @@ pub async fn get_unlinked_devices(pool: &SqlitePool) -> Vec<UnlinkedDevice> {
 
 pub async fn add_linked_device(pool: &SqlitePool, device_id: &str, api_key: &str) -> Result<(), DeviceError> {
     sqlx::query(
-        r#"
+        r"
         INSERT INTO linked_devices (device_id, api_key)
         VALUES ($1, $2)
-        "#,
+        ",
     )
     .bind(device_id)
     .bind(api_key)
@@ -85,10 +85,10 @@ pub async fn remove_linked_device(
     api_key: &str,
 ) -> Result<(), DeviceError> {
     let result = sqlx::query(
-        r#"
+        r"
         DELETE FROM linked_devices
         WHERE device_id = $1 AND api_key = $2
-        "#,
+        ",
     )
     .bind(device_id)
     .bind(api_key)
@@ -105,11 +105,11 @@ pub async fn remove_linked_device(
 
 pub async fn get_linked_device(pool: &SqlitePool, device_id: &str) -> Option<LinkedDevice> {
     let device: Option<LinkedDevice> = sqlx::query_as(
-        r#"
+        r"
         SELECT device_id, api_key
         FROM linked_devices
         WHERE device_id = $1
-        "#,
+        ",
     )
     .bind(device_id)
     .fetch_optional(pool)
@@ -121,11 +121,11 @@ pub async fn get_linked_device(pool: &SqlitePool, device_id: &str) -> Option<Lin
 
 pub async fn get_linked_devices(pool: &SqlitePool, api_key: &str) -> Vec<String> {
     let devices: Vec<String> = sqlx::query_scalar(
-        r#"
+        r"
         SELECT device_id
         FROM linked_devices
         WHERE api_key = $1
-        "#,
+        ",
     )
     .bind(api_key)
     .fetch_all(pool)
