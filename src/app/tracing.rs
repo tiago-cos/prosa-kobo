@@ -4,7 +4,7 @@ use axum::{
     middleware::Next,
     response::Response,
 };
-use log::{error, info};
+use log::{debug, error, info};
 use tracing_subscriber::{
     EnvFilter,
     fmt::{layer, time::ChronoUtc},
@@ -44,7 +44,9 @@ pub async fn log_layer(req: Request, next: Next) -> Response {
         format!("\x1B[31m{}\x1B[0m", status.as_u16())
     };
 
-    if status.is_success() || status.is_redirection() {
+    if path == "/health" {
+        debug!("{method} {path} [{colored_code}]");
+    } else if status.is_success() || status.is_redirection() {
         info!("{method} {path} [{colored_code}]");
     } else {
         let headers = response.headers().clone();

@@ -7,6 +7,7 @@ use crate::{
     config::Configuration,
 };
 use axum::{Router, http::StatusCode, middleware::from_fn, routing::get};
+use log::info;
 use sqlx::SqlitePool;
 use std::sync::Arc;
 use tokio::net::TcpListener;
@@ -33,12 +34,14 @@ pub async fn run(config: Configuration, pool: SqlitePool) {
         pool: Arc::new(pool),
     };
 
-    tracing::init_logging();
-
     let host = format!(
         "{}:{}",
         &state.config.server.bind.host, &state.config.server.bind.port
     );
+
+    tracing::init_logging();
+    info!("Middleware started on http://{host}");
+
     let app = Router::new()
         .route("/health", get(|| async { StatusCode::NO_CONTENT }))
         .merge(devices::routes::get_routes(state.clone()))
