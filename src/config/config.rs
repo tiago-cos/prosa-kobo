@@ -58,10 +58,18 @@ pub struct Auth {
 
 impl Configuration {
     pub fn new() -> Result<Self, ConfigError> {
+        let default_config_path =
+            std::env::var("DEFAULT_CONFIGURATION").unwrap_or_else(|_| "src/config/default.toml".to_string());
+
+        let local_config_path =
+            std::env::var("LOCAL_CONFIGURATION").unwrap_or_else(|_| "src/config/local.toml".to_string());
+
         let conf = Config::builder()
-            .add_source(File::with_name("src/config/default.toml"))
-            .add_source(File::with_name("src/config/local.toml").required(false))
+            .add_source(File::with_name(&default_config_path))
+            .add_source(File::with_name(&local_config_path).required(false))
+            .add_source(config::Environment::default().separator("__"))
             .build()?;
+
         conf.try_deserialize()
     }
 }
