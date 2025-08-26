@@ -1,4 +1,4 @@
-import { DEVICE_NOT_LINKED, UNAUTHENTICATED } from '../utils/common';
+import { DEVICE_NOT_LINKED, UNAUTHENTICATED, wait } from '../utils/common';
 import { authDevice, linkDevice } from '../utils/kobont/devices';
 import { addBooksToShelf } from '../utils/kobont/shelves';
 import { sync } from '../utils/kobont/sync';
@@ -14,6 +14,9 @@ describe('Book syncing', () => {
 
     const uploadBookResponse = await uploadBook(userId, 'Alices_Adventures_in_Wonderland.epub', { jwt: registerResponse.body.jwt_token });
     expect(uploadBookResponse.status).toBe(200);
+
+    // Wait for cover and metadata to be extracted
+    await wait(1);
 
     const createApiKeyResponse = await createApiKey(userId, 'Test Key', ['Create', 'Read'], undefined, { jwt: registerResponse.body.jwt_token });
     expect(createApiKeyResponse.status).toBe(200);
