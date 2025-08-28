@@ -11,8 +11,12 @@ export const MISSING_API_KEY = 'The api key must be provided.';
 function generateDeviceId(deviceId: string, userKey: string): string {
   const hash = createHash('sha256')
     .update(deviceId + userKey)
-    .digest();
-  return hash.toString('base64');
+    .digest()
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_');
+
+  return hash;
 }
 
 export async function getUnlinkedDevices() {
@@ -23,21 +27,23 @@ export async function getUnlinkedDevices() {
 export async function getLinkedDevices(api_key?: string) {
   let req = request(MIDDLEWARE_URL).get('/devices/linked');
 
-  if (api_key) req = req.query({ api_key: api_key });
+  if (api_key !== undefined) req = req.set('api-key', api_key);
 
   return req.send();
 }
 
 export async function linkDevice(device_id: string, api_key: string) {
-  let req = request(MIDDLEWARE_URL).post('/devices/link');
+  let req = request(MIDDLEWARE_URL).post('/devices/linked');
 
   return req.send({ device_id: device_id, api_key: api_key });
 }
 
 export async function unlinkDevice(device_id: string, api_key: string) {
-  let req = request(MIDDLEWARE_URL).post('/devices/unlink');
+  let req = request(MIDDLEWARE_URL).delete(`/devices/linked/${device_id}`);
 
-  return req.send({ device_id: device_id, api_key: api_key });
+  if (api_key !== undefined) req = req.set('api-key', api_key);
+
+  return req.send();
 }
 
 export async function authDevice(deviceId?: string, userKey?: string) {
