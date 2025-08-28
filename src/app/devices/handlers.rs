@@ -1,17 +1,16 @@
 use super::{
     models::{
-        DeviceAuthRequest, DeviceAuthResponse, DeviceError, LinkDeviceRequest, RefreshTokenRequest,
-        RefreshTokenResponse,
+        DeviceAuthRequest, DeviceAuthResponse, LinkDeviceRequest, RefreshTokenRequest, RefreshTokenResponse,
     },
     service,
 };
-use crate::app::{AppState, Pool, authentication, error::KoboError};
+use crate::app::{AppState, Pool, authentication, devices::models::DeviceError, error::KoboError};
 use axum::{
     Json,
-    extract::{Query, State},
+    extract::{Path, State},
+    http::HeaderMap,
     response::IntoResponse,
 };
-use std::collections::HashMap;
 
 pub async fn device_auth_handler(
     State(state): State<AppState>,
@@ -68,11 +67,12 @@ pub async fn link_device_handler(
 
 pub async fn get_linked_devices_handler(
     State(pool): State<Pool>,
-    Query(params): Query<HashMap<String, String>>,
+    headers: HeaderMap,
 ) -> Result<impl IntoResponse, KoboError> {
-    let Some(api_key) = params.get("api_key") else {
-        return Err(DeviceError::MissingApiKey.into());
-    };
+    let api_key = headers
+        .get("api-key")
+        .and_then(|value| value.to_str().ok())
+        .ok_or(DeviceError::MissingApiKey)?;
 
     let device_list = service::get_linked_devices(&pool, api_key).await?;
     Ok(Json(device_list))
@@ -80,8 +80,14 @@ pub async fn get_linked_devices_handler(
 
 pub async fn unlink_device_handler(
     State(pool): State<Pool>,
-    Json(body): Json<LinkDeviceRequest>,
+    headers: HeaderMap,
+    Path(device_id): Path<String>,
 ) -> Result<(), KoboError> {
-    service::unlink_device(&pool, &body.device_id, &body.api_key).await?;
+    let api_key = headers
+        .get("api-key")
+        .and_then(|value| value.to_str().ok())
+        .ok_or(DeviceError::MissingApiKey)?;
+
+    service::unlink_device(&pool, &device_id, api_key).await?;
     Ok(())
 }

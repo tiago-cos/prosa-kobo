@@ -3,7 +3,7 @@ use super::{
     models::{DeviceError, LinkedDevice, UnlinkedDevice},
 };
 use crate::app::error::KoboError;
-use base64::{Engine, prelude::BASE64_STANDARD};
+use base64::{Engine, prelude::BASE64_URL_SAFE};
 use sha2::{Digest, Sha256};
 use sqlx::SqlitePool;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -74,7 +74,7 @@ pub async fn get_unlinked_device(pool: &SqlitePool, device_id: &str) -> Option<U
 
 pub fn generate_device_id(device_id: &str, user_key: &str) -> String {
     let digest = Sha256::digest(device_id.to_owned() + user_key);
-    BASE64_STANDARD.encode(digest)
+    BASE64_URL_SAFE.encode(digest)
 }
 
 fn is_valid_api_key(key: &str) -> bool {
