@@ -33,11 +33,10 @@ pub fn verify_jwt(token: &str, secret: &str) -> Result<String, AuthError> {
     Ok(token.claims.device_id)
 }
 
-pub fn generate_oauth_config(host: &str, device_id: &str, scheme: &str) -> Value {
+pub fn generate_oauth_config(host: &str, device_id: &str) -> Value {
     let json_string = OAUTH_CONFIGS
         .replace("{host}", host)
-        .replace("{device_id}", device_id)
-        .replace("{scheme}", scheme);
+        .replace("{device_id}", device_id);
 
     serde_json::from_str(&json_string).expect("Failed to parse JSON")
 }

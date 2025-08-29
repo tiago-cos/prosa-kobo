@@ -6,16 +6,15 @@ use axum::{
     http::{HeaderMap, HeaderValue},
     response::IntoResponse,
 };
+use axum_extra::extract::Host;
 
 pub async fn device_sync_handler(
     State(state): State<AppState>,
+    Host(host): Host,
     headers: HeaderMap,
     Extension(token): Extension<AuthToken>,
 ) -> Result<impl IntoResponse, KoboError> {
-    let server_url = format!(
-        "http://{}:{}",
-        state.config.server.public.host, state.config.server.public.port
-    );
+    let server_url = format!("http://{host}");
 
     let since = headers
         .get("X-Kobo-Synctoken")

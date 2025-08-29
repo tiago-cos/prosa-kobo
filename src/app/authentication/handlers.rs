@@ -8,17 +8,11 @@ use axum::{
     extract::{Path, Query, State},
     response::IntoResponse,
 };
+use axum_extra::extract::Host;
 use std::collections::HashMap;
 
-pub async fn oauth_configs_handler(
-    State(config): State<Config>,
-    Path(device_id): Path<String>,
-) -> impl IntoResponse {
-    let host = format!("{}:{}", &config.server.public.host, &config.server.public.port);
-
-    let scheme = &config.server.public.scheme;
-
-    Json(service::generate_oauth_config(&host, &device_id, scheme))
+pub async fn oauth_configs_handler(Host(host): Host, Path(device_id): Path<String>) -> impl IntoResponse {
+    Json(service::generate_oauth_config(&host, &device_id))
 }
 
 pub async fn oauth_token_handler(

@@ -57,7 +57,7 @@ pub struct AuthToken {
 }
 
 pub const OAUTH_CONFIGS: &str =
-    r#"{ "token_endpoint": "{scheme}://{host}/oauth/connect/token?device_id={device_id}" }"#;
+    r#"{ "token_endpoint": "http://{host}/oauth/connect/token?device_id={device_id}" }"#;
 
 pub const OAUTH_TOKEN: &str = r#"
 {
