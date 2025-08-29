@@ -1,5 +1,5 @@
 import request from 'supertest';
-import { ANNOUNCED_HOST, MIDDLEWARE_URL } from '../common';
+import { MIDDLEWARE_URL } from '../common';
 
 export async function getInitializationResponse(jwt?: string) {
   let req = request(MIDDLEWARE_URL).get('/v1/initialization');
@@ -25,7 +25,8 @@ export async function getTests() {
 
 export async function generateInitializationResponse(deviceId: string) {
   const encodedDeviceId = encodeURIComponent(deviceId);
-  let response = INITIALIZATION_RESPONSE_TEMPLATE.replace(/{host}/g, ANNOUNCED_HOST);
+  const url = new URL(MIDDLEWARE_URL);
+  let response = INITIALIZATION_RESPONSE_TEMPLATE.replace(/{host}/g, url.host);
   response = response.replace(/{device_id}/g, encodedDeviceId);
   return JSON.parse(response);
 }

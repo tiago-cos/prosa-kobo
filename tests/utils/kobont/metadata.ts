@@ -1,5 +1,5 @@
 import request from 'supertest';
-import { ANNOUNCED_HOST, MIDDLEWARE_URL } from '../common';
+import { MIDDLEWARE_URL } from '../common';
 
 export async function getMetadata(bookId: string, jwt?: string) {
   let req = request(MIDDLEWARE_URL).get(`/v1/library/${bookId}/metadata`);
@@ -11,14 +11,16 @@ export async function getMetadata(bookId: string, jwt?: string) {
 
 export async function generateAliceMetadata(bookId: string) {
   const template = JSON.stringify(ALICE_METADATA_TEMPLATE);
-  const replaced = template.replace(/{bookId}/g, bookId).replace(/{host}/g, ANNOUNCED_HOST);
+  const url = new URL(MIDDLEWARE_URL);
+  const replaced = template.replace(/{bookId}/g, bookId).replace(/{host}/g, url.host);
 
   return JSON.parse(replaced);
 }
 
 export async function generateDefaultMetadata(bookId: string) {
   const template = JSON.stringify(DEFAULT_METADATA_TEMPLATE);
-  const replaced = template.replace(/{bookId}/g, bookId).replace(/{host}/g, ANNOUNCED_HOST);
+  const url = new URL(MIDDLEWARE_URL);
+  const replaced = template.replace(/{bookId}/g, bookId).replace(/{host}/g, url.host);
 
   return JSON.parse(replaced);
 }

@@ -1,6 +1,5 @@
 export const MIDDLEWARE_URL = requiredEnv('MIDDLEWARE_URL');
 export const PROSA_URL = requiredEnv('PROSA_URL');
-export const ANNOUNCED_HOST = requiredEnv('ANNOUNCED_HOST');
 export const BOOK_DIR = 'books/';
 
 export const INVALID_TOKEN = 'Invalid token';

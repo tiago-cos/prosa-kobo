@@ -1,5 +1,5 @@
 import request from 'supertest';
-import { ANNOUNCED_HOST, MIDDLEWARE_URL } from '../common';
+import { MIDDLEWARE_URL } from '../common';
 
 export const MISSING_DEVICE_ID = 'No device id was provided.';
 
@@ -16,7 +16,8 @@ export async function getOauthToken(deviceId?: string) {
 }
 
 export async function generateOauthConfigs(deviceId: string) {
-  let response = OAUTH_CONFIG_TEMPLATE.replace(/{host}/g, ANNOUNCED_HOST);
+  const url = new URL(MIDDLEWARE_URL);
+  let response = OAUTH_CONFIG_TEMPLATE.replace(/{host}/g, url.host);
   response = response.replace(/{device_id}/g, deviceId);
   return JSON.parse(response);
 }
