@@ -218,10 +218,10 @@ info:
         Try syncing the device. The first attempt will fail since the device is not yet linked.
 
     3.  **Check for Unlinked Devices**  
-        Retrieve the device ID using the [List Unlinked Devices](https://github.com/tiago-cos/prosa-kobo/#tag/Devices/operation/list_unlinked_devices) endpoint.
+        Retrieve the device ID using the [List Unlinked Devices](https://tiago-cos.github.io/prosa-kobo/#tag/Devices/operation/list_unlinked_devices) endpoint.
 
     4.  **Link the Device**  
-        Link the device to a Prosa API key with the [Link Device](https://github.com/tiago-cos/prosa-kobo/#tag/Devices/operation/link_device) endpoint.
+        Link the device to a Prosa API key with the [Link Device](https://tiago-cos.github.io/prosa-kobo/#tag/Devices/operation/link_device) endpoint.
 
     You’re now ready to sync your Kobo device with Prosa through Prosa-Kobo!
 
