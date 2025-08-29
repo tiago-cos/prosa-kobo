@@ -1,0 +1,13 @@
+type: object
+properties:
+  device_id:
+    type: string
+    description: Unique identifier of the device to link.
+    example: oPiX_QFFX8eXKmW-R4pFkO7jfPeZ9bPs9pmcekCCFXM=
+  api_key:
+    type: string
+    description: Prosa API key that will be associated with the device.
+    example: uXl248ck5oWd9uXl248c5oWd9uXl2
+required:
+  - device_id
+  - api_key

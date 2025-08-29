@@ -1,0 +1,7 @@
+name: api-key
+in: header
+required: true
+description: Prosa server API key.
+schema:
+  type: string
+  example: uXl248ck5oWd9uXl248c5oWd9uXl2

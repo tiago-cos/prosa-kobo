@@ -1,0 +1,14 @@
+type: object
+properties:
+  device_id:
+    type: string
+    description: Unique identifier of the device.
+    example: oPiX_QFFX8eXKmW-R4pFkO7jfPeZ9bPs9pmcekCCFXM=
+  timestamp:
+    type: integer
+    format: int64
+    description: UNIX timestamp (in seconds) of the device's first contact.
+    example: 1756402516
+required:
+  - device_id
+  - timestamp

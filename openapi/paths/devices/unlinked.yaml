@@ -1,0 +1,18 @@
+get:
+  tags:
+    - Devices
+  summary: List unlinked devices
+  description: Retrieves a list of all devices that have contacted the middleware but are not yet linked to a user account.
+  operationId: list_unlinked_devices
+
+  security: []
+
+  responses:
+    '200':
+      description: A list of unlinked devices.
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: ../../components/schemas/DeviceLog.yaml

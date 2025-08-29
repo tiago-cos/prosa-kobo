@@ -1,0 +1,22 @@
+delete:
+  tags:
+    - Devices
+  summary: Unlink a device
+  description: |
+    Unlinks a device from a user account using the provided API key.  
+    The API key must match the one the device is currently linked to.
+  operationId: unlink_device
+
+  parameters:
+    - $ref: ../../../components/parameters/DeviceId.yaml
+    - $ref: ../../../components/parameters/ApiKey.yaml
+
+  responses:
+    '204':
+      description: Device successfully unlinked.
+    '400':
+      description: Missing or invalid API key.
+    '404':
+      description: Device not linked to this API key.
+    '409':
+      description: Device is already unlinked.

@@ -1,0 +1,51 @@
+get:
+  tags:
+    - Devices
+  summary: List linked devices
+  description: Returns the list of device IDs that are linked to the provided API key.
+  operationId: list_linked_devices
+
+  parameters:
+    - $ref: ../../components/parameters/ApiKey.yaml
+
+  security: []
+
+  responses:
+    '200':
+      description: A list of linked device IDs.
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: string
+              description: Device ID.
+              example: oPiX_QFFX8eXKmW-R4pFkO7jfPeZ9bPs9pmcekCCFXM=
+    '400':
+      description: Missing or invalid API key.
+
+post:
+  tags:
+    - Devices
+  summary: Link a device
+  description: |
+    Links a device to a user account using a Prosa API key.  
+    The device must have previously contacted the middleware before it can be linked.
+  operationId: link_device
+
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: ../../components/schemas/LinkDeviceRequest.yaml
+
+  responses:
+    '204':
+      description: Device successfully linked.
+    '400':
+      description: Invalid API key.
+    '404':
+      description: Device not found (never contacted the server).
+    '409':
+      description: Device is already linked.

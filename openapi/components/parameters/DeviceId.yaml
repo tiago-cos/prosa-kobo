@@ -1,0 +1,7 @@
+name: device_id
+in: path
+required: true
+description: Unique identifier of the device.
+schema:
+  type: string
+  example: oPiX_QFFX8eXKmW-R4pFkO7jfPeZ9bPs9pmcekCCFXM=

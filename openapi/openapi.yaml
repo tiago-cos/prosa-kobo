@@ -1,0 +1,253 @@
+openapi: 3.1.0
+info:
+  version: 0.1.0
+  title: Prosa-Kobo
+  contact:
+    name: Tiago Sousa
+    email: tiago.costa.sousa@proton.me
+    url: https://github.com/tiago-cos
+  license:
+    name: GPL-3.0
+    url: https://www.gnu.org/licenses/gpl-3.0.en.html
+
+  description: |
+    # Overview
+
+    Prosa-Kobo is a middleware layer that translates requests from a Kobo device into Prosa requests and responses from Prosa into Kobo-compatible responses. With it, you can connect any Kobo device to your Prosa backend.
+
+    # How it Works
+
+    Each Kobo device that contacts the middleware can be associated with a Prosa API key.  
+    When a device is linked to an API key, all of its requests are translated into Prosa API calls, and the responses are converted back into Kobo-compatible responses before being returned to the device.  
+
+    This middleware **completely replaces the official Kobo backend**, no requests are proxied to Kobo’s original servers.
+
+    # Configuration
+
+    Prosa-Kobo can be configured in two ways:
+
+    1. **Configuration files (TOML)**
+    2. **Environment variables**
+
+    The configuration system is layered, meaning defaults are loaded first and then overridden by local configuration or environment variables.
+
+    ## Default Configuration
+
+    Prosa-Kobo ships with a default configuration file located at `src/config/default.toml`.
+
+    This file is always loaded when the program starts.  
+    You can change the path where Prosa-Kobo looks for the default configuration by setting the `DEFAULT_CONFIGURATION` environment variable. If not specified, it defaults to `src/config/default.toml`.
+
+    ### Example `default.toml`
+
+    ```toml
+    [server]
+    host = "0.0.0.0"
+    port = 5001
+
+    [database]
+    file_path = "persistence/database.db"
+
+    [auth]
+    secret_key = "secret_key"
+    token_duration = 900
+    refresh_token_duration = 3600
+
+    [prosa]
+    scheme = "http"
+    host = "127.0.0.1"
+    port = 5000
+
+    [download_token]
+    book_expiration = 60
+    ```
+
+    ## Local Configuration
+
+    Any value from the default configuration can be overridden by creating a local configuration file.
+
+    By default, Prosa-Kobo looks for `src/config/local.toml`.
+
+    You can change this path using the `LOCAL_CONFIGURATION` environment variable.  
+    Values defined in `local.toml` will take precedence over `default.toml`.
+
+    ## Environment Variables
+
+    All configuration values can also be controlled directly through environment variables.  
+    The format is `<SECTION>__<KEY>`.
+
+    -   Sections map to the `[section]` headers in the TOML file.
+        
+    -   Keys map to the field names inside each section.
+
+    **Important:**
+
+    - Sections and keys are separated using **double underscores (`__`)**.
+        
+    - Single underscores (`_`) inside a key name (e.g. `secret_key`) remain as-is and **are not separators**.
+        
+    For example:
+
+    - To set the server port (`[server].port`):
+        
+      ```bash
+      export SERVER__PORT=8080
+      ```
+
+    - To set the jwt key (`[auth].secret_key`):  
+      _(notice there is only **one underscore** between `SECRET` and `KEY` because the field name itself has an underscore)_
+        
+      ```bash
+      export AUTH__SECRET_KEY=super_secret_key
+      ```
+
+    ## Configuration Reference
+
+    -   **[server]**
+        
+        -   `host`: Network interface where the middleware server will listen.  
+        -   `port`: Port number the middleware server will listen on.  
+
+    -   **[database]**
+        
+        -   `file_path`: Path to the SQLite database file.
+
+    -   **[auth]**
+        
+        -   `secret_key`: Secret key used for signing JWT tokens.  
+        -   `token_duration`: Expiration duration (seconds) for JWT tokens provided to Kobo devices.  
+        -   `refresh_token_duration`: Expiration duration (seconds) for refresh tokens provided to Kobo devices.
+
+    -   **[prosa]**
+        
+        -   `scheme`: Scheme (`http` or `https`) used to connect to the Prosa backend.  
+        -   `host`: Hostname or IP address of the Prosa server.  
+        -   `port`: Port number of the Prosa server.
+
+    -   **[download_token]**
+        
+        -   `book_expiration`: Duration (seconds) of the validity of download tokens for books.  
+          
+            Kobo devices cannot use JWT authentication for book downloads, so the middleware generates temporary download tokens that authenticate devices for retrieving books.
+
+    ## Logging
+
+    You can control the logging level using the standard `RUST_LOG` environment variable.  
+    Supported values include `error`, `warn`, `info`, `debug`, and `trace`.
+
+    - Default:
+      ```bash
+      RUST_LOG=info
+      ```
+        
+    - Example (set log level to warn):
+      ```bash
+      export RUST_LOG=warn
+      ```
+
+    # Installation & Setup
+
+    Prosa-Kobo can be run either as a **Docker container (recommended)** or as a standalone **binary**.
+
+    ## Docker Container (Recommended)
+
+    The simplest way to get Prosa-Kobo running alongside Prosa is using Docker. Below is an example `compose.yaml` configuration that runs both services together:
+
+    ```yaml
+    services:
+      prosa-kobo:
+        image: tsousa28/prosa-kobo
+        container_name: prosa-kobo
+        ports:
+          - "5001:5001"
+        environment:
+          - AUTH__SECRET_KEY=very_secret_key
+          - PROSA__HOST=prosa
+          - PROSA__PORT=5000
+        volumes:
+          - prosa_kobo:/app/persistence
+        restart: unless-stopped
+
+      prosa:
+        image: tsousa28/prosa
+        container_name: prosa
+        ports:
+          - "5000:5000"
+        environment:
+          - AUTH__ADMIN_KEY=very_secret_key
+          - AUTH__SECRET_KEY=another_very_secret_key
+        volumes:
+          - prosa_library:/app/library
+        restart: unless-stopped
+
+    volumes:
+      prosa_kobo:
+      prosa_library:  
+    ```
+
+    This will start both Prosa and Prosa-Kobo, making Prosa available on port `5000` and Prosa-Kobo on port `5001`.  
+    Kobo devices should connect to port `5001` for all requests.
+
+    **Important notes:**
+
+    -   Change all secret keys (`AUTH__SECRET_KEY` for Prosa-Kobo and both `AUTH__ADMIN_KEY` and `AUTH__SECRET_KEY` for Prosa) to secure values before using the services.
+        
+    -   Persistence requires **named volumes** mounted at `/app/persistence` for Prosa-Kobo and `/app/library` for Prosa. Bind mounts are currently not supported due to permission issues in rootless containers.
+        
+    -   Environment variables that change internal paths are ignored in these container images.
+        
+    ## Binary
+
+    If you prefer running Prosa-Kobo as a binary:
+
+    1.  **Set up Prosa**  
+        Make sure Prosa is installed and running. You can follow the official guide: [Prosa Installation and Setup](https://tiago-cos.github.io/prosa/#section/Installation-and-Setup).
+
+    2.  **Configure Prosa-Kobo**  
+        Adjust the Prosa-Kobo configuration file as needed. For full details, see the [Configuration Reference](https://tiago-cos.github.io/prosa-kobo/#section/Configuration/Configuration-Reference).
+
+    3.  **Run the Middleware**  
+        Launch the Prosa-Kobo binary. Kobo devices should now connect to the middleware, which will handle requests and translate them to and from Prosa.
+
+    ## Next Steps
+
+    1.  **Point Your Kobo Device to Prosa-Kobo**  
+        On your Kobo device, edit the `.kobo/Kobo/Kobo eReader.conf` file and change the `host` value to the Prosa-Kobo server’s host.
+
+    2.  **Attempt a Sync**  
+        Try syncing the device. The first attempt will fail since the device is not yet linked.
+
+    3.  **Check for Unlinked Devices**  
+        Retrieve the device ID using the [List Unlinked Devices](https://github.com/tiago-cos/prosa-kobo/#tag/Devices/operation/list_unlinked_devices) endpoint.
+
+    4.  **Link the Device**  
+        Link the device to a Prosa API key with the [Link Device](https://github.com/tiago-cos/prosa-kobo/#tag/Devices/operation/link_device) endpoint.
+
+    You’re now ready to sync your Kobo device with Prosa through Prosa-Kobo!
+
+externalDocs:
+  description: "Checkout the project repository for more information."
+  url: "https://github.com/tiago-cos/prosa-kobo"
+
+tags:
+  - name: Devices
+
+x-tagGroups:
+  - name: API Specification
+    tags:
+      - Devices
+      
+servers:
+  - url: http://{host}
+    variables:
+      host:
+        default: localhost
+        description: The server host
+        
+paths:
+  /devices/unlinked:
+    $ref: "paths/devices/unlinked.yaml"
+  /devices/linked:
+    $ref: "paths/devices/linked.yaml"
+  /devices/linked/{device_id}:
+    $ref: "paths/devices/linked/{device_id}.yaml"
