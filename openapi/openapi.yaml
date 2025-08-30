@@ -41,9 +41,16 @@ info:
     ### Example `default.toml`
 
     ```toml
-    [server]
+    [server.bind]
     host = "0.0.0.0"
     port = 5001
+
+    # Uncomment if behind a proxy
+
+    # [server.public]
+    # scheme = "http"
+    # host = "192.168.0.1"
+    # port = 5001
 
     [database]
     file_path = "persistence/database.db"
@@ -88,10 +95,10 @@ info:
         
     For example:
 
-    - To set the server port (`[server].port`):
+    - To set the server port (`[server.bind].port`):
         
       ```bash
-      export SERVER__PORT=8080
+      export SERVER__BIND__PORT=8080
       ```
 
     - To set the jwt key (`[auth].secret_key`):  
@@ -103,10 +110,22 @@ info:
 
     ## Configuration Reference
 
-    -   **[server]**
+    -   **[server.bind]**
+    
+        -   `host`: Network interface where the middleware server will listen.
+            
+        -   `port`: Port number the middleware server will listen on.
         
-        -   `host`: Network interface where the middleware server will listen.  
-        -   `port`: Port number the middleware server will listen on.  
+    -   **[server.public]** _(required if running behind a proxy)_
+        
+        -   `scheme`: Scheme (`http` or `https`) used when generating URLs returned to clients.
+            
+        -   `host`: Public hostname or IP address clients use to reach the middleware.
+            
+        -   `port`: Public port number clients use to reach the middleware.
+            
+        These settings are necessary when the middleware is running behind a proxy, because the real client-facing address cannot be detected automatically.  
+        If the middleware is not behind a proxy, this section can be omitted, and values will be detected automatically.
 
     -   **[database]**
         
@@ -212,7 +231,7 @@ info:
     ## Next Steps
 
     1.  **Point Your Kobo Device to Prosa-Kobo**  
-        On your Kobo device, edit the `.kobo/Kobo/Kobo eReader.conf` file and change the `host` value to the Prosa-Kobo server’s host.
+        On your Kobo device, edit the `.kobo/Kobo/Kobo eReader.conf` file and change the `api_endpoint` value to the Prosa-Kobo server’s host.
 
     2.  **Attempt a Sync**  
         Try syncing the device. The first attempt will fail since the device is not yet linked.
