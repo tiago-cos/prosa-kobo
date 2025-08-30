@@ -1,7 +1,7 @@
 use super::models::NewEntitlementResponse;
 use crate::{
     app::{
-        annotations,
+        annotations, covers,
         error::KoboError,
         metadata::{self, BookMetadata},
         shelves::models::{DeletedShelfResponse, NewShelfResponse},
@@ -31,6 +31,10 @@ pub async fn translate_sync(
     let mut translated_response: Vec<SyncItem> = Vec::new();
 
     // Handle books
+
+    for book_id in &sync_response.book.cover {
+        covers::update_token(pool, book_id, device_id).await;
+    }
 
     let mut books_to_update: HashSet<String> = sync_response.book.file.into_iter().collect();
     books_to_update.extend(sync_response.book.cover);

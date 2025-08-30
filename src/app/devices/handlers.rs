@@ -18,8 +18,8 @@ pub async fn device_auth_handler(
 ) -> impl IntoResponse {
     let device_id = service::generate_device_id(&body.device_id, &body.user_key);
 
-    let linked_device = service::get_linked_device(&state.pool, &body.device_id).await;
-    let unlinked_device = service::get_unlinked_device(&state.pool, &body.device_id).await;
+    let linked_device = service::get_linked_device(&state.pool, &device_id).await;
+    let unlinked_device = service::get_unlinked_device(&state.pool, &device_id).await;
     if linked_device.is_none() && unlinked_device.is_none() {
         service::add_unlinked_device(&state.pool, &device_id).await;
     }

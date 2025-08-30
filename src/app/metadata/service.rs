@@ -30,7 +30,7 @@ pub async fn translate_metadata(
     let download_url = format!("{server_url}/books/{book_id}?token={book_token}");
     let download_url = DownloadUrl::new(&download_url, size_response);
 
-    let cover_token = covers::generate_token(pool, book_id, device_id).await;
+    let cover_token = covers::get_token(pool, book_id, device_id).await;
     let cover_token = format!("?token={cover_token}");
 
     metadata.download_urls.push(download_url);
