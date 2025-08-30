@@ -6,6 +6,19 @@ use std::sync::Arc;
 
 #[derive(Deserialize)]
 pub struct Server {
+    pub bind: Bind,
+    pub public: Option<Public>,
+}
+
+#[derive(Deserialize)]
+pub struct Public {
+    pub scheme: String,
+    pub host: String,
+    pub port: u16,
+}
+
+#[derive(Deserialize)]
+pub struct Bind {
     pub host: String,
     pub port: u16,
 }

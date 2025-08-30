@@ -13,7 +13,11 @@ pub async fn metadata_handler(
     Path(book_id): Path<String>,
     Extension(token): Extension<AuthToken>,
 ) -> Result<impl IntoResponse, KoboError> {
-    let server_url = format!("http://{host}");
+    let server_url = match &state.config.server.public {
+        Some(s) => format!("{}://{}:{}", s.scheme, s.host, s.port),
+        None if host.contains(':') => format!("http://{host}"),
+        _ => format!("http://{host}:{}", state.config.server.bind.port),
+    };
 
     let response = service::translate_metadata(
         &state.pool,

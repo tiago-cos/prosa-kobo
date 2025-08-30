@@ -34,7 +34,10 @@ pub async fn run(config: Configuration, pool: SqlitePool) {
         pool: Arc::new(pool),
     };
 
-    let host = format!("{}:{}", &state.config.server.host, &state.config.server.port);
+    let host = format!(
+        "{}:{}",
+        &state.config.server.bind.host, &state.config.server.bind.port
+    );
 
     tracing::init_logging();
     info!("Middleware started on http://{host}");

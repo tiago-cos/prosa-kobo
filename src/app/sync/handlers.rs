@@ -14,7 +14,11 @@ pub async fn device_sync_handler(
     headers: HeaderMap,
     Extension(token): Extension<AuthToken>,
 ) -> Result<impl IntoResponse, KoboError> {
-    let server_url = format!("http://{host}");
+    let server_url = match &state.config.server.public {
+        Some(s) => format!("{}://{}:{}", s.scheme, s.host, s.port),
+        None if host.contains(':') => format!("http://{host}"),
+        _ => format!("http://{host}:{}", state.config.server.bind.port),
+    };
 
     let since = headers
         .get("X-Kobo-Synctoken")

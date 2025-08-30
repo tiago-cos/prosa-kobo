@@ -1,6 +1,13 @@
-[server]
+[server.bind]
 host = "0.0.0.0"
 port = 5001
+
+# Uncomment if behind a proxy
+
+# [server.public]
+# scheme = "http"
+# host = "192.168.0.1"
+# port = 5001
 
 [database]
 file_path = "persistence/database.db"
