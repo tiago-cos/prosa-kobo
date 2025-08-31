@@ -62,7 +62,7 @@ pub async fn add_book_to_shelf_handler(
     Extension(token): Extension<AuthToken>,
     Json(request): Json<AddBooksToShelfRequest>,
 ) -> Result<impl IntoResponse, KoboError> {
-    for book in request.items {
+    for book in &request.items {
         service::translate_add_book_to_shelf(
             &state.prosa_client,
             &shelf_id,
@@ -71,7 +71,9 @@ pub async fn add_book_to_shelf_handler(
         )?;
     }
 
-    Ok(StatusCode::CREATED)
+    let response: Vec<String> = request.items.into_iter().map(|i| i.revision_id).collect();
+
+    Ok((StatusCode::CREATED, Json(response)))
 }
 
 pub async fn delete_books_from_shelf_handler(

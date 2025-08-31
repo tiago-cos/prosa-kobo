@@ -14,7 +14,10 @@ pub fn translate_add_book_to_shelf(
     book_id: &str,
     api_key: &str,
 ) -> Result<(), KoboError> {
-    client.add_book_to_shelf(shelf_id, book_id, api_key)?;
+    match client.add_book_to_shelf(shelf_id, book_id, api_key) {
+        Err(ClientError::Conflict) | Ok(()) => (),
+        e => e?,
+    }
     Ok(())
 }
 
