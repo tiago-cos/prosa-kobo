@@ -1,3 +1,5 @@
+import sizeOf from 'image-size';
+import { Buffer } from 'node:buffer';
 import { getCover, INVALID_COVER_TOKEN } from '../utils/kobont/covers';
 import { authDevice, linkDevice, unlinkDevice } from '../utils/kobont/devices';
 import { getMetadata } from '../utils/kobont/metadata';
@@ -27,13 +29,44 @@ describe('Fetch image', () => {
     expect(getMetadataResponse.status).toBe(200);
 
     const token = getMetadataResponse.body[0].CoverImageId.split('?token=')[1];
-    const downloadCoverResponse = await getCover(uploadResponse.text, token);
+    const downloadCoverResponse = await getCover(uploadResponse.text, undefined, undefined, token);
     expect(downloadCoverResponse.status).toBe(200);
 
     const expectedResponse = await getProsaCover(uploadResponse.text, { jwt: registerResponse.body.jwt_token });
     expect(expectedResponse.status).toBe(200);
 
     expect(downloadCoverResponse.body).toEqual(expectedResponse.body);
+  });
+
+  test('Resize', async () => {
+    const { response: registerResponse } = await registerUser();
+    expect(registerResponse.status).toBe(200);
+    const userId = registerResponse.body.user_id;
+
+    const uploadResponse = await uploadBook(userId, 'Alices_Adventures_in_Wonderland.epub', { jwt: registerResponse.body.jwt_token });
+    expect(uploadResponse.status).toBe(200);
+
+    const createApiKeyResponse = await createApiKey(userId, 'Test Key', ['Read'], undefined, { jwt: registerResponse.body.jwt_token });
+    expect(createApiKeyResponse.status).toBe(200);
+
+    const { response: authResponse, deviceId } = await authDevice();
+    expect(authResponse.status).toBe(200);
+
+    const linkResponse = await linkDevice(deviceId, createApiKeyResponse.body.key);
+    expect(linkResponse.status).toBe(200);
+
+    const getMetadataResponse = await getMetadata(uploadResponse.text, authResponse.body.AccessToken);
+    expect(getMetadataResponse.status).toBe(200);
+
+    const token = getMetadataResponse.body[0].CoverImageId.split('?token=')[1];
+    const downloadCoverResponse = await getCover(uploadResponse.text, 200, 300, token);
+    expect(downloadCoverResponse.status).toBe(200);
+
+    const buffer = Buffer.from(await downloadCoverResponse.body);
+    const { width, height } = sizeOf(buffer);
+
+    expect(height).toBe(200);
+    expect(width).toBe(300);
   });
 
   test('Non-existent book', async () => {
@@ -60,7 +93,7 @@ describe('Fetch image', () => {
     expect(deleteBookResponse.status).toBe(204);
 
     const token = getMetadataResponse.body[0].CoverImageId.split('?token=')[1];
-    const downloadBookResponse = await getCover(uploadResponse.text, token);
+    const downloadBookResponse = await getCover(uploadResponse.text, undefined, undefined, token);
     expect(downloadBookResponse.status).toBe(404);
   });
 
@@ -88,7 +121,7 @@ describe('Fetch image', () => {
     expect(deleteCoverResponse.status).toBe(204);
 
     const token = getMetadataResponse.body[0].CoverImageId.split('?token=')[1];
-    const downloadBookResponse = await getCover(uploadResponse.text, token);
+    const downloadBookResponse = await getCover(uploadResponse.text, undefined, undefined, token);
     expect(downloadBookResponse.status).toBe(404);
   });
 
@@ -116,7 +149,7 @@ describe('Fetch image', () => {
     expect(getMetadataResponse.status).toBe(200);
 
     const token = getMetadataResponse.body[0].CoverImageId.split('?token=')[1];
-    let downloadCoverResponse = await getCover(uploadResponse.text, 'incorrect');
+    let downloadCoverResponse = await getCover(uploadResponse.text, undefined, undefined, 'incorrect');
     expect(downloadCoverResponse.status).toBe(403);
     expect(downloadCoverResponse.body.message).toBe(INVALID_COVER_TOKEN);
 
@@ -124,11 +157,11 @@ describe('Fetch image', () => {
     expect(downloadCoverResponse.status).toBe(403);
     expect(downloadCoverResponse.body.message).toBe(INVALID_COVER_TOKEN);
 
-    downloadCoverResponse = await getCover(uploadResponse2.text, token);
+    downloadCoverResponse = await getCover(uploadResponse2.text, undefined, undefined, token);
     expect(downloadCoverResponse.status).toBe(403);
     expect(downloadCoverResponse.body.message).toBe(INVALID_COVER_TOKEN);
 
-    downloadCoverResponse = await getCover('non-existent', token);
+    downloadCoverResponse = await getCover('non-existent', undefined, undefined, token);
     expect(downloadCoverResponse.status).toBe(403);
     expect(downloadCoverResponse.body.message).toBe(INVALID_COVER_TOKEN);
   });
@@ -163,7 +196,7 @@ describe('Fetch image', () => {
     expect(linkResponse.status).toBe(200);
 
     const token = getMetadataResponse.body[0].CoverImageId.split('?token=')[1];
-    const downloadCoverResponse = await getCover(uploadResponse.text, token);
+    const downloadCoverResponse = await getCover(uploadResponse.text, undefined, undefined, token);
     expect(downloadCoverResponse.status).toBe(403);
   });
 });
