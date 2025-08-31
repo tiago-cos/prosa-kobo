@@ -10,8 +10,11 @@ use crate::{
     client::prosa::Client,
 };
 use base64::{Engine, prelude::BASE64_URL_SAFE};
+use image::{ImageError, imageops::FilterType};
+use image::{ImageFormat, ImageReader};
 use rand::RngCore;
 use sqlx::SqlitePool;
+use std::io::Cursor;
 
 pub async fn download_cover(
     pool: &SqlitePool,
@@ -22,6 +25,18 @@ pub async fn download_cover(
     let api_key = verify_token(pool, book_id, cover_token).await?;
     let cover = client.download_cover(book_id, &api_key)?;
     Ok(cover)
+}
+
+pub fn resize_cover(cover: &Vec<u8>, width: u32, height: u32) -> Result<Vec<u8>, ImageError> {
+    let image = ImageReader::new(Cursor::new(cover))
+        .with_guessed_format()?
+        .decode()?
+        .resize_exact(width, height, FilterType::Nearest);
+
+    let mut output = Cursor::new(Vec::new());
+    image.write_to(&mut output, ImageFormat::Jpeg)?;
+
+    Ok(output.into_inner())
 }
 
 pub async fn get_token(pool: &SqlitePool, book_id: &str, device_id: &str) -> String {

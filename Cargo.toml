@@ -10,6 +10,7 @@ axum-extra = "0.10.1"
 base64 = "0.22.1"
 chrono = "0.4.41"
 config = "0.15.13"
+image = "0.25.6"
 isolang = "2.4.0"
 jsonwebtoken = { version = "9.3.1", default-features = false }
 log = "0.4.27"
