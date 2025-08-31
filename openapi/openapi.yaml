@@ -242,6 +242,11 @@ info:
     4.  **Link the Device**  
         Link the device to a Prosa API key with the [Link Device](https://tiago-cos.github.io/prosa-kobo/#tag/Devices/operation/link_device) endpoint.
 
+    _**Important Note on Sync Issues**_  
+    Sometimes, even after linking a device, sync may still fail. This happens because Kobo devices do not immediately invalidate their old OAuth tokens, even when receiving a `403` or `401` response.  
+    - If this occurs, simply wait. The old token will expire within **1 hour**.  
+    - To avoid this issue entirely, make sure you do **not sync or connect to the internet** before changing the endpoint on your device.
+
     You’re now ready to sync your Kobo device with Prosa through Prosa-Kobo!
 
 externalDocs:
