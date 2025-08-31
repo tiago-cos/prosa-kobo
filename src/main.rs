@@ -26,7 +26,7 @@ async fn main() {
 
     create_dir_all(database_path).await.unwrap();
 
-    let db_pool = database::debug_init(&config.database.file_path).await;
+    let db_pool = database::init(&config.database.file_path).await;
 
     println!(
         r"
