@@ -12,8 +12,10 @@ port = 5001
 [database]
 file_path = "persistence/database.db"
 
+# Define secret_key and admin_key in local configuration
+
 [auth]
-secret_key = "secret_key"
+# secret_key = "jwt_secret_key"
 token_duration = 900
 refresh_token_duration = 3600
 

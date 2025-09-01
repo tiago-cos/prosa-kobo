@@ -20,6 +20,11 @@ mod database;
 async fn main() {
     let config = Configuration::new().unwrap();
 
+    assert!(
+        config.auth.secret_key.len() >= 16,
+        "secret_key must be configured and at least 16 characters long"
+    );
+
     let database_path = Path::new(&config.database.file_path)
         .parent()
         .expect("Invalid database path");
