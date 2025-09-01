@@ -55,8 +55,10 @@ info:
     [database]
     file_path = "persistence/database.db"
 
+    # Define secret_key and admin_key in local configuration
+
     [auth]
-    secret_key = "secret_key"
+    # secret_key = "jwt_secret_key"
     token_duration = 900
     refresh_token_duration = 3600
 
@@ -133,7 +135,8 @@ info:
 
     -   **[auth]**
         
-        -   `secret_key`: Secret key used for signing JWT tokens.  
+        -   `secret_key`: Secret key used for JWT encoding. **Must be defined and at least 16 characters long.**  
+        The server will not start if this is missing or too short.
         -   `token_duration`: Expiration duration (seconds) for JWT tokens provided to Kobo devices.  
         -   `refresh_token_duration`: Expiration duration (seconds) for refresh tokens provided to Kobo devices.
 
@@ -209,7 +212,7 @@ info:
 
     **Important notes:**
 
-    -   Change all secret keys (`AUTH__SECRET_KEY` for Prosa-Kobo and both `AUTH__ADMIN_KEY` and `AUTH__SECRET_KEY` for Prosa) to secure values before using the services.
+    -   Set all secret keys (`AUTH__SECRET_KEY` for Prosa-Kobo and both `AUTH__ADMIN_KEY` and `AUTH__SECRET_KEY` for Prosa) to secure values before using the services.
         
     -   Persistence requires **named volumes** mounted at `/app/persistence` for Prosa-Kobo and `/app/library` for Prosa. Bind mounts are currently not supported due to permission issues in rootless containers.
         
