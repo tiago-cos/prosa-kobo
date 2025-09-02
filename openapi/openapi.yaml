@@ -55,10 +55,8 @@ info:
     [database]
     file_path = "persistence/database.db"
 
-    # Define secret_key and admin_key in local configuration
-
     [auth]
-    # secret_key = "jwt_secret_key"
+    jwt_key_path = "persistence/jwt_secret_key.bin"
     token_duration = 900
     refresh_token_duration = 3600
 
@@ -93,7 +91,7 @@ info:
 
     - Sections and keys are separated using **double underscores (`__`)**.
         
-    - Single underscores (`_`) inside a key name (e.g. `secret_key`) remain as-is and **are not separators**.
+    - Single underscores (`_`) inside a key name (e.g. `file_path`) remain as-is and **are not separators**.
         
     For example:
 
@@ -103,11 +101,11 @@ info:
       export SERVER__BIND__PORT=8080
       ```
 
-    - To set the jwt key (`[auth].secret_key`):  
-      _(notice there is only **one underscore** between `SECRET` and `KEY` because the field name itself has an underscore)_
+    - To set the database file path (`[database].file_path`):  
+      _(notice there is only **one underscore** between `FILE` and `PATH` because the field name itself has an underscore)_
         
       ```bash
-      export AUTH__SECRET_KEY=super_secret_key
+      export DATABASE__FILE_PATH=database/database.db
       ```
 
     ## Configuration Reference
@@ -135,8 +133,7 @@ info:
 
     -   **[auth]**
         
-        -   `secret_key`: Secret key used for JWT encoding. **Must be defined and at least 16 characters long.**  
-        The server will not start if this is missing or too short.
+        -   `jwt_key_path`: Path to the file that will store the JWT HMAC signing key.  
         -   `token_duration`: Expiration duration (seconds) for JWT tokens provided to Kobo devices.  
         -   `refresh_token_duration`: Expiration duration (seconds) for refresh tokens provided to Kobo devices.
 
@@ -183,7 +180,6 @@ info:
         ports:
           - "5001:5001"
         environment:
-          - AUTH__SECRET_KEY=very_secret_key
           - PROSA__HOST=prosa
           - PROSA__PORT=5000
         volumes:
@@ -197,7 +193,6 @@ info:
           - "5000:5000"
         environment:
           - AUTH__ADMIN_KEY=very_secret_key
-          - AUTH__SECRET_KEY=another_very_secret_key
         volumes:
           - prosa_library:/app/library
         restart: unless-stopped
@@ -212,7 +207,7 @@ info:
 
     **Important notes:**
 
-    -   Set all secret keys (`AUTH__SECRET_KEY` for Prosa-Kobo and both `AUTH__ADMIN_KEY` and `AUTH__SECRET_KEY` for Prosa) to secure values before using the services.
+    -   Don't forget to set `AUTH__ADMIN_KEY` to a secure value before using Prosa.
         
     -   Persistence requires **named volumes** mounted at `/app/persistence` for Prosa-Kobo and `/app/library` for Prosa. Bind mounts are currently not supported due to permission issues in rootless containers.
         
