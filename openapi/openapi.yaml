@@ -7,8 +7,8 @@ info:
     email: tiago.costa.sousa@proton.me
     url: https://github.com/tiago-cos
   license:
-    name: GPL-3.0
-    url: https://www.gnu.org/licenses/gpl-3.0.en.html
+    name: MIT
+    url: https://opensource.org/license/MIT
 
   description: |
     # Overview
