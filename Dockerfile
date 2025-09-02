@@ -38,6 +38,7 @@ USER prosa-kobo
 WORKDIR /app
 
 ENTRYPOINT ["sh", "-c", "\
-    unset DATABASE__FILE_PATH; \
+    unset AUTH__JWT_KEY_PATH \
+          DATABASE__FILE_PATH; \
     exec /usr/local/bin/prosa-kobo \
 "]
