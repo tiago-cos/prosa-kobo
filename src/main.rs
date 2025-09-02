@@ -7,6 +7,7 @@
 #![allow(clippy::cast_possible_truncation)]
 #![allow(clippy::cast_sign_loss)]
 
+use crate::app::generate_jwt_secret;
 use config::Configuration;
 use std::path::Path;
 use tokio::fs::create_dir_all;
@@ -20,15 +21,11 @@ mod database;
 async fn main() {
     let config = Configuration::new().unwrap();
 
-    assert!(
-        config.auth.secret_key.len() >= 16,
-        "secret_key must be configured and at least 16 characters long"
-    );
-
     let database_path = Path::new(&config.database.file_path)
         .parent()
         .expect("Invalid database path");
 
+    generate_jwt_secret(&config.auth.jwt_key_path).await.unwrap();
     create_dir_all(database_path).await.unwrap();
 
     let db_pool = database::init(&config.database.file_path).await;

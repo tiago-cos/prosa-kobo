@@ -31,11 +31,13 @@ pub async fn oauth_token_handler(
 ) -> Result<impl IntoResponse, KoboError> {
     let device_id = params.get("device_id").ok_or(AuthError::MissingDeviceId)?;
 
-    let jwt_token = service::generate_jwt(&config.auth.secret_key, device_id, config.auth.token_duration);
+    let jwt_token =
+        service::generate_jwt(&config.auth.jwt_key_path, device_id, config.auth.token_duration).await;
 
     let response = Json(service::generate_oauth_token(
         &jwt_token,
         config.auth.token_duration,
     ));
+
     Ok(response)
 }

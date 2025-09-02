@@ -13,4 +13,5 @@ mod state;
 mod sync;
 mod tracing;
 
+pub use authentication::generate_jwt_secret;
 pub use server::*;

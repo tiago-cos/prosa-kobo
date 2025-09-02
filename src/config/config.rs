@@ -51,8 +51,7 @@ pub struct Database {
 
 #[derive(Deserialize, Clone)]
 pub struct Auth {
-    #[serde(default)]
-    pub secret_key: String,
+    pub jwt_key_path: String,
     pub token_duration: u64,
     pub refresh_token_duration: u64,
 }
