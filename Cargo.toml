@@ -24,6 +24,6 @@ sqlx = { version = "0.8.6", features = ["runtime-tokio", "sqlite"] }
 strum = "0.27.1"
 strum_macros = "0.27.1"
 tokio = { version = "1.46.1", features = ["full"] }
-tracing-subscriber = { version = "0.3.19", features = ["env-filter", "chrono"] }
+tracing-subscriber = { version = "=0.3.19", features = ["env-filter", "chrono"] }
 ureq = { version = "3.0.12", features = ["json"] }
 urlencoding = "2.1.3"
