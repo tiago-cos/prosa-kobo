@@ -2,10 +2,22 @@ version: 2
 updates:
   - package-ecosystem: "cargo"
     directory: "/"
+    
     schedule:
       interval: "weekly"
 
+    groups:
+      all:
+        patterns:
+          - "*"
+
   - package-ecosystem: "npm"
     directory: "/tests"
+
     schedule:
       interval: "weekly"
+
+    groups:
+      all:
+        patterns:
+          - "*"
