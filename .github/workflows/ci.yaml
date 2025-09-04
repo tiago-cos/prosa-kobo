@@ -118,6 +118,13 @@ jobs:
           curl -L https://github.com/tiago-cos/prosa/releases/latest/download/prosa-x86_64-unknown-linux-gnu \
             -o prosa/prosa
           chmod +x prosa/prosa
+      
+      - name: Download kepubify
+        run: |
+          mkdir -p kepubify
+          curl -L https://github.com/tiago-cos/kepubify/releases/latest/download/kepubify-linux-64bit \
+            -o kepubify/kepubify
+          chmod +x kepubify/kepubify
 
       - name: Run Prosa in background
         run: |
@@ -140,7 +147,7 @@ jobs:
           echo "KOBO_PID=$KOBO_PID" >> $GITHUB_ENV
 
           sleep 5
-          
+
           if ! kill -0 $KOBO_PID 2>/dev/null; then
             echo "Prosa-Kobo middleware failed to start"
             exit 1
