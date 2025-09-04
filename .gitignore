@@ -1,6 +1,6 @@
 /target
 .vscode
-src/config/local.toml
+src/config/configuration.toml
 database.db
 tests/node_modules
 tests/config/.env.local

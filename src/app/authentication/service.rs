@@ -58,16 +58,10 @@ pub fn generate_oauth_token(jwt_token: &str, jwt_duration: u64) -> Value {
 pub async fn generate_jwt_secret(path: &str) -> Result<(), Error> {
     let path = Path::new(path);
 
-    if !path.exists() {
-        if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent).await?;
-        }
+    let mut key = [0u8; 32];
+    OsRng.try_fill_bytes(&mut key).unwrap();
 
-        let mut key = [0u8; 32];
-        OsRng.try_fill_bytes(&mut key).unwrap();
-
-        fs::write(path, &key).await?;
-    }
+    fs::write(path, &key).await?;
 
     Ok(())
 }

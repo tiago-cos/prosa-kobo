@@ -9,9 +9,8 @@
 
 use crate::app::generate_jwt_secret;
 use config::Configuration;
-use std::path::Path;
-use tokio::fs::create_dir_all;
-
+use std::{io::Error, path::Path};
+use tokio::fs;
 mod app;
 mod client;
 mod config;
@@ -21,12 +20,9 @@ mod database;
 async fn main() {
     let config = Configuration::new().unwrap();
 
-    let database_path = Path::new(&config.database.file_path)
-        .parent()
-        .expect("Invalid database path");
-
+    create_parent_dir(&config.database.file_path).await.unwrap();
+    create_parent_dir(&config.auth.jwt_key_path).await.unwrap();
     generate_jwt_secret(&config.auth.jwt_key_path).await.unwrap();
-    create_dir_all(database_path).await.unwrap();
 
     let db_pool = database::init(&config.database.file_path).await;
 
@@ -44,4 +40,16 @@ async fn main() {
     );
 
     app::run(config, db_pool).await;
+}
+
+async fn create_parent_dir(path: &str) -> Result<(), Error> {
+    let path = Path::new(path);
+
+    if !path.exists()
+        && let Some(parent) = path.parent()
+    {
+        fs::create_dir_all(parent).await?;
+    }
+
+    Ok(())
 }
