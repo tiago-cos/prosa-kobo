@@ -25,13 +25,8 @@ HEALTHCHECK --interval=300s --timeout=5s --retries=3 --start-period=10s \
 # copy binaries
 COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/prosa-kobo /usr/local/bin/
 
-# setup default config file
-RUN mkdir -p /app/config
-COPY --from=builder /app/src/config/default.toml /app/config/default.toml
-ENV DEFAULT_CONFIGURATION=/app/config/default.toml
-
 # run prosa-kobo as non-root user
-RUN mkdir /app/persistence
+RUN mkdir -p /app/persistence
 RUN addgroup -S prosa-kobo && adduser -S prosa-kobo -G prosa-kobo
 RUN chown -R prosa-kobo:prosa-kobo /app
 USER prosa-kobo
