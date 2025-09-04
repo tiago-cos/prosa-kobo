@@ -1,0 +1,168 @@
+name: Prosa-Kobo CI
+
+on:
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  changes:
+    permissions:
+      contents: read
+      pull-requests: read
+    name: Detect changed files
+    runs-on: ubuntu-latest
+    outputs:
+      src_or_tests: ${{ steps.filter.outputs.src_or_tests }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            src_or_tests:
+              - 'src/**'
+              - 'tests/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+
+  build:
+    name: Build Prosa-Kobo
+    runs-on: ubuntu-latest
+    needs: changes
+
+    if: needs.changes.outputs.src_or_tests == 'true'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build middleware
+        run: cargo build --release
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: prosa-kobo-binary
+          path: target/release/prosa-kobo
+          retention-days: 1
+
+  lint:
+    name: Lint Rust + TypeScript
+    runs-on: ubuntu-latest
+    needs: changes
+
+    if: needs.changes.outputs.src_or_tests == 'true'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Rust format
+        run: cargo fmt -- --check
+
+      - name: Rust lint
+        run: cargo clippy --all-targets --all-features -- -W clippy::pedantic -D warnings
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+          cache-dependency-path: tests/package-lock.json
+
+      - name: Install test deps
+        working-directory: tests
+        run: npm ci
+
+      - name: Lint TS tests
+        working-directory: tests
+        run: npm run lint
+
+  test:
+    name: Run integration tests
+    runs-on: ubuntu-latest
+    needs: [build, changes]
+
+    if: needs.changes.outputs.src_or_tests == 'true'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download middleware binary
+        uses: actions/download-artifact@v4
+        with:
+          name: prosa-kobo-binary
+          path: ./bin
+
+      - name: Make middleware executable
+        run: chmod +x ./bin/prosa-kobo
+
+      - name: Download Prosa binary
+        run: |
+          mkdir -p prosa
+          curl -L https://github.com/tiago-cos/prosa/releases/latest/download/prosa-x86_64-unknown-linux-gnu \
+            -o prosa/prosa
+          chmod +x prosa/prosa
+
+      - name: Run Prosa in background
+        run: |
+          AUTH__ADMIN_KEY=admin_key \
+          ./prosa/prosa &
+          PROSA_PID=$!
+          echo "PROSA_PID=$PROSA_PID" >> $GITHUB_ENV
+
+          sleep 5
+
+          if ! kill -0 $PROSA_PID 2>/dev/null; then
+            echo "Prosa server failed to start"
+            exit 1
+          fi
+
+      - name: Run Prosa-Kobo in background
+        run: |
+          ./bin/prosa-kobo &
+          KOBO_PID=$!
+          echo "KOBO_PID=$KOBO_PID" >> $GITHUB_ENV
+
+          sleep 5
+          
+          if ! kill -0 $KOBO_PID 2>/dev/null; then
+            echo "Prosa-Kobo middleware failed to start"
+            exit 1
+          fi
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+          cache-dependency-path: tests/package-lock.json
+
+      - name: Install test deps
+        working-directory: tests
+        run: npm ci
+
+      - name: Run Jest tests
+        working-directory: tests
+        run: npm test
+
+      - name: Kill servers
+        if: always()
+        run: |
+          kill $KOBO_PID || true
+          kill $PROSA_PID || true
