@@ -33,12 +33,12 @@ info:
 
     ## Default Configuration
 
-    Prosa-Kobo ships with a default configuration file located at `src/config/default.toml`.
+    Prosa-Kobo comes with built-in default configurations that are embedded directly into the binary.  
 
-    This file is always loaded when the program starts.  
-    You can change the path where Prosa-Kobo looks for the default configuration by setting the `DEFAULT_CONFIGURATION` environment variable. If not specified, it defaults to `src/config/default.toml`.
+    The following example shows the default configuration values.  
+    You can override these defaults by providing your own configuration file.
 
-    ### Example `default.toml`
+    ### Example (Default) Configuration
 
     ```toml
     [server.bind]
@@ -73,10 +73,10 @@ info:
 
     Any value from the default configuration can be overridden by creating a local configuration file.
 
-    By default, Prosa-Kobo looks for `src/config/local.toml`.
+    By default, Prosa-Kobo looks for `./configuration.toml`.
 
-    You can change this path using the `LOCAL_CONFIGURATION` environment variable.  
-    Values defined in `local.toml` will take precedence over `default.toml`.
+    You can change this path using the `CONFIGURATION` environment variable.  
+    Values defined in `configuration.toml` will override the default values.
 
     ## Environment Variables
 
