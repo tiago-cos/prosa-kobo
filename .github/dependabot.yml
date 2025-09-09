@@ -4,7 +4,8 @@ updates:
     directory: "/"
     
     schedule:
-      interval: "weekly"
+      interval: "cron"
+      cronjob: "0 18 * * 1"
 
     groups:
       all:
@@ -15,7 +16,8 @@ updates:
     directory: "/tests"
 
     schedule:
-      interval: "weekly"
+      interval: "cron"
+      cronjob: "0 18 * * 4"
 
     groups:
       all:
