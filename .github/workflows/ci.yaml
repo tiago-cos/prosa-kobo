@@ -68,6 +68,9 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Install formatting dependencies
+        run: rustup component add rustfmt && rustup component add clippy
+
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
 
