@@ -44,7 +44,7 @@ impl From<JwtError> for AuthError {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct JWTClaims {
     pub device_id: String,
     pub exp: u64,
