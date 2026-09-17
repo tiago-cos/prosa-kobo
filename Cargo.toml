@@ -4,6 +4,10 @@ version = "0.1.0"
 edition = "2024"
 include = ["src/**/*"]
 
+[features]
+# Exposes the in-memory Prosa client used by tests.
+mock = []
+
 [dependencies]
 axum = "0.8.6"
 axum-extra = "0.10.3"
