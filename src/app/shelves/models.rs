@@ -54,7 +54,7 @@ impl NewShelfResponse {
         let mut items = Vec::new();
         for id in book_ids {
             let item = ShelfItem {
-                revision_id: id.to_string(),
+                revision_id: id.clone(),
                 r#type: "ProductRevisionTagItem".to_string(),
             };
             items.push(item);

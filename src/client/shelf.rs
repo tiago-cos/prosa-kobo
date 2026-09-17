@@ -11,12 +11,14 @@ impl ShelfClient {
     pub fn create_shelf(
         &self,
         shelf_name: &str,
-        owner_id: Option<String>,
+        owner_id: Option<&str>,
+        shelf_id: Option<&str>,
         api_key: &str,
     ) -> Result<String, Error> {
         let request = ProsaShelfCreateRequest {
-            name: shelf_name.to_string(),
+            name: shelf_name,
             owner_id,
+            shelf_id,
         };
 
         self.agent
@@ -37,9 +39,8 @@ impl ShelfClient {
     }
 
     pub fn update_shelf_name(&self, shelf_id: &str, shelf_name: &str, api_key: &str) -> Result<(), Error> {
-        let request = ProsaShelfUpdateRequest {
-            name: shelf_name.to_string(),
-        };
+        let request = ProsaShelfUpdateRequest { name: shelf_name };
+
         self.agent
             .put(format!("{}/shelves/{shelf_id}", self.url))
             .header("api-key", api_key)
@@ -58,9 +59,7 @@ impl ShelfClient {
     }
 
     pub fn add_book_to_shelf(&self, shelf_id: &str, book_id: &str, api_key: &str) -> Result<(), Error> {
-        let request = ProsaAddBookShelfRequest {
-            book_id: book_id.to_string(),
-        };
+        let request = ProsaAddBookShelfRequest { book_id };
 
         self.agent
             .post(format!("{}/shelves/{shelf_id}/books", self.url))
@@ -89,7 +88,7 @@ impl ShelfClient {
     }
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Eq)]
 pub struct ProsaShelfMetadata {
     pub name: String,
     pub owner_id: String,
@@ -97,18 +96,19 @@ pub struct ProsaShelfMetadata {
 }
 
 #[derive(Serialize, Debug)]
-pub struct ProsaShelfUpdateRequest {
-    pub name: String,
+struct ProsaShelfUpdateRequest<'a> {
+    name: &'a str,
 }
 
 #[skip_serializing_none]
 #[derive(Serialize, Debug)]
-pub struct ProsaShelfCreateRequest {
-    pub name: String,
-    pub owner_id: Option<String>,
+struct ProsaShelfCreateRequest<'a> {
+    name: &'a str,
+    owner_id: Option<&'a str>,
+    shelf_id: Option<&'a str>,
 }
 
 #[derive(Serialize, Debug)]
-pub struct ProsaAddBookShelfRequest {
-    pub book_id: String,
+struct ProsaAddBookShelfRequest<'a> {
+    book_id: &'a str,
 }

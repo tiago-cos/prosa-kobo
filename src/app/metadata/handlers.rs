@@ -21,7 +21,7 @@ pub async fn metadata_handler(
 
     let response = service::translate_metadata(
         &state.pool,
-        &state.prosa_client,
+        state.prosa_client.as_ref(),
         &book_id,
         &server_url,
         state.config.download_token.book_expiration,

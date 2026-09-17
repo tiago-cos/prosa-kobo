@@ -1,6 +1,6 @@
 use crate::{
     app::state::service::unix_millis_to_string,
-    client::{ProsaAnnotation, ProsaAnnotationRequest},
+    client::{ProsaAnnotation, ProsaAnnotationRequest, ProsaLocation},
 };
 use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -63,16 +63,23 @@ pub struct AnnotationSpan {
 
 impl From<ProsaAnnotation> for Annotation {
     fn from(annotation: ProsaAnnotation) -> Self {
+        let start: ProsaLocation = annotation
+            .start_location
+            .parse()
+            .expect("Failed to parse annotation start location");
+
+        let end: ProsaLocation = annotation
+            .end_location
+            .parse()
+            .expect("Failed to parse annotation end location");
+
+        // The device's end character is exclusive, Prosa's is the last one covered.
         let span = AnnotationSpan {
-            chapter_filename: annotation.source,
-            end_char: annotation.end_char + 1,
-            end_path: format!("span#{}", annotation.end_tag)
-                .to_string()
-                .replace('.', "\\."),
-            start_char: annotation.start_char,
-            start_path: format!("span#{}", annotation.start_tag)
-                .to_string()
-                .replace('.', "\\."),
+            chapter_filename: start.source,
+            end_char: end.offset.unwrap_or_default() + 1,
+            end_path: end.path,
+            start_char: start.offset.unwrap_or_default(),
+            start_path: start.path,
         };
 
         let location = AnnotationLocation { span };
@@ -103,27 +110,20 @@ impl From<ProsaAnnotation> for Annotation {
 
 impl From<Annotation> for ProsaAnnotationRequest {
     fn from(annotation: Annotation) -> Self {
+        let span = annotation.location.span;
+
+        let start = ProsaLocation::new(&span.chapter_filename, &span.start_path, Some(span.start_char));
+        let end = ProsaLocation::new(
+            &span.chapter_filename,
+            &span.end_path,
+            Some(span.end_char.saturating_sub(1)),
+        );
+
         ProsaAnnotationRequest {
-            source: annotation.location.span.chapter_filename,
-            start_tag: annotation
-                .location
-                .span
-                .start_path
-                .strip_prefix("span#")
-                .expect("Failed to parse annotation source")
-                .to_string()
-                .replace("\\.", "."),
-            end_tag: annotation
-                .location
-                .span
-                .end_path
-                .strip_prefix("span#")
-                .expect("Failed to parse annotation source")
-                .to_string()
-                .replace("\\.", "."),
-            start_char: annotation.location.span.start_char,
-            end_char: annotation.location.span.end_char - 1,
+            start_location: start.to_string(),
+            end_location: end.to_string(),
             note: annotation.note_text,
+            annotation_id: Some(annotation.id),
         }
     }
 }

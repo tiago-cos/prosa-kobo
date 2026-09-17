@@ -1,15 +1,19 @@
 use crate::{
     app::error::KoboError,
-    client::prosa::{Client, ClientError},
+    client::prosa::{ClientError, ProsaApi},
 };
 
-pub fn translate_add_shelf(client: &Client, shelf_name: &str, api_key: &str) -> Result<String, KoboError> {
-    let shelf_id = client.create_shelf(shelf_name, None, api_key)?;
+pub fn translate_add_shelf(
+    client: &dyn ProsaApi,
+    shelf_name: &str,
+    api_key: &str,
+) -> Result<String, KoboError> {
+    let shelf_id = client.create_shelf(shelf_name, None, None, api_key)?;
     Ok(shelf_id)
 }
 
 pub fn translate_add_book_to_shelf(
-    client: &Client,
+    client: &dyn ProsaApi,
     shelf_id: &str,
     book_id: &str,
     api_key: &str,
@@ -21,7 +25,7 @@ pub fn translate_add_book_to_shelf(
     Ok(())
 }
 
-pub fn translate_delete_shelf(client: &Client, shelf_id: &str, api_key: &str) -> Result<(), KoboError> {
+pub fn translate_delete_shelf(client: &dyn ProsaApi, shelf_id: &str, api_key: &str) -> Result<(), KoboError> {
     match client.delete_shelf(shelf_id, api_key) {
         Err(ClientError::NotFound) | Ok(()) => (),
         e => e?,
@@ -30,7 +34,7 @@ pub fn translate_delete_shelf(client: &Client, shelf_id: &str, api_key: &str) ->
 }
 
 pub fn translate_rename_shelf(
-    client: &Client,
+    client: &dyn ProsaApi,
     shelf_id: &str,
     shelf_name: &str,
     api_key: &str,
@@ -40,7 +44,7 @@ pub fn translate_rename_shelf(
 }
 
 pub fn translate_delete_book_from_shelf(
-    client: &Client,
+    client: &dyn ProsaApi,
     shelf_id: &str,
     book_id: &str,
     api_key: &str,

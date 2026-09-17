@@ -7,7 +7,7 @@ use crate::{
         devices,
         error::KoboError,
     },
-    client::prosa::Client,
+    client::prosa::ProsaApi,
 };
 use base64::{Engine, prelude::BASE64_URL_SAFE};
 use image::{ImageError, imageops::FilterType};
@@ -18,7 +18,7 @@ use std::io::Cursor;
 
 pub async fn download_cover(
     pool: &SqlitePool,
-    client: &Client,
+    client: &dyn ProsaApi,
     book_id: &str,
     cover_token: &str,
 ) -> Result<Vec<u8>, KoboError> {

@@ -1,63 +1,64 @@
 use super::models::{ReadingState, UPDATE_STATE_RESPONSE};
 use crate::{
     app::{error::KoboError, state::models::RatingResponse},
-    client::prosa::Client,
+    client::{ProsaLocation, ProsaReadingStatus, prosa::ProsaApi},
 };
 use chrono::{DateTime, Utc};
-use regex::Regex;
 use serde_json::Value;
 
-pub fn translate_get_state(client: &Client, book_id: &str, api_key: &str) -> Result<ReadingState, KoboError> {
+pub fn translate_get_state(
+    client: &dyn ProsaApi,
+    book_id: &str,
+    api_key: &str,
+) -> Result<ReadingState, KoboError> {
     let state_response = client.fetch_state(book_id, api_key)?;
 
-    let status = match state_response.statistics.reading_status.as_ref() {
-        "Read" => "Finished".to_string(),
-        "Unread" => "ReadyToRead".to_string(),
-        status => status.to_string(),
+    let status = match state_response.statistics.reading_status {
+        ProsaReadingStatus::Read => "Finished",
+        ProsaReadingStatus::Unread => "ReadyToRead",
+        ProsaReadingStatus::Reading => "Reading",
     };
 
-    let state_location = state_response.location.as_ref();
+    // A bookmark we cannot parse is no bookmark: the device gets the book
+    // without a reading position rather than a broken one.
+    let location = state_response
+        .location
+        .and_then(|location| location.parse::<ProsaLocation>().ok());
 
     let state = ReadingState::new(
         book_id,
-        &status,
-        state_location.and_then(|l| l.tag.clone()),
-        state_location.and_then(|l| l.source.clone()),
+        status,
+        location.as_ref().map(ProsaLocation::fragment),
+        location.map(|location| location.source),
     );
 
     Ok(state)
 }
 
 pub fn translate_update_state(
-    client: &Client,
+    client: &dyn ProsaApi,
     book_id: &str,
     state: &ReadingState,
     api_key: &str,
 ) -> Result<Value, KoboError> {
-    let location = state.current_bookmark.location.as_ref();
-    let status = match state.status_info.status.as_ref() {
-        "Finished" => "Read".to_string(),
-        "ReadyToRead" => "Unread".to_string(),
-        s => s.to_string(),
+    let status = match state.status_info.status.as_str() {
+        "Finished" => ProsaReadingStatus::Read,
+        "ReadyToRead" => ProsaReadingStatus::Unread,
+        _ => ProsaReadingStatus::Reading,
     };
 
-    let source = location.map(|l| {
-        let re = Regex::new(r"!!").expect("Failed to create regex");
-        let mut matches = re.find_iter(&l.source);
+    // The device names the chapter relative to the book file it downloaded,
+    // as `<book>.kepub.epub!!OEBPS/chapter.xhtml`; Prosa wants the tail.
+    let location = state.current_bookmark.location.as_ref().map(|location| {
+        let source = match location.source.split_once("!!") {
+            Some((_, source)) => source,
+            None => location.source.as_str(),
+        };
 
-        match matches.next() {
-            Some(m) => l.source[m.end()..].to_string(),
-            _ => l.source.to_string(),
-        }
+        format!("{source}#{}", location.value)
     });
 
-    client.patch_state(
-        book_id,
-        location.map(|l| l.value.clone()),
-        source,
-        &status,
-        api_key,
-    )?;
+    client.patch_state(book_id, location.as_deref(), status, api_key)?;
 
     let response = &UPDATE_STATE_RESPONSE.replace("{book_id}", book_id);
     let response = serde_json::from_str(response).expect("Failed to convert to JSON");
@@ -66,7 +67,7 @@ pub fn translate_update_state(
 }
 
 pub fn translate_update_rating(
-    client: &Client,
+    client: &dyn ProsaApi,
     book_id: &str,
     rating: u8,
     api_key: &str,
@@ -77,7 +78,7 @@ pub fn translate_update_rating(
 }
 
 pub fn translate_get_rating(
-    client: &Client,
+    client: &dyn ProsaApi,
     book_id: &str,
     api_key: &str,
 ) -> Result<RatingResponse, KoboError> {

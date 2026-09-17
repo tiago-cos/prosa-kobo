@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_with::skip_serializing_none;
 use ureq::{Agent, Error};
 
 pub struct AnnotationsClient {
@@ -37,7 +37,7 @@ impl AnnotationsClient {
     pub fn add_annotation(
         &self,
         book_id: &str,
-        annotation: ProsaAnnotationRequest,
+        annotation: &ProsaAnnotationRequest,
         api_key: &str,
     ) -> Result<String, Error> {
         self.agent
@@ -55,14 +55,15 @@ impl AnnotationsClient {
         note: &str,
         api_key: &str,
     ) -> Result<(), Error> {
-        let request = format!("{{\"note\": \"{note}\"}}");
+        let request = ProsaAnnotationPatch { note };
+
         self.agent
             .patch(format!(
                 "{}/books/{book_id}/annotations/{annotation_id}",
                 self.url
             ))
             .header("api-key", api_key)
-            .send_json(serde_json::from_str::<Value>(&request).expect("Failed to serialize request"))?;
+            .send_json(request)?;
 
         Ok(())
     }
@@ -80,23 +81,26 @@ impl AnnotationsClient {
     }
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Eq)]
 pub struct ProsaAnnotation {
     pub annotation_id: String,
-    pub source: String,
-    pub start_tag: String,
-    pub end_tag: String,
-    pub start_char: u32,
-    pub end_char: u32,
+    pub start_location: String,
+    pub end_location: String,
     pub note: Option<String>,
 }
 
-#[derive(Serialize, Debug)]
+#[skip_serializing_none]
+#[derive(Serialize, Clone, Debug, PartialEq, Eq)]
 pub struct ProsaAnnotationRequest {
-    pub source: String,
-    pub start_tag: String,
-    pub end_tag: String,
-    pub start_char: u32,
-    pub end_char: u32,
+    pub start_location: String,
+    pub end_location: String,
     pub note: Option<String>,
+    /// Prosa generates one when this is absent, but the Kobo device names its
+    /// own annotations, so the middleware always supplies the device's ID.
+    pub annotation_id: Option<String>,
+}
+
+#[derive(Serialize, Debug)]
+struct ProsaAnnotationPatch<'a> {
+    note: &'a str,
 }

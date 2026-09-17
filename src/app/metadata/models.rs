@@ -124,8 +124,8 @@ impl BookMetadata {
         let series = metadata.series.map(|s| Series {
             id: s.title.clone(),
             name: s.title,
-            number: s.number.to_string(),
-            number_float: s.number,
+            number: s.number.map(|n| n.to_string()).unwrap_or_default(),
+            number_float: s.number.unwrap_or_default(),
         });
 
         let current_display_price = CurrentDisplayPrice {

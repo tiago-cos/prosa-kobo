@@ -3,14 +3,14 @@ use crate::{
     app::{books, covers, error::KoboError},
     client::{
         ProsaMetadata,
-        prosa::{Client, ClientError},
+        prosa::{ClientError, ProsaApi},
     },
 };
 use sqlx::SqlitePool;
 
 pub async fn translate_metadata(
     pool: &SqlitePool,
-    client: &Client,
+    client: &dyn ProsaApi,
     book_id: &str,
     server_url: &str,
     book_expiration: i64,

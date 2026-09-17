@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use ureq::{Agent, Error};
 
 pub struct StateClient {
@@ -8,35 +9,27 @@ pub struct StateClient {
 
 impl StateClient {
     pub fn fetch_state(&self, book_id: &str, api_key: &str) -> Result<ProsaState, Error> {
-        let result = self
-            .agent
+        self.agent
             .get(format!("{}/books/{book_id}/state", self.url))
             .header("api-key", api_key)
             .call()?
             .body_mut()
-            .read_json::<ProsaState>()?;
-
-        Ok(result)
+            .read_json::<ProsaState>()
     }
 
     pub fn patch_state(
         &self,
         book_id: &str,
-        tag: Option<String>,
-        source: Option<String>,
-        reading_status: &str,
+        location: Option<&str>,
+        reading_status: ProsaReadingStatus,
         api_key: &str,
     ) -> Result<(), Error> {
-        let request_location = source.map(|s| ProsaLocation { tag, source: Some(s) });
-
-        let request_statistics = ProsaStatistics {
-            rating: None,
-            reading_status: reading_status.to_string(),
-        };
-
-        let request = ProsaState {
-            location: request_location,
-            statistics: request_statistics,
+        let request = ProsaStatePatch {
+            location,
+            statistics: ProsaStatisticsPatch {
+                rating: None,
+                reading_status: Some(reading_status),
+            },
         };
 
         self.agent
@@ -47,43 +40,49 @@ impl StateClient {
         Ok(())
     }
 
-    pub fn update_rating(&self, book_id: &str, rating: u8, api_key: &str) -> Result<(), Error> {
-        let mut previous_state = self.fetch_state(book_id, api_key)?;
-
-        previous_state.statistics.rating = match rating {
-            0 => None,
-            r => Some(r.into()),
-        };
-
+    pub fn replace_state(&self, book_id: &str, state: &ProsaState, api_key: &str) -> Result<(), Error> {
         self.agent
             .put(format!("{}/books/{book_id}/state", self.url))
             .header("api-key", api_key)
-            .send_json(previous_state)?;
+            .send_json(state)?;
 
         Ok(())
     }
-
-    pub fn fetch_rating(&self, book_id: &str, api_key: &str) -> Result<Option<u8>, Error> {
-        let state = self.fetch_state(book_id, api_key)?;
-        let rating = state.statistics.rating.map(|s| s.round() as u8);
-        Ok(rating)
-    }
 }
 
-#[derive(Deserialize, Serialize, Debug)]
-pub struct ProsaLocation {
-    pub tag: Option<String>,
-    pub source: Option<String>,
+#[derive(Deserialize, Serialize, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ProsaReadingStatus {
+    Unread,
+    Reading,
+    Read,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[skip_serializing_none]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
+pub struct ProsaState {
+    pub location: Option<String>,
+    pub statistics: ProsaStatistics,
+}
+
+#[skip_serializing_none]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
 pub struct ProsaStatistics {
     pub rating: Option<f32>,
-    pub reading_status: String,
+    pub reading_status: ProsaReadingStatus,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
-pub struct ProsaState {
-    pub location: Option<ProsaLocation>,
-    pub statistics: ProsaStatistics,
+/// `PATCH` leaves out what it does not change, so every field is optional and
+/// an absent one must not reach the wire as `null`.
+#[skip_serializing_none]
+#[derive(Serialize, Debug)]
+struct ProsaStatePatch<'a> {
+    location: Option<&'a str>,
+    statistics: ProsaStatisticsPatch,
+}
+
+#[skip_serializing_none]
+#[derive(Serialize, Debug)]
+struct ProsaStatisticsPatch {
+    rating: Option<f32>,
+    reading_status: Option<ProsaReadingStatus>,
 }

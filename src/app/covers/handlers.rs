@@ -16,7 +16,8 @@ pub async fn download_cover_handler(
         return Err(CoverTokenError::InvalidToken.into());
     };
 
-    let mut cover = service::download_cover(&state.pool, &state.prosa_client, &book_id, cover_token).await?;
+    let mut cover =
+        service::download_cover(&state.pool, state.prosa_client.as_ref(), &book_id, cover_token).await?;
 
     let width: Option<u32> = params.get("width").and_then(|s| s.parse().ok());
     let height: Option<u32> = params.get("height").and_then(|s| s.parse().ok());

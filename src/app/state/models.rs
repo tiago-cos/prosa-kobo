@@ -93,9 +93,9 @@ impl ReadingState {
 
         let location = match (tag, source) {
             (Some(tag), Some(source)) => Some(Location {
-                value: tag.to_string(),
+                value: tag,
                 r#type: "KoboSpan".to_string(),
-                source: source.to_string(),
+                source,
             }),
             _ => None,
         };

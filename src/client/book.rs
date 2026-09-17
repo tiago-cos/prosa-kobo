@@ -1,6 +1,8 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::io::Read;
 use ureq::{Agent, Error};
+
+const MAX_BOOK_SIZE: u64 = 50 * 1024 * 1024;
 
 pub struct BookClient {
     pub url: String,
@@ -16,7 +18,7 @@ impl BookClient {
             .call()?
             .into_body()
             .into_reader()
-            .take(50000000)
+            .take(MAX_BOOK_SIZE)
             .read_to_end(&mut body)?;
 
         Ok(body)
@@ -45,7 +47,7 @@ impl BookClient {
     }
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Eq)]
 pub struct ProsaBookFileMetadata {
     pub owner_id: String,
     pub file_size: u64,

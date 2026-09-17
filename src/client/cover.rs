@@ -1,6 +1,8 @@
 use std::io::Read;
 use ureq::{Agent, Error};
 
+const MAX_COVER_SIZE: u64 = 10 * 1024 * 1024;
+
 pub struct CoverClient {
     pub url: String,
     pub agent: Agent,
@@ -15,7 +17,7 @@ impl CoverClient {
             .call()?
             .into_body()
             .into_reader()
-            .take(50000000)
+            .take(MAX_COVER_SIZE)
             .read_to_end(&mut body)?;
 
         Ok(body)

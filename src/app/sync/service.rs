@@ -8,37 +8,39 @@ use crate::{
         state::{self, models::ReadingState},
         sync::models::{BookEntitlement, SyncItem},
     },
-    client::prosa::Client,
+    client::prosa::ProsaApi,
 };
 use chrono::{DateTime, Utc};
 use sqlx::SqlitePool;
-use std::{
-    collections::HashSet,
-    time::{SystemTime, UNIX_EPOCH},
-};
+use std::collections::HashSet;
 
+/// Returns the sync token the device should present next, alongside the
+/// changes it has to apply.
 pub async fn translate_sync(
     pool: &SqlitePool,
-    client: &Client,
-    since: Option<i64>,
+    client: &dyn ProsaApi,
+    sync_token: Option<i64>,
     server_url: &str,
     book_expiration: i64,
     api_key: &str,
     device_id: &str,
-) -> Result<Vec<SyncItem>, KoboError> {
-    let sync_response = client.sync_device(since, api_key)?;
+) -> Result<(i64, Vec<SyncItem>), KoboError> {
+    let sync_response = client.sync_device(sync_token, api_key)?;
+    let new_sync_token = sync_response.new_sync_token;
+    let books = sync_response.unsynced_books;
+    let shelves = sync_response.unsynced_shelves;
 
     let mut translated_response: Vec<SyncItem> = Vec::new();
 
     // Handle books
 
-    for book_id in &sync_response.book.cover {
+    for book_id in &books.cover {
         covers::update_token(pool, book_id, device_id).await;
     }
 
-    let mut books_to_update: HashSet<String> = sync_response.book.file.into_iter().collect();
-    books_to_update.extend(sync_response.book.cover);
-    books_to_update.extend(sync_response.book.metadata);
+    let mut books_to_update: HashSet<String> = books.file.into_iter().collect();
+    books_to_update.extend(books.cover);
+    books_to_update.extend(books.metadata);
 
     for book_id in books_to_update {
         let entitlement = BookEntitlement::new(&book_id, false);
@@ -60,7 +62,7 @@ pub async fn translate_sync(
         translated_response.push(response);
     }
 
-    for book_id in sync_response.book.deleted {
+    for book_id in books.deleted {
         let entitlement = BookEntitlement::new(&book_id, true);
         let reading_state = ReadingState::default();
         let metadata = BookMetadata::default();
@@ -72,14 +74,14 @@ pub async fn translate_sync(
 
     // Handle annotations
 
-    for book_id in sync_response.book.annotations {
+    for book_id in books.annotations {
         annotations::service::update_etag(pool, &book_id).await;
     }
 
     // Handle shelfs
 
-    let mut shelfs_to_update: HashSet<String> = sync_response.shelf.metadata.into_iter().collect();
-    shelfs_to_update.extend(sync_response.shelf.contents);
+    let mut shelfs_to_update: HashSet<String> = shelves.metadata.into_iter().collect();
+    shelfs_to_update.extend(shelves.contents);
 
     for shelf_id in shelfs_to_update {
         let name = client.get_shelf_metadata(&shelf_id, api_key)?.name;
@@ -89,22 +91,13 @@ pub async fn translate_sync(
         translated_response.push(response);
     }
 
-    for shelf_id in sync_response.shelf.deleted {
+    for shelf_id in shelves.deleted {
         let response = SyncItem::DeletedShelf(DeletedShelfResponse::new(&shelf_id));
 
         translated_response.push(response);
     }
 
-    Ok(translated_response)
-}
-
-pub fn create_new_sync_token() -> String {
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("Time went backwards")
-        .as_millis();
-
-    now.to_string()
+    Ok((new_sync_token, translated_response))
 }
 
 pub fn unix_millis_to_string(timestamp_millis: i64) -> String {

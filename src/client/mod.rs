@@ -1,13 +1,14 @@
-mod annotations;
-mod book;
-mod cover;
-mod metadata;
+pub mod annotations;
+pub mod book;
+pub mod cover;
+pub mod location;
+pub mod metadata;
 pub mod prosa;
-mod shelf;
-mod state;
-mod sync;
+pub mod shelf;
+pub mod state;
+pub mod sync;
 
-pub use annotations::ProsaAnnotation;
-pub use annotations::ProsaAnnotationRequest;
+pub use annotations::{ProsaAnnotation, ProsaAnnotationRequest};
+pub use location::ProsaLocation;
 pub use metadata::ProsaMetadata;
-pub use state::ProsaState;
+pub use state::ProsaReadingStatus;

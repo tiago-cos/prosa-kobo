@@ -3,8 +3,11 @@ use super::{
     models::{Annotation, CheckContentRequest, GetAnnotationsResponse, PatchAnnotationsRequest},
 };
 use crate::{
-    app::{ProsaClient, error::KoboError},
-    client::{ProsaAnnotation, prosa::ClientError},
+    app::error::KoboError,
+    client::{
+        ProsaAnnotation, ProsaAnnotationRequest,
+        prosa::{ClientError, ProsaApi},
+    },
 };
 use base64::{Engine, prelude::BASE64_STANDARD};
 use rand::RngCore;
@@ -51,7 +54,7 @@ pub async fn get_changed_annotations(pool: &SqlitePool, books: Vec<CheckContentR
 }
 
 pub fn get_annotations(
-    client: &ProsaClient,
+    client: &dyn ProsaApi,
     book_id: &str,
     api_key: &str,
 ) -> Result<GetAnnotationsResponse, ClientError> {
@@ -69,13 +72,14 @@ pub fn get_annotations(
 }
 
 pub fn patch_annotations(
-    client: &ProsaClient,
+    client: &dyn ProsaApi,
     book_id: &str,
     request: PatchAnnotationsRequest,
     api_key: &str,
 ) -> Result<(), KoboError> {
     for annotation in request.updated_annotations.unwrap_or_default() {
-        let result = client.add_annotation(book_id, annotation.clone().into(), api_key);
+        let request: ProsaAnnotationRequest = annotation.clone().into();
+        let result = client.add_annotation(book_id, &request, api_key);
         let note = &annotation.note_text.unwrap_or_default();
 
         if let Err(ClientError::Conflict) = result {

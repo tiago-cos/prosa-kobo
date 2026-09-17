@@ -3,7 +3,7 @@ use super::{
 };
 use crate::{
     app::{shelves, tracing},
-    client::prosa::Client,
+    client::prosa::{Client, ProsaApi},
     config::Configuration,
 };
 use axum::{Router, http::StatusCode, middleware::from_fn, routing::get};
@@ -14,7 +14,7 @@ use tokio::net::TcpListener;
 
 pub type Config = Arc<Configuration>;
 pub type Pool = Arc<SqlitePool>;
-pub type ProsaClient = Arc<Client>;
+pub type ProsaClient = Arc<dyn ProsaApi>;
 
 #[derive(Clone)]
 pub struct AppState {

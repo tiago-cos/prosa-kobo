@@ -5,7 +5,7 @@ use crate::{
         devices,
         error::KoboError,
     },
-    client::prosa::{Client, ClientError},
+    client::prosa::{ClientError, ProsaApi},
 };
 use base64::{Engine, prelude::BASE64_URL_SAFE};
 use rand::RngCore;
@@ -14,7 +14,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 pub async fn download_book(
     pool: &SqlitePool,
-    client: &Client,
+    client: &dyn ProsaApi,
     book_id: &str,
     book_token: &str,
 ) -> Result<Vec<u8>, KoboError> {
@@ -25,7 +25,7 @@ pub async fn download_book(
 
 pub async fn delete_book(
     pool: &SqlitePool,
-    client: &Client,
+    client: &dyn ProsaApi,
     book_id: &str,
     api_key: &str,
 ) -> Result<(), KoboError> {

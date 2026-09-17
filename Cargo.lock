@@ -141,12 +141,6 @@ dependencies = [
 ]
 
 [[package]]
-<<<<<<< HEAD
-name = "axum"
-version = "0.8.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "98e529aee37b5c8206bb4bf4c44797127566d72f76952c970bd3d1e85de8f4e2"
-=======
 name = "aws-lc-rs"
 version = "1.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -176,7 +170,6 @@ name = "axum"
 version = "0.8.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8a18ed336352031311f4e0b4dd2ff392d4fbb370777c9d18d7fc9d7359f73871"
->>>>>>> 5213d08 (fix(auth): add clone trait to jwt claims struct)
 dependencies = [
  "axum-core",
  "bytes",
@@ -207,15 +200,9 @@ dependencies = [
 
 [[package]]
 name = "axum-core"
-<<<<<<< HEAD
-version = "0.5.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0ac7a6beb1182c7e30253ee75c3e918080bfb83f5a3023bcdf7209d85fd147e6"
-=======
 version = "0.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "59446ce19cd142f8833f856eb31f3eb097812d1479ab224f54d72428ca21ea22"
->>>>>>> 5213d08 (fix(auth): add clone trait to jwt claims struct)
 dependencies = [
  "bytes",
  "futures-core",
@@ -232,15 +219,9 @@ dependencies = [
 
 [[package]]
 name = "axum-extra"
-<<<<<<< HEAD
-version = "0.10.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d86d701cd16f401888ebe9c3214dc838c7ef27a405d5726196765a913603b5dd"
-=======
 version = "0.10.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9963ff19f40c6102c76756ef0a46004c0d58957d87259fc9208ff8441c12ab96"
->>>>>>> 5213d08 (fix(auth): add clone trait to jwt claims struct)
 dependencies = [
  "axum",
  "axum-core",
@@ -464,15 +445,9 @@ dependencies = [
 
 [[package]]
 name = "config"
-<<<<<<< HEAD
-version = "0.15.17"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "680d3ac2fe066c43300ec831c978871e50113a708d58ab13d231bd92deca5adb"
-=======
 version = "0.15.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "180e549344080374f9b32ed41bf3b6b57885ff6a289367b3dbc10eea8acc1918"
->>>>>>> 5213d08 (fix(auth): add clone trait to jwt claims struct)
 dependencies = [
  "async-trait",
  "convert_case",

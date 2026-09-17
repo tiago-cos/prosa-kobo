@@ -17,19 +17,19 @@ impl MetadataClient {
     }
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct ProsaContributor {
     pub name: String,
     pub role: String,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Clone, Debug, PartialEq)]
 pub struct ProsaSeries {
     pub title: String,
-    pub number: f32,
+    pub number: Option<f32>,
 }
 
-#[derive(Deserialize, Default, Debug)]
+#[derive(Deserialize, Clone, Default, Debug, PartialEq)]
 pub struct ProsaMetadata {
     pub title: Option<String>,
     pub subtitle: Option<String>,
