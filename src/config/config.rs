@@ -9,6 +9,7 @@ pub struct Configuration {
     pub auth: Auth,
     pub prosa: Prosa,
     pub download_token: DownloadToken,
+    pub devices: Devices,
 }
 
 #[derive(Default, Deserialize)]
@@ -44,6 +45,12 @@ pub struct Prosa {
 #[serde(default)]
 pub struct DownloadToken {
     pub book_expiration: i64,
+}
+
+#[derive(Deserialize)]
+#[serde(default)]
+pub struct Devices {
+    pub unlinked_expiration: i64,
 }
 
 #[derive(Deserialize, Clone)]
@@ -82,6 +89,14 @@ impl Default for Prosa {
 impl Default for DownloadToken {
     fn default() -> Self {
         Self { book_expiration: 60 }
+    }
+}
+
+impl Default for Devices {
+    fn default() -> Self {
+        Self {
+            unlinked_expiration: 900,
+        }
     }
 }
 

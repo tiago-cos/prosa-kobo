@@ -2,7 +2,7 @@ use super::{
     data,
     models::{DeviceError, LinkedDevice, UnlinkedDevice},
 };
-use crate::app::error::KoboError;
+use crate::{CONFIG, app::error::KoboError};
 use base64::{Engine, prelude::BASE64_URL_SAFE};
 use sha2::{Digest, Sha256};
 use sqlx::SqlitePool;
@@ -18,6 +18,8 @@ pub async fn add_unlinked_device(pool: &SqlitePool, device_id: &str) -> () {
 }
 
 pub async fn get_unlinked_devices(pool: &SqlitePool) -> Vec<UnlinkedDevice> {
+    remove_expired_unlinked_devices(pool).await;
+
     data::get_unlinked_devices(pool).await
 }
 
@@ -25,6 +27,8 @@ pub async fn link_device(pool: &SqlitePool, device_id: &str, api_key: &str) -> R
     if !is_valid_api_key(api_key) {
         return Err(DeviceError::InvalidApiKey.into());
     }
+
+    remove_expired_unlinked_devices(pool).await;
 
     if data::get_linked_device(pool, device_id).await.is_some() {
         return Err(DeviceError::DeviceAlreadyLinked.into());
@@ -69,7 +73,18 @@ pub async fn get_linked_device(pool: &SqlitePool, device_id: &str) -> Option<Lin
 }
 
 pub async fn get_unlinked_device(pool: &SqlitePool, device_id: &str) -> Option<UnlinkedDevice> {
+    remove_expired_unlinked_devices(pool).await;
+
     data::get_unlinked_device(pool, device_id).await
+}
+
+async fn remove_expired_unlinked_devices(pool: &SqlitePool) {
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("Time went backwards")
+        .as_secs() as i64;
+
+    data::remove_expired_unlinked_devices(pool, now - CONFIG.devices.unlinked_expiration).await;
 }
 
 pub fn generate_device_id(device_id: &str, user_key: &str) -> String {

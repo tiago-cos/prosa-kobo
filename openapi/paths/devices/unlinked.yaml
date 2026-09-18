@@ -2,7 +2,11 @@ get:
   tags:
     - Devices
   summary: List unlinked devices
-  description: Retrieves a list of all devices that have contacted the middleware but are not yet linked to a user account.
+  description: |
+    Retrieves a list of all devices that have contacted the middleware but are not yet linked to a user account.
+
+    A device drops off this list once `devices.unlinked_expiration` has passed
+    since it made contact, and reappears the next time it tries to sync.
   operationId: list_unlinked_devices
 
   security: []

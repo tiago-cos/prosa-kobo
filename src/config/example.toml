@@ -24,3 +24,9 @@ port = 5000
 
 [download_token]
 book_expiration = 60
+
+[devices]
+# How long, in seconds, a device that has contacted the middleware stays
+# available to be linked. A device that expires reappears the next time it
+# tries to sync.
+unlinked_expiration = 900

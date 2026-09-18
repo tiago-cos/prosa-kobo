@@ -34,6 +34,19 @@ pub async fn remove_unlinked_device(pool: &SqlitePool, device_id: &str) -> Resul
     Ok(())
 }
 
+pub async fn remove_expired_unlinked_devices(pool: &SqlitePool, cutoff: i64) {
+    sqlx::query(
+        r"
+        DELETE FROM unlinked_devices
+        WHERE timestamp < $1
+        ",
+    )
+    .bind(cutoff)
+    .execute(pool)
+    .await
+    .expect("Failed to remove expired unlinked devices");
+}
+
 pub async fn get_unlinked_device(pool: &SqlitePool, device_id: &str) -> Option<UnlinkedDevice> {
     let device: Option<UnlinkedDevice> = sqlx::query_as(
         r"
