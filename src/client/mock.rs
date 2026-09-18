@@ -5,8 +5,9 @@
 //! a test can assert what the middleware asked for. Any method can also be made
 //! to fail on demand, which is how the error paths are reached without data.
 //!
-//! The crate has no library target, so nothing inside it calls this.
-#![allow(dead_code)]
+//! The crate has no library target, so outside its own tests nothing here is
+//! called from within it.
+#![cfg_attr(not(test), allow(dead_code))]
 
 use super::{
     ProsaAnnotation, ProsaAnnotationRequest, ProsaMetadata, ProsaReadingStatus,
@@ -634,5 +635,212 @@ impl ProsaApi for MockProsaClient {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::client::{state::ProsaStatistics, sync::ProsaBookSync};
+
+    fn annotation(annotation_id: &str) -> ProsaAnnotationRequest {
+        ProsaAnnotationRequest {
+            start_location: "OEBPS/chapter-001.xhtml#0/2/t1:44".to_owned(),
+            end_location: "OEBPS/chapter-001.xhtml#0/3/t0:12".to_owned(),
+            note: None,
+            annotation_id: Some(annotation_id.to_owned()),
+        }
+    }
+
+    #[test]
+    fn reads_back_what_was_written() {
+        let client = MockProsaClient::new();
+        client.seed_book("book");
+
+        client
+            .add_annotation("book", &annotation("annotation"), "key")
+            .expect("Failed to add annotation");
+
+        let listed = client
+            .list_annotations("book", "key")
+            .expect("Failed to list annotations");
+
+        assert_eq!(listed, vec!["annotation".to_owned()]);
+    }
+
+    #[test]
+    fn refuses_an_annotation_id_already_in_use() {
+        let client = MockProsaClient::new();
+        client.seed_book("book");
+
+        client
+            .add_annotation("book", &annotation("annotation"), "key")
+            .expect("Failed to add annotation");
+
+        let conflict = client.add_annotation("book", &annotation("annotation"), "key");
+
+        assert_eq!(conflict, Err(ClientError::Conflict));
+    }
+
+    #[test]
+    fn answers_not_found_for_an_unknown_book() {
+        let client = MockProsaClient::new();
+
+        assert_eq!(client.fetch_state("book", "key"), Err(ClientError::NotFound));
+    }
+
+    #[test]
+    fn records_every_call_with_its_key() {
+        let client = MockProsaClient::new();
+        let _ = client.fetch_metadata("book", "key");
+
+        assert_eq!(
+            client.calls_to(ProsaMethod::FetchMetadata),
+            vec![ProsaCall {
+                method: ProsaMethod::FetchMetadata,
+                arguments: vec!["book".to_owned()],
+                api_key: "key".to_owned(),
+            }]
+        );
+    }
+
+    #[test]
+    fn serves_the_book_data_it_was_seeded_with() {
+        let client = MockProsaClient::new();
+        client.seed_file("book", vec![1, 2, 3]);
+        client.seed_cover("book", vec![4, 5]);
+        client.seed_metadata(
+            "book",
+            ProsaMetadata {
+                title: Some("A Book".to_owned()),
+                ..ProsaMetadata::default()
+            },
+        );
+
+        assert_eq!(client.download_book("book", "key"), Ok(vec![1, 2, 3]));
+        assert_eq!(client.download_cover("book", "key"), Ok(vec![4, 5]));
+
+        let file_metadata = client
+            .fetch_book_file_metadata("book", "key")
+            .expect("Failed to fetch file metadata");
+
+        assert_eq!(file_metadata.file_size, 3);
+
+        let metadata = client
+            .fetch_metadata("book", "key")
+            .expect("Failed to fetch metadata");
+
+        assert_eq!(metadata.title.as_deref(), Some("A Book"));
+    }
+
+    #[test]
+    fn prefers_explicitly_seeded_file_metadata() {
+        let client = MockProsaClient::new();
+        client.seed_file("book", vec![1, 2, 3]);
+        client.seed_file_metadata(
+            "book",
+            ProsaBookFileMetadata {
+                owner_id: "someone".to_owned(),
+                file_size: 99,
+            },
+        );
+
+        let file_metadata = client
+            .fetch_book_file_metadata("book", "key")
+            .expect("Failed to fetch file metadata");
+
+        assert_eq!(file_metadata.owner_id, "someone");
+        assert_eq!(file_metadata.file_size, 99);
+    }
+
+    #[test]
+    fn keeps_the_reading_state_it_is_handed() {
+        let client = MockProsaClient::new();
+        client.seed_state(
+            "book",
+            ProsaState {
+                location: None,
+                statistics: ProsaStatistics {
+                    rating: None,
+                    reading_status: ProsaReadingStatus::Unread,
+                },
+            },
+        );
+
+        client
+            .patch_state(
+                "book",
+                Some("OEBPS/chapter-001.xhtml#0/2/t1:44"),
+                ProsaReadingStatus::Reading,
+                "key",
+            )
+            .expect("Failed to patch state");
+
+        client
+            .update_rating("book", 4, "key")
+            .expect("Failed to update rating");
+
+        let stored = client.stored_state("book").expect("Expected a stored state");
+
+        assert_eq!(
+            stored.location.as_deref(),
+            Some("OEBPS/chapter-001.xhtml#0/2/t1:44")
+        );
+        assert_eq!(stored.statistics.reading_status, ProsaReadingStatus::Reading);
+        assert_eq!(client.fetch_rating("book", "key"), Ok(Some(4)));
+    }
+
+    #[test]
+    fn hands_back_the_seeded_sync_response() {
+        let client = MockProsaClient::new();
+        client.seed_sync(ProsaSync {
+            new_sync_token: 42,
+            unsynced_books: ProsaBookSync {
+                file: vec!["book".to_owned()],
+                ..ProsaBookSync::default()
+            },
+            ..ProsaSync::default()
+        });
+
+        let sync = client.sync_device(Some(7), "key").expect("Failed to sync");
+
+        assert_eq!(sync.new_sync_token, 42);
+        assert_eq!(sync.unsynced_books.file, vec!["book".to_owned()]);
+        assert_eq!(
+            client.calls_to(ProsaMethod::SyncDevice)[0].arguments,
+            vec!["7".to_owned()]
+        );
+    }
+
+    #[test]
+    fn renames_a_shelf_in_place() {
+        let client = MockProsaClient::new();
+        client.seed_shelf("shelf", "Favourites", &[]);
+
+        client
+            .update_shelf_name("shelf", "Sci-Fi", "key")
+            .expect("Failed to rename shelf");
+
+        assert_eq!(client.stored_shelf_name("shelf").as_deref(), Some("Sci-Fi"));
+    }
+
+    #[test]
+    fn fails_on_demand_until_cleared() {
+        let client = MockProsaClient::new();
+        client.seed_shelf("shelf", "Favourites", &[]);
+        client.fail(ProsaMethod::GetShelfMetadata, ClientError::Forbidden);
+
+        assert_eq!(
+            client.get_shelf_metadata("shelf", "key"),
+            Err(ClientError::Forbidden)
+        );
+
+        client.succeed(ProsaMethod::GetShelfMetadata);
+
+        let metadata = client
+            .get_shelf_metadata("shelf", "key")
+            .expect("Failed to fetch shelf metadata");
+
+        assert_eq!(metadata.name, "Favourites");
     }
 }
