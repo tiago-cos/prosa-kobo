@@ -4,7 +4,10 @@ use super::{
     },
     service,
 };
-use crate::app::{AppState, Pool, authentication, devices::models::DeviceError, error::KoboError};
+use crate::{
+    CONFIG,
+    app::{AppState, Pool, authentication, devices::models::DeviceError, error::KoboError},
+};
 use axum::{
     Json,
     extract::{Path, State},
@@ -24,9 +27,9 @@ pub async fn device_auth_handler(
         service::add_unlinked_device(&state.pool, &device_id).await;
     }
 
-    let jwt_key_path = &state.config.auth.jwt_key_path;
-    let token_duration = state.config.auth.token_duration;
-    let refresh_token_duration = state.config.auth.refresh_token_duration;
+    let jwt_key_path = &CONFIG.auth.jwt_key_path;
+    let token_duration = CONFIG.auth.token_duration;
+    let refresh_token_duration = CONFIG.auth.refresh_token_duration;
 
     let regular_token = authentication::generate_jwt(jwt_key_path, &device_id, token_duration).await;
     let refresh_token = authentication::generate_jwt(jwt_key_path, &device_id, refresh_token_duration).await;
@@ -39,12 +42,11 @@ pub async fn device_auth_handler(
 }
 
 pub async fn refresh_token_handler(
-    State(state): State<AppState>,
     Json(body): Json<RefreshTokenRequest>,
 ) -> Result<impl IntoResponse, KoboError> {
-    let jwt_key_path = &state.config.auth.jwt_key_path;
-    let token_duration = state.config.auth.token_duration;
-    let refresh_token_duration = state.config.auth.refresh_token_duration;
+    let jwt_key_path = &CONFIG.auth.jwt_key_path;
+    let token_duration = CONFIG.auth.token_duration;
+    let refresh_token_duration = CONFIG.auth.refresh_token_duration;
     let device_id = authentication::verify_jwt(&body.refresh_token, jwt_key_path).await?;
 
     let regular_token = authentication::generate_jwt(jwt_key_path, &device_id, token_duration).await;

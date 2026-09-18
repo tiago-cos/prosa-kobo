@@ -2,9 +2,9 @@ use super::{
     annotations, authentication, books, covers, devices, initialization, metadata, proxy, state, sync,
 };
 use crate::{
+    CONFIG,
     app::{shelves, tracing},
     client::prosa::{Client, ProsaApi},
-    config::Configuration,
 };
 use axum::{Router, http::StatusCode, middleware::from_fn, routing::get};
 use log::{error, info, warn};
@@ -12,47 +12,42 @@ use sqlx::SqlitePool;
 use std::{process::exit, sync::Arc, time::Duration};
 use tokio::{net::TcpListener, time::sleep};
 
+/// The Prosa release this middleware is written against.
 const EXPECTED_PROSA_VERSION: &str = "0.2.0";
 
 const PROSA_RETRY_INTERVAL: Duration = Duration::from_secs(5);
 
-pub type Config = Arc<Configuration>;
 pub type Pool = Arc<SqlitePool>;
 pub type ProsaClient = Arc<dyn ProsaApi>;
 
 #[derive(Clone)]
 pub struct AppState {
-    pub config: Config,
     pub pool: Pool,
     pub prosa_client: ProsaClient,
 }
 
-pub async fn run(config: Configuration, pool: SqlitePool) {
+pub async fn run(pool: SqlitePool) {
     tracing::init_logging();
 
     let prosa_url = format!(
         "{}://{}:{}",
-        config.prosa.scheme, config.prosa.host, config.prosa.port
+        CONFIG.prosa.scheme, CONFIG.prosa.host, CONFIG.prosa.port
     );
 
     let prosa_client = Arc::new(Client::new(
-        &config.prosa.scheme,
-        &config.prosa.host,
-        config.prosa.port,
+        &CONFIG.prosa.scheme,
+        &CONFIG.prosa.host,
+        CONFIG.prosa.port,
     ));
 
     await_prosa(prosa_client.as_ref(), &prosa_url).await;
 
     let state = AppState {
         prosa_client,
-        config: Arc::new(config),
         pool: Arc::new(pool),
     };
 
-    let host = format!(
-        "{}:{}",
-        &state.config.server.bind.host, &state.config.server.bind.port
-    );
+    let host = format!("{}:{}", CONFIG.server.bind.host, CONFIG.server.bind.port);
 
     info!("Middleware started on http://{host}");
 
@@ -75,6 +70,8 @@ pub async fn run(config: Configuration, pool: SqlitePool) {
     axum::serve(listener, app).await.unwrap();
 }
 
+/// Holds startup until Prosa answers, then refuses to serve against a release
+/// this middleware does not speak.
 async fn await_prosa(client: &dyn ProsaApi, prosa_url: &str) {
     let health = loop {
         match client.health() {
@@ -105,6 +102,8 @@ async fn await_prosa(client: &dyn ProsaApi, prosa_url: &str) {
     );
 }
 
+/// Patch releases stay compatible, so only the major and minor have to match.
+/// A version that does not parse is treated as incompatible.
 fn is_compatible(reported: &str) -> bool {
     fn major_minor(version: &str) -> Option<(&str, &str)> {
         let mut parts = version.split('.');

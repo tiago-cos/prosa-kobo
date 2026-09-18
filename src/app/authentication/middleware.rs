@@ -1,5 +1,8 @@
 use super::{models::AuthError, service};
-use crate::app::{AppState, authentication::models::AuthToken, devices, error::KoboError};
+use crate::{
+    CONFIG,
+    app::{AppState, authentication::models::AuthToken, devices, error::KoboError},
+};
 use axum::{
     extract::{Request, State},
     http::{HeaderMap, HeaderValue},
@@ -16,7 +19,7 @@ pub async fn extract_token_middleware(
     let jwt_header = headers.get("Authorization");
 
     let device_id = match jwt_header {
-        Some(header) => handle_jwt(&state.config.auth.jwt_key_path, header).await?,
+        Some(header) => handle_jwt(&CONFIG.auth.jwt_key_path, header).await?,
         _ => Err(AuthError::MissingAuth)?,
     };
 

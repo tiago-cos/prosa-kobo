@@ -3,6 +3,7 @@ use super::{
     book::{BookClient, ProsaBookFileMetadata},
     cover::CoverClient,
     health::{HealthClient, ProsaHealth},
+    keys::KeysClient,
     metadata::{MetadataClient, ProsaMetadata},
     shelf::{ProsaShelfMetadata, ShelfClient},
     state::{ProsaReadingStatus, ProsaState, StateClient},
@@ -10,6 +11,7 @@ use super::{
 };
 use crate::app::AppState;
 use axum::extract::FromRef;
+use jsonwebtoken::jwk::JwkSet;
 use std::sync::Arc;
 use strum_macros::{EnumMessage, EnumProperty};
 use ureq::{Agent, Error};
@@ -46,6 +48,8 @@ pub enum ClientError {
 /// can stand a fake in front of the services instead of a live backend.
 pub trait ProsaApi: Send + Sync {
     fn health(&self) -> Result<ProsaHealth, ClientError>;
+
+    fn jwks(&self) -> Result<JwkSet, ClientError>;
 
     fn sync_device(&self, sync_token: Option<i64>, api_key: &str) -> Result<ProsaSync, ClientError>;
 
@@ -128,6 +132,7 @@ pub trait ProsaApi: Send + Sync {
 
 pub struct Client {
     health_client: HealthClient,
+    keys_client: KeysClient,
     sync_client: SyncClient,
     metadata_client: MetadataClient,
     state_client: StateClient,
@@ -144,6 +149,10 @@ impl Client {
 
         Client {
             health_client: HealthClient {
+                url: url.clone(),
+                agent: agent.clone(),
+            },
+            keys_client: KeysClient {
                 url: url.clone(),
                 agent: agent.clone(),
             },
@@ -182,6 +191,10 @@ impl Client {
 impl ProsaApi for Client {
     fn health(&self) -> Result<ProsaHealth, ClientError> {
         Ok(self.health_client.health()?)
+    }
+
+    fn jwks(&self) -> Result<JwkSet, ClientError> {
+        Ok(self.keys_client.jwks()?)
     }
 
     fn sync_device(&self, sync_token: Option<i64>, api_key: &str) -> Result<ProsaSync, ClientError> {

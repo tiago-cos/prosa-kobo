@@ -5,7 +5,7 @@ type JwtError = jsonwebtoken::errors::Error;
 type JwtErrorKind = jsonwebtoken::errors::ErrorKind;
 
 #[rustfmt::skip]
-#[derive(EnumMessage, EnumProperty, Debug)]
+#[derive(EnumMessage, EnumProperty, Debug, PartialEq, Eq)]
 pub enum AuthError {
     #[strum(message = "ExpiredToken", detailed_message = "Expired token")]
     #[strum(props(StatusCode = "401"))]
@@ -37,7 +37,9 @@ impl From<JwtError> for AuthError {
     fn from(err: JwtError) -> Self {
         match err.kind() {
             JwtErrorKind::ExpiredSignature => AuthError::ExpiredToken,
-            JwtErrorKind::InvalidToken => AuthError::InvalidToken,
+            JwtErrorKind::InvalidToken | JwtErrorKind::InvalidIssuer | JwtErrorKind::InvalidAlgorithm => {
+                AuthError::InvalidToken
+            }
             JwtErrorKind::InvalidSignature => AuthError::InvalidSignature,
             _ => AuthError::InternalError,
         }
@@ -54,6 +56,47 @@ pub struct JWTClaims {
 pub struct AuthToken {
     pub device_id: String,
     pub api_key: String,
+}
+
+pub const PROSA_ISSUER: &str = "prosa";
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub enum ProsaRole {
+    Admin(String),
+    User(String),
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ProsaJWTClaims {
+    pub role: ProsaRole,
+    pub capabilities: Vec<String>,
+    pub exp: u64,
+    pub session_id: String,
+    pub iss: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ProsaToken {
+    pub user_id: String,
+    pub is_admin: bool,
+    pub capabilities: Vec<String>,
+    pub session_id: String,
+}
+
+impl From<ProsaJWTClaims> for ProsaToken {
+    fn from(claims: ProsaJWTClaims) -> Self {
+        let (user_id, is_admin) = match claims.role {
+            ProsaRole::Admin(user_id) => (user_id, true),
+            ProsaRole::User(user_id) => (user_id, false),
+        };
+
+        Self {
+            user_id,
+            is_admin,
+            capabilities: claims.capabilities,
+            session_id: claims.session_id,
+        }
+    }
 }
 
 pub const OAUTH_CONFIGS: &str = r#"{ "token_endpoint": "{host}/oauth/connect/token?device_id={device_id}" }"#;

@@ -18,6 +18,7 @@ use super::{
     state::ProsaState,
     sync::ProsaSync,
 };
+use jsonwebtoken::jwk::JwkSet;
 use std::{
     collections::HashMap,
     sync::{Mutex, MutexGuard},
@@ -28,6 +29,7 @@ const POISONED: &str = "Mock lock poisoned";
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum ProsaMethod {
     Health,
+    Jwks,
     SyncDevice,
     FetchMetadata,
     FetchBookFileMetadata,
@@ -83,6 +85,7 @@ struct MockLibrary {
     books: HashMap<String, MockBook>,
     shelves: HashMap<String, MockShelf>,
     health: Option<ProsaHealth>,
+    jwks: Option<JwkSet>,
     sync: ProsaSync,
     next_id: u32,
 }
@@ -199,6 +202,11 @@ impl MockProsaClient {
         self
     }
 
+    pub fn seed_jwks(&self, jwks: JwkSet) -> &Self {
+        self.library().jwks = Some(jwks);
+        self
+    }
+
     pub fn seed_sync(&self, sync: ProsaSync) -> &Self {
         self.library().sync = sync;
         self
@@ -283,6 +291,12 @@ impl ProsaApi for MockProsaClient {
         self.record(ProsaMethod::Health, &[], "")?;
 
         self.library().health.clone().ok_or(ClientError::InternalError)
+    }
+
+    fn jwks(&self) -> Result<JwkSet, ClientError> {
+        self.record(ProsaMethod::Jwks, &[], "")?;
+
+        self.library().jwks.clone().ok_or(ClientError::InternalError)
     }
 
     fn sync_device(&self, sync_token: Option<i64>, api_key: &str) -> Result<ProsaSync, ClientError> {
@@ -765,6 +779,23 @@ mod tests {
 
         assert_eq!(file_metadata.owner_id, "someone");
         assert_eq!(file_metadata.file_size, 99);
+    }
+
+    #[test]
+    fn hands_back_the_seeded_signing_keys() {
+        let client = MockProsaClient::new();
+        let jwks: JwkSet = serde_json::from_str(
+            r#"{"keys":[{"kty":"RSA","alg":"RS256","use":"sig","kid":"prosa-key-1","n":"AQAB","e":"AQAB"}]}"#,
+        )
+        .expect("Failed to parse test JWKS");
+
+        client.seed_jwks(jwks);
+
+        let served = client.jwks().expect("Failed to fetch signing keys");
+
+        assert_eq!(served.keys.len(), 1);
+        assert_eq!(served.keys[0].common.key_id.as_deref(), Some("prosa-key-1"));
+        assert_eq!(client.call_count(ProsaMethod::Jwks), 1);
     }
 
     #[test]

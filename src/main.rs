@@ -9,22 +9,23 @@
 
 use crate::app::generate_jwt_secret;
 use config::Configuration;
-use std::{io::Error, path::Path};
+use std::{io::Error, path::Path, sync::LazyLock};
 use tokio::fs;
 mod app;
 mod client;
 mod config;
 mod database;
 
+static CONFIG: LazyLock<Configuration> =
+    LazyLock::new(|| Configuration::new().expect("Failed to load configuration"));
+
 #[tokio::main]
 async fn main() {
-    let config = Configuration::new().unwrap();
+    create_parent_dir(&CONFIG.database.file_path).await.unwrap();
+    create_parent_dir(&CONFIG.auth.jwt_key_path).await.unwrap();
+    generate_jwt_secret(&CONFIG.auth.jwt_key_path).await.unwrap();
 
-    create_parent_dir(&config.database.file_path).await.unwrap();
-    create_parent_dir(&config.auth.jwt_key_path).await.unwrap();
-    generate_jwt_secret(&config.auth.jwt_key_path).await.unwrap();
-
-    let db_pool = database::init(&config.database.file_path).await;
+    let db_pool = database::init(&CONFIG.database.file_path).await;
 
     println!(
         r"
@@ -39,7 +40,7 @@ async fn main() {
         "
     );
 
-    app::run(config, db_pool).await;
+    app::run(db_pool).await;
 }
 
 async fn create_parent_dir(path: &str) -> Result<(), Error> {
