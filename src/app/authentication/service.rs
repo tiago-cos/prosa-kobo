@@ -11,12 +11,17 @@ use rand::{TryRngCore, rngs::OsRng};
 use serde_json::Value;
 use std::{
     collections::HashMap,
-    io::Error,
+    fs,
     path::Path,
     sync::LazyLock,
     time::{SystemTime, UNIX_EPOCH},
 };
-use tokio::fs;
+
+static ENCODING_KEY: LazyLock<EncodingKey> =
+    LazyLock::new(|| EncodingKey::from_secret(&load_or_generate_jwt_secret()));
+
+static DECODING_KEY: LazyLock<DecodingKey> =
+    LazyLock::new(|| DecodingKey::from_secret(&load_or_generate_jwt_secret()));
 
 static PROSA_KEYS: LazyLock<HashMap<String, DecodingKey>> = LazyLock::new(|| {
     let client = Client::new(&CONFIG.prosa.scheme, &CONFIG.prosa.host, CONFIG.prosa.port);
@@ -26,31 +31,28 @@ static PROSA_KEYS: LazyLock<HashMap<String, DecodingKey>> = LazyLock::new(|| {
     decoding_keys(&jwks)
 });
 
-#[rustfmt::skip]
-pub async fn generate_jwt(jwt_key_path: &str, device_id: &str, duration: u64) -> String {
+pub fn generate_jwt(device_id: &str, duration: u64) -> String {
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("Failed to get time since epoch")
         .as_secs();
 
-    let claims = JWTClaims { device_id: device_id.to_string(), exp: now + duration };
+    let claims = JWTClaims {
+        device_id: device_id.to_string(),
+        exp: now + duration,
+    };
 
-    let token = jsonwebtoken::encode(
-        &Header::default(),
-        &claims,
-        &EncodingKey::from_secret(&read_jwt_secret(jwt_key_path).await),
-    )
-    .expect("Failed to encode token");
+    let token =
+        jsonwebtoken::encode(&Header::default(), &claims, &ENCODING_KEY).expect("Failed to encode token");
 
     BASE64_STANDARD.encode(token)
 }
 
-pub async fn verify_jwt(token: &str, jwt_key_path: &str) -> Result<String, AuthError> {
+pub fn verify_jwt(token: &str) -> Result<String, AuthError> {
     let token = BASE64_STANDARD.decode(token).or(Err(AuthError::InvalidToken))?;
-    let token = String::from_utf8(token).expect("Failed to convert token to string");
-    let key = DecodingKey::from_secret(&read_jwt_secret(jwt_key_path).await);
+    let token = String::from_utf8(token).or(Err(AuthError::InvalidToken))?;
     let validation = Validation::default();
-    let token = jsonwebtoken::decode::<JWTClaims>(&token, &key, &validation)?;
+    let token = jsonwebtoken::decode::<JWTClaims>(&token, &DECODING_KEY, &validation)?;
 
     Ok(token.claims.device_id)
 }
@@ -105,20 +107,21 @@ pub fn generate_oauth_token(jwt_token: &str, jwt_duration: u64) -> Value {
     serde_json::from_str(&json_string).expect("Failed to parse JSON")
 }
 
-pub async fn generate_jwt_secret(path: &str) -> Result<(), Error> {
-    let path = Path::new(path);
+fn load_or_generate_jwt_secret() -> Vec<u8> {
+    let path = Path::new(&CONFIG.auth.jwt_key_path);
+
+    if path.exists() {
+        return fs::read(path).expect("Failed to read JWT secret");
+    }
 
     let mut key = [0u8; 32];
-    OsRng.try_fill_bytes(&mut key).unwrap();
+    OsRng
+        .try_fill_bytes(&mut key)
+        .expect("Failed to generate JWT secret");
 
-    fs::write(path, &key).await?;
+    fs::write(path, key).expect("Failed to write JWT secret");
 
-    Ok(())
-}
-
-pub async fn read_jwt_secret(path: &str) -> Vec<u8> {
-    let path = Path::new(path);
-    fs::read(path).await.expect("Failed to read JWT secret file")
+    key.to_vec()
 }
 
 #[cfg(test)]

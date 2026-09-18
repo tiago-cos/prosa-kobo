@@ -7,7 +7,6 @@
 #![allow(clippy::cast_possible_truncation)]
 #![allow(clippy::cast_sign_loss)]
 
-use crate::app::generate_jwt_secret;
 use config::Configuration;
 use std::{io::Error, path::Path, sync::LazyLock};
 use tokio::fs;
@@ -23,7 +22,6 @@ static CONFIG: LazyLock<Configuration> =
 async fn main() {
     create_parent_dir(&CONFIG.database.file_path).await.unwrap();
     create_parent_dir(&CONFIG.auth.jwt_key_path).await.unwrap();
-    generate_jwt_secret(&CONFIG.auth.jwt_key_path).await.unwrap();
 
     let db_pool = database::init(&CONFIG.database.file_path).await;
 

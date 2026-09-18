@@ -27,12 +27,8 @@ pub async fn device_auth_handler(
         service::add_unlinked_device(&state.pool, &device_id).await;
     }
 
-    let jwt_key_path = &CONFIG.auth.jwt_key_path;
-    let token_duration = CONFIG.auth.token_duration;
-    let refresh_token_duration = CONFIG.auth.refresh_token_duration;
-
-    let regular_token = authentication::generate_jwt(jwt_key_path, &device_id, token_duration).await;
-    let refresh_token = authentication::generate_jwt(jwt_key_path, &device_id, refresh_token_duration).await;
+    let regular_token = authentication::generate_jwt(&device_id, CONFIG.auth.token_duration);
+    let refresh_token = authentication::generate_jwt(&device_id, CONFIG.auth.refresh_token_duration);
 
     Json(DeviceAuthResponse::new(
         &regular_token,
@@ -44,13 +40,10 @@ pub async fn device_auth_handler(
 pub async fn refresh_token_handler(
     Json(body): Json<RefreshTokenRequest>,
 ) -> Result<impl IntoResponse, KoboError> {
-    let jwt_key_path = &CONFIG.auth.jwt_key_path;
-    let token_duration = CONFIG.auth.token_duration;
-    let refresh_token_duration = CONFIG.auth.refresh_token_duration;
-    let device_id = authentication::verify_jwt(&body.refresh_token, jwt_key_path).await?;
+    let device_id = authentication::verify_jwt(&body.refresh_token)?;
 
-    let regular_token = authentication::generate_jwt(jwt_key_path, &device_id, token_duration).await;
-    let refresh_token = authentication::generate_jwt(jwt_key_path, &device_id, refresh_token_duration).await;
+    let regular_token = authentication::generate_jwt(&device_id, CONFIG.auth.token_duration);
+    let refresh_token = authentication::generate_jwt(&device_id, CONFIG.auth.refresh_token_duration);
 
     Ok(Json(RefreshTokenResponse::new(&regular_token, &refresh_token)))
 }

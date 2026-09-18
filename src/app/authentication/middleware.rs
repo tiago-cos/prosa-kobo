@@ -1,8 +1,5 @@
 use super::{models::AuthError, service};
-use crate::{
-    CONFIG,
-    app::{AppState, authentication::models::AuthToken, devices, error::KoboError},
-};
+use crate::app::{AppState, authentication::models::AuthToken, devices, error::KoboError};
 use axum::{
     extract::{Request, State},
     http::{HeaderMap, HeaderValue},
@@ -19,7 +16,7 @@ pub async fn extract_token_middleware(
     let jwt_header = headers.get("Authorization");
 
     let device_id = match jwt_header {
-        Some(header) => handle_jwt(&CONFIG.auth.jwt_key_path, header).await?,
+        Some(header) => handle_jwt(header)?,
         _ => Err(AuthError::MissingAuth)?,
     };
 
@@ -35,7 +32,7 @@ pub async fn extract_token_middleware(
     Ok(next.run(request).await)
 }
 
-async fn handle_jwt(jwt_key_path: &str, header: &HeaderValue) -> Result<String, AuthError> {
+fn handle_jwt(header: &HeaderValue) -> Result<String, AuthError> {
     let header = header.to_str().expect("Failed to convert jwt header to string");
 
     let (_, token) = header
@@ -45,7 +42,7 @@ async fn handle_jwt(jwt_key_path: &str, header: &HeaderValue) -> Result<String, 
         .map(|parts| (parts[0], parts[1]))
         .ok_or(AuthError::InvalidAuthHeader)?;
 
-    let device_id = service::verify_jwt(token, jwt_key_path).await?;
+    let device_id = service::verify_jwt(token)?;
 
     Ok(device_id)
 }
