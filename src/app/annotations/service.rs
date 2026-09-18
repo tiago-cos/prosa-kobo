@@ -95,3 +95,94 @@ pub fn patch_annotations(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        app::annotations::models::{Annotation, AnnotationLocation, AnnotationSpan},
+        client::mock::{MockProsaClient, ProsaMethod},
+    };
+
+    fn prosa_annotation(note: Option<&str>) -> ProsaAnnotation {
+        ProsaAnnotation {
+            annotation_id: "annotation".to_owned(),
+            start_location: "OEBPS/chapter-001.xhtml#0/2/t1:44".to_owned(),
+            end_location: "OEBPS/chapter-001.xhtml#0/3/t0:12".to_owned(),
+            note: note.map(str::to_owned),
+        }
+    }
+
+    fn kobo_annotation(note: Option<&str>) -> Annotation {
+        Annotation {
+            client_last_modified_utc: "2026-01-01T00:00:00.0000000Z".to_owned(),
+            id: "annotation".to_owned(),
+            location: AnnotationLocation {
+                span: AnnotationSpan {
+                    chapter_filename: "OEBPS/chapter-001.xhtml".to_owned(),
+                    end_char: 13,
+                    end_path: "0/3/t0".to_owned(),
+                    start_char: 44,
+                    start_path: "0/2/t1".to_owned(),
+                },
+            },
+            note_text: note.map(str::to_owned),
+            r#type: "note".to_owned(),
+        }
+    }
+
+    #[test]
+    fn creates_an_annotation_under_the_id_the_device_chose() {
+        let client = MockProsaClient::new();
+        client.seed_book("book");
+
+        let request = PatchAnnotationsRequest {
+            updated_annotations: Some(vec![kobo_annotation(Some("A note"))]),
+            deleted_annotation_ids: None,
+        };
+
+        patch_annotations(&client, "book", request, "key").expect("Failed to patch annotations");
+
+        let stored = client.stored_annotations("book");
+        let annotation = stored.first().expect("Expected one annotation");
+
+        assert_eq!(annotation.annotation_id, "annotation");
+        assert_eq!(annotation.note.as_deref(), Some("A note"));
+        assert_eq!(client.call_count(ProsaMethod::PatchAnnotation), 0);
+    }
+
+    #[test]
+    fn updates_the_note_when_the_annotation_already_exists() {
+        let client = MockProsaClient::new();
+        client.seed_annotation("book", prosa_annotation(None));
+
+        let request = PatchAnnotationsRequest {
+            updated_annotations: Some(vec![kobo_annotation(Some("A later note"))]),
+            deleted_annotation_ids: None,
+        };
+
+        patch_annotations(&client, "book", request, "key").expect("Failed to patch annotations");
+
+        let stored = client.stored_annotations("book");
+        let annotation = stored.first().expect("Expected one annotation");
+
+        assert_eq!(stored.len(), 1);
+        assert_eq!(annotation.note.as_deref(), Some("A later note"));
+        assert_eq!(client.call_count(ProsaMethod::PatchAnnotation), 1);
+    }
+
+    #[test]
+    fn deletes_the_annotations_the_device_removed() {
+        let client = MockProsaClient::new();
+        client.seed_annotation("book", prosa_annotation(None));
+
+        let request = PatchAnnotationsRequest {
+            updated_annotations: None,
+            deleted_annotation_ids: Some(vec!["annotation".to_owned()]),
+        };
+
+        patch_annotations(&client, "book", request, "key").expect("Failed to patch annotations");
+
+        assert!(client.stored_annotations("book").is_empty());
+    }
+}
