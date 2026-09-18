@@ -68,3 +68,50 @@ impl Display for ProsaLocation {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_a_character_location() {
+        let location: ProsaLocation = "OEBPS/chapter-001.xhtml#0/2/t1:44"
+            .parse()
+            .expect("Failed to parse location");
+
+        assert_eq!(
+            location,
+            ProsaLocation::new("OEBPS/chapter-001.xhtml", "0/2/t1", Some(44))
+        );
+    }
+
+    #[test]
+    fn parses_an_element_location() {
+        let location: ProsaLocation = "OEBPS/cover.xhtml#0/0".parse().expect("Failed to parse location");
+
+        assert_eq!(location, ProsaLocation::new("OEBPS/cover.xhtml", "0/0", None));
+    }
+
+    #[test]
+    fn parses_a_location_with_an_empty_element_path() {
+        let location: ProsaLocation = "chapter.xhtml#t0:5".parse().expect("Failed to parse location");
+
+        assert_eq!(location, ProsaLocation::new("chapter.xhtml", "t0", Some(5)));
+    }
+
+    #[test]
+    fn rejects_a_location_without_a_fragment() {
+        let location = "OEBPS/chapter-001.xhtml".parse::<ProsaLocation>();
+
+        assert_eq!(location, Err(ProsaLocationError::MissingFragment));
+    }
+
+    #[test]
+    fn round_trips_through_display() {
+        for raw in ["OEBPS/chapter-001.xhtml#0/2/t1:44", "OEBPS/cover.xhtml#0/0"] {
+            let location: ProsaLocation = raw.parse().expect("Failed to parse location");
+
+            assert_eq!(location.to_string(), raw);
+        }
+    }
+}
