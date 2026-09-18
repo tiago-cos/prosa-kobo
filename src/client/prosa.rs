@@ -2,6 +2,7 @@ use super::{
     annotations::{AnnotationsClient, ProsaAnnotation, ProsaAnnotationRequest},
     book::{BookClient, ProsaBookFileMetadata},
     cover::CoverClient,
+    health::{HealthClient, ProsaHealth},
     metadata::{MetadataClient, ProsaMetadata},
     shelf::{ProsaShelfMetadata, ShelfClient},
     state::{ProsaReadingStatus, ProsaState, StateClient},
@@ -44,6 +45,8 @@ pub enum ClientError {
 /// The slice of the Prosa API the middleware speaks, kept as a trait so tests
 /// can stand a fake in front of the services instead of a live backend.
 pub trait ProsaApi: Send + Sync {
+    fn health(&self) -> Result<ProsaHealth, ClientError>;
+
     fn sync_device(&self, sync_token: Option<i64>, api_key: &str) -> Result<ProsaSync, ClientError>;
 
     fn fetch_metadata(&self, book_id: &str, api_key: &str) -> Result<ProsaMetadata, ClientError>;
@@ -124,6 +127,7 @@ pub trait ProsaApi: Send + Sync {
 }
 
 pub struct Client {
+    health_client: HealthClient,
     sync_client: SyncClient,
     metadata_client: MetadataClient,
     state_client: StateClient,
@@ -139,6 +143,10 @@ impl Client {
         let url = format!("{scheme}://{url}:{port}");
 
         Client {
+            health_client: HealthClient {
+                url: url.clone(),
+                agent: agent.clone(),
+            },
             sync_client: SyncClient {
                 url: url.clone(),
                 agent: agent.clone(),
@@ -172,6 +180,10 @@ impl Client {
 }
 
 impl ProsaApi for Client {
+    fn health(&self) -> Result<ProsaHealth, ClientError> {
+        Ok(self.health_client.health()?)
+    }
+
     fn sync_device(&self, sync_token: Option<i64>, api_key: &str) -> Result<ProsaSync, ClientError> {
         Ok(self.sync_client.sync_device(sync_token, api_key)?)
     }

@@ -12,6 +12,7 @@
 use super::{
     ProsaAnnotation, ProsaAnnotationRequest, ProsaMetadata, ProsaReadingStatus,
     book::ProsaBookFileMetadata,
+    health::ProsaHealth,
     prosa::{ClientError, ProsaApi},
     shelf::ProsaShelfMetadata,
     state::ProsaState,
@@ -26,6 +27,7 @@ const POISONED: &str = "Mock lock poisoned";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum ProsaMethod {
+    Health,
     SyncDevice,
     FetchMetadata,
     FetchBookFileMetadata,
@@ -80,6 +82,7 @@ struct MockShelf {
 struct MockLibrary {
     books: HashMap<String, MockBook>,
     shelves: HashMap<String, MockShelf>,
+    health: Option<ProsaHealth>,
     sync: ProsaSync,
     next_id: u32,
 }
@@ -191,6 +194,11 @@ impl MockProsaClient {
         self
     }
 
+    pub fn seed_health(&self, health: ProsaHealth) -> &Self {
+        self.library().health = Some(health);
+        self
+    }
+
     pub fn seed_sync(&self, sync: ProsaSync) -> &Self {
         self.library().sync = sync;
         self
@@ -271,6 +279,12 @@ impl MockProsaClient {
 }
 
 impl ProsaApi for MockProsaClient {
+    fn health(&self) -> Result<ProsaHealth, ClientError> {
+        self.record(ProsaMethod::Health, &[], "")?;
+
+        self.library().health.clone().ok_or(ClientError::InternalError)
+    }
+
     fn sync_device(&self, sync_token: Option<i64>, api_key: &str) -> Result<ProsaSync, ClientError> {
         let token = sync_token.map(|token| token.to_string()).unwrap_or_default();
         self.record(ProsaMethod::SyncDevice, &[&token], api_key)?;
@@ -751,6 +765,21 @@ mod tests {
 
         assert_eq!(file_metadata.owner_id, "someone");
         assert_eq!(file_metadata.file_size, 99);
+    }
+
+    #[test]
+    fn reports_the_health_it_was_seeded_with() {
+        let client = MockProsaClient::new();
+        client.seed_health(ProsaHealth {
+            status: "ok".to_owned(),
+            software: "prosa".to_owned(),
+            version: "0.2.0".to_owned(),
+        });
+
+        let health = client.health().expect("Failed to fetch health");
+
+        assert_eq!(health.version, "0.2.0");
+        assert_eq!(client.call_count(ProsaMethod::Health), 1);
     }
 
     #[test]

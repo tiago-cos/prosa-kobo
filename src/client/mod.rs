@@ -1,6 +1,7 @@
 pub mod annotations;
 pub mod book;
 pub mod cover;
+pub mod health;
 pub mod location;
 pub mod metadata;
 pub mod prosa;
