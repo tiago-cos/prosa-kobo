@@ -30,6 +30,10 @@ pub enum DeviceError {
     #[strum(detailed_message = "The api key must be provided.")]
     #[strum(props(StatusCode = "400"))]
     MissingApiKey,
+    #[strum(message = "InsufficientApiKey")]
+    #[strum(detailed_message = "The provided api key does not grant read access.")]
+    #[strum(props(StatusCode = "400"))]
+    InsufficientApiKey,
     #[strum(message = "Internal error")]
     #[strum(props(StatusCode = "500"))]
     InternalError,

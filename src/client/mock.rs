@@ -13,6 +13,7 @@ use super::{
     ProsaAnnotation, ProsaAnnotationRequest, ProsaMetadata, ProsaReadingStatus,
     book::ProsaBookFileMetadata,
     health::ProsaHealth,
+    identity::ProsaIdentity,
     prosa::{ClientError, ProsaApi},
     shelf::ProsaShelfMetadata,
     state::ProsaState,
@@ -30,6 +31,7 @@ const POISONED: &str = "Mock lock poisoned";
 pub enum ProsaMethod {
     Health,
     Jwks,
+    Identity,
     SyncDevice,
     FetchMetadata,
     FetchBookFileMetadata,
@@ -86,6 +88,7 @@ struct MockLibrary {
     shelves: HashMap<String, MockShelf>,
     health: Option<ProsaHealth>,
     jwks: Option<JwkSet>,
+    identities: HashMap<String, ProsaIdentity>,
     sync: ProsaSync,
     next_id: u32,
 }
@@ -202,6 +205,12 @@ impl MockProsaClient {
         self
     }
 
+    pub fn seed_identity(&self, api_key: &str, identity: ProsaIdentity) -> &Self {
+        self.library().identities.insert(api_key.to_owned(), identity);
+
+        self
+    }
+
     pub fn seed_jwks(&self, jwks: JwkSet) -> &Self {
         self.library().jwks = Some(jwks);
         self
@@ -297,6 +306,16 @@ impl ProsaApi for MockProsaClient {
         self.record(ProsaMethod::Jwks, &[], "")?;
 
         self.library().jwks.clone().ok_or(ClientError::InternalError)
+    }
+
+    fn identity(&self, api_key: &str) -> Result<ProsaIdentity, ClientError> {
+        self.record(ProsaMethod::Identity, &[], api_key)?;
+
+        self.library()
+            .identities
+            .get(api_key)
+            .cloned()
+            .ok_or(ClientError::Unauthorized)
     }
 
     fn sync_device(&self, sync_token: Option<i64>, api_key: &str) -> Result<ProsaSync, ClientError> {

@@ -2,6 +2,7 @@ pub mod annotations;
 pub mod book;
 pub mod cover;
 pub mod health;
+pub mod identity;
 pub mod keys;
 pub mod location;
 pub mod metadata;

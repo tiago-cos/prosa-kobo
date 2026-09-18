@@ -11,7 +11,7 @@ use crate::{
 use axum::{
     Json,
     extract::{Path, State},
-    http::HeaderMap,
+    http::{HeaderMap, StatusCode},
     response::IntoResponse,
 };
 
@@ -53,11 +53,18 @@ pub async fn get_unlinked_devices_handler(State(pool): State<Pool>) -> impl Into
 }
 
 pub async fn link_device_handler(
-    State(pool): State<Pool>,
+    State(state): State<AppState>,
     Json(body): Json<LinkDeviceRequest>,
-) -> Result<(), KoboError> {
-    service::link_device(&pool, &body.device_id, &body.api_key).await?;
-    Ok(())
+) -> Result<StatusCode, KoboError> {
+    service::link_device(
+        &state.pool,
+        state.prosa_client.as_ref(),
+        &body.device_id,
+        &body.api_key,
+    )
+    .await?;
+
+    Ok(StatusCode::NO_CONTENT)
 }
 
 pub async fn get_linked_devices_handler(
@@ -70,6 +77,7 @@ pub async fn get_linked_devices_handler(
         .ok_or(DeviceError::MissingApiKey)?;
 
     let device_list = service::get_linked_devices(&pool, api_key).await?;
+
     Ok(Json(device_list))
 }
 
@@ -77,12 +85,13 @@ pub async fn unlink_device_handler(
     State(pool): State<Pool>,
     headers: HeaderMap,
     Path(device_id): Path<String>,
-) -> Result<(), KoboError> {
+) -> Result<StatusCode, KoboError> {
     let api_key = headers
         .get("api-key")
         .and_then(|value| value.to_str().ok())
         .ok_or(DeviceError::MissingApiKey)?;
 
     service::unlink_device(&pool, &device_id, api_key).await?;
-    Ok(())
+
+    Ok(StatusCode::NO_CONTENT)
 }

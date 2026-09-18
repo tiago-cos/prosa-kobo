@@ -3,6 +3,7 @@ use super::{
     book::{BookClient, ProsaBookFileMetadata},
     cover::CoverClient,
     health::{HealthClient, ProsaHealth},
+    identity::{IdentityClient, ProsaIdentity},
     keys::KeysClient,
     metadata::{MetadataClient, ProsaMetadata},
     shelf::{ProsaShelfMetadata, ShelfClient},
@@ -50,6 +51,8 @@ pub trait ProsaApi: Send + Sync {
     fn health(&self) -> Result<ProsaHealth, ClientError>;
 
     fn jwks(&self) -> Result<JwkSet, ClientError>;
+
+    fn identity(&self, api_key: &str) -> Result<ProsaIdentity, ClientError>;
 
     fn sync_device(&self, sync_token: Option<i64>, api_key: &str) -> Result<ProsaSync, ClientError>;
 
@@ -132,6 +135,7 @@ pub trait ProsaApi: Send + Sync {
 
 pub struct Client {
     health_client: HealthClient,
+    identity_client: IdentityClient,
     keys_client: KeysClient,
     sync_client: SyncClient,
     metadata_client: MetadataClient,
@@ -149,6 +153,10 @@ impl Client {
 
         Client {
             health_client: HealthClient {
+                url: url.clone(),
+                agent: agent.clone(),
+            },
+            identity_client: IdentityClient {
                 url: url.clone(),
                 agent: agent.clone(),
             },
@@ -195,6 +203,10 @@ impl ProsaApi for Client {
 
     fn jwks(&self) -> Result<JwkSet, ClientError> {
         Ok(self.keys_client.jwks()?)
+    }
+
+    fn identity(&self, api_key: &str) -> Result<ProsaIdentity, ClientError> {
+        Ok(self.identity_client.identity(api_key)?)
     }
 
     fn sync_device(&self, sync_token: Option<i64>, api_key: &str) -> Result<ProsaSync, ClientError> {

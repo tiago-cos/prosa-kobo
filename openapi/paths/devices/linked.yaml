@@ -31,6 +31,10 @@ post:
   description: |
     Links a device to a user account using a Prosa API key.  
     The device must have previously contacted the middleware before it can be linked.
+
+    The key is checked against Prosa before the link is stored, so a key that
+    has been revoked, has expired, or was mistyped is refused here rather than
+    failing the first time the device syncs.
   operationId: link_device
 
   requestBody:
@@ -44,7 +48,7 @@ post:
     '204':
       description: Device successfully linked.
     '400':
-      description: Invalid API key.
+      description: The API key is missing, malformed, unknown to Prosa, or does not grant read access.
     '404':
       description: Device not found (never contacted the server).
     '409':
