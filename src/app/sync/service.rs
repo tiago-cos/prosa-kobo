@@ -32,7 +32,7 @@ pub async fn translate_sync(
     // Handle books
 
     for book_id in &books.cover {
-        covers::update_token(pool, book_id, device_id).await;
+        covers::bump_version(pool, device_id, book_id).await;
     }
 
     let mut books_to_update: HashSet<String> = books.file.into_iter().collect();

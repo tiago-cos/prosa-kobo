@@ -1,25 +1,10 @@
 use sqlx::SqlitePool;
 
-pub async fn add_token(pool: &SqlitePool, book_id: &str, token: &str, device_id: &str) -> () {
-    sqlx::query(
+pub async fn get_version(pool: &SqlitePool, device_id: &str, book_id: &str) -> Option<i64> {
+    sqlx::query_scalar(
         r"
-        INSERT INTO cover_tokens (book_id, token, device_id)
-        VALUES ($1, $2, $3)
-        ",
-    )
-    .bind(book_id)
-    .bind(token)
-    .bind(device_id)
-    .execute(pool)
-    .await
-    .expect("Failed to add cover token");
-}
-
-pub async fn get_token(pool: &SqlitePool, device_id: &str, book_id: &str) -> Option<String> {
-    let token: Option<String> = sqlx::query_scalar(
-        r"
-        SELECT token
-        FROM cover_tokens
+        SELECT version
+        FROM cover_versions
         WHERE device_id = $1 AND book_id = $2
         ",
     )
@@ -27,21 +12,20 @@ pub async fn get_token(pool: &SqlitePool, device_id: &str, book_id: &str) -> Opt
     .bind(book_id)
     .fetch_optional(pool)
     .await
-    .expect("Failed to get cover token");
-
-    token
+    .expect("Failed to get cover version")
 }
 
-pub async fn delete_token(pool: &SqlitePool, book_id: &str, device_id: &str) -> () {
+pub async fn bump_version(pool: &SqlitePool, device_id: &str, book_id: &str) {
     sqlx::query(
         r"
-        DELETE FROM cover_tokens
-        WHERE book_id = $1 AND device_id = $2
+        INSERT INTO cover_versions (device_id, book_id, version)
+        VALUES ($1, $2, 1)
+        ON CONFLICT(device_id, book_id) DO UPDATE SET version = version + 1
         ",
     )
-    .bind(book_id)
     .bind(device_id)
+    .bind(book_id)
     .execute(pool)
     .await
-    .expect("Failed to delete cover token");
+    .expect("Failed to bump cover version");
 }

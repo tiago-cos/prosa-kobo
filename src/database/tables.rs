@@ -11,11 +11,11 @@ pub async fn create_tables(pool: &SqlitePool) {
             api_key TEXT NOT NULL
         );
 
-        CREATE TABLE IF NOT EXISTS cover_tokens (
-            book_id TEXT NOT NULL,
-            token TEXT NOT NULL,
+        CREATE TABLE IF NOT EXISTS cover_versions (
             device_id TEXT NOT NULL,
-            PRIMARY KEY(book_id, token)
+            book_id TEXT NOT NULL,
+            version INTEGER NOT NULL,
+            PRIMARY KEY(device_id, book_id)
         );
 
         CREATE TABLE IF NOT EXISTS etags (
@@ -32,7 +32,7 @@ pub async fn create_tables(pool: &SqlitePool) {
 pub async fn clear_tables(pool: &SqlitePool) {
     sqlx::query(
         r"
-        DROP TABLE IF EXISTS cover_tokens;
+        DROP TABLE IF EXISTS cover_versions;
         DROP TABLE IF EXISTS linked_devices;
         DROP TABLE IF EXISTS etags;
         ",
