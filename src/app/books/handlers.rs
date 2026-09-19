@@ -1,25 +1,19 @@
 use super::service;
-use crate::app::{
-    AppState, annotations, authentication::AuthToken, books::models::BookTokenError, error::KoboError,
-};
+use crate::app::{AppState, annotations, authentication::AuthToken, error::KoboError};
 use axum::{
     Extension,
-    extract::{Path, Query, State},
+    extract::{Path, State},
     http::StatusCode,
     response::IntoResponse,
 };
-use std::collections::HashMap;
 
 pub async fn download_book_handler(
     State(state): State<AppState>,
     Path(book_id): Path<String>,
-    Query(params): Query<HashMap<String, String>>,
+    Extension(token): Extension<AuthToken>,
 ) -> Result<impl IntoResponse, KoboError> {
-    let Some(book_token) = params.get("token") else {
-        return Err(BookTokenError::InvalidToken.into());
-    };
+    let book = service::download_book(state.prosa_client.as_ref(), &book_id, &token.api_key)?;
 
-    let book = service::download_book(&state.pool, state.prosa_client.as_ref(), &book_id, book_token).await?;
     Ok(book)
 }
 
@@ -28,7 +22,7 @@ pub async fn delete_book_handler(
     Path(book_id): Path<String>,
     Extension(token): Extension<AuthToken>,
 ) -> Result<impl IntoResponse, KoboError> {
-    service::delete_book(&state.pool, state.prosa_client.as_ref(), &book_id, &token.api_key).await?;
+    service::delete_book(state.prosa_client.as_ref(), &book_id, &token.api_key)?;
     annotations::service::delete_etag(&state.pool, &book_id).await;
 
     Ok(StatusCode::NO_CONTENT)

@@ -1,55 +1,54 @@
 use super::{models::AuthError, service};
 use crate::app::{
-    AppState,
+    Pool,
     authentication::models::{AuthToken, ProsaToken},
     devices,
     error::KoboError,
 };
 use axum::{
     extract::{Request, State},
-    http::{HeaderMap, HeaderValue},
+    http::{HeaderMap, HeaderValue, Uri, uri::PathAndQuery},
     middleware::Next,
     response::IntoResponse,
 };
 
-pub async fn extract_token_middleware(
-    State(state): State<AppState>,
-    headers: HeaderMap,
+pub async fn extract_device_middleware(
+    State(pool): State<Pool>,
     mut request: Request,
     next: Next,
 ) -> Result<impl IntoResponse, KoboError> {
-    let jwt_header = headers.get("Authorization");
+    let path = request.uri().path().to_owned();
+    let mut segments = path.trim_start_matches('/').splitn(2, '/');
 
-    let device_id = match jwt_header {
-        Some(header) => handle_jwt(header)?,
-        _ => Err(AuthError::MissingAuth)?,
-    };
+    let lookup_key = segments.next().unwrap_or_default();
+    let remainder = segments.next().unwrap_or_default();
 
-    let device = match devices::service::get_linked_device(&state.pool, &device_id).await {
-        Some(device) => device,
-        _ => Err(AuthError::UnauthenticatedDevice)?,
-    };
+    let device = devices::service::get_device_by_lookup_key(&pool, lookup_key)
+        .await
+        .ok_or(AuthError::UnauthenticatedDevice)?;
+
+    *request.uri_mut() = strip_lookup_key(request.uri(), remainder)?;
 
     request.extensions_mut().insert(AuthToken {
-        device_id,
+        device_id: device.device_id,
+        lookup_key: device.lookup_key,
         api_key: device.api_key,
     });
+
     Ok(next.run(request).await)
 }
 
-fn handle_jwt(header: &HeaderValue) -> Result<String, AuthError> {
-    let header = header.to_str().expect("Failed to convert jwt header to string");
+fn strip_lookup_key(uri: &Uri, remainder: &str) -> Result<Uri, AuthError> {
+    let query = uri.query().map(|query| format!("?{query}")).unwrap_or_default();
 
-    let (_, token) = header
-        .split_whitespace()
-        .collect::<Vec<_>>()
-        .get(0..2)
-        .map(|parts| (parts[0], parts[1]))
-        .ok_or(AuthError::InvalidAuthHeader)?;
+    let path_and_query = format!("/{remainder}{query}")
+        .parse::<PathAndQuery>()
+        .or(Err(AuthError::InternalError))?;
 
-    let device_id = service::verify_jwt(token)?;
+    let mut parts = uri.clone().into_parts();
+    parts.path_and_query = Some(path_and_query);
 
-    Ok(device_id)
+    Uri::from_parts(parts).or(Err(AuthError::InternalError))
 }
 
 pub async fn extract_prosa_token_middleware(

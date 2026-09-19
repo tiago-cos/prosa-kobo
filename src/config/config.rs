@@ -6,10 +6,7 @@ use serde::Deserialize;
 pub struct Configuration {
     pub server: Server,
     pub database: Database,
-    pub auth: Auth,
     pub prosa: Prosa,
-    pub download_token: DownloadToken,
-    pub devices: Devices,
 }
 
 #[derive(Default, Deserialize)]
@@ -41,30 +38,10 @@ pub struct Prosa {
     pub scheme: String,
 }
 
-#[derive(Deserialize)]
-#[serde(default)]
-pub struct DownloadToken {
-    pub book_expiration: i64,
-}
-
-#[derive(Deserialize)]
-#[serde(default)]
-pub struct Devices {
-    pub unlinked_expiration: i64,
-}
-
 #[derive(Deserialize, Clone)]
 #[serde(default)]
 pub struct Database {
     pub file_path: String,
-}
-
-#[derive(Deserialize, Clone)]
-#[serde(default)]
-pub struct Auth {
-    pub jwt_key_path: String,
-    pub token_duration: u64,
-    pub refresh_token_duration: u64,
 }
 
 impl Default for Bind {
@@ -86,34 +63,10 @@ impl Default for Prosa {
     }
 }
 
-impl Default for DownloadToken {
-    fn default() -> Self {
-        Self { book_expiration: 60 }
-    }
-}
-
-impl Default for Devices {
-    fn default() -> Self {
-        Self {
-            unlinked_expiration: 900,
-        }
-    }
-}
-
 impl Default for Database {
     fn default() -> Self {
         Self {
             file_path: "persistence/database.db".to_string(),
-        }
-    }
-}
-
-impl Default for Auth {
-    fn default() -> Self {
-        Self {
-            jwt_key_path: "persistence/jwt_secret_key.bin".to_string(),
-            token_duration: 900,
-            refresh_token_duration: 3600,
         }
     }
 }

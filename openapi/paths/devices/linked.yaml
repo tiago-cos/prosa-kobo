@@ -7,6 +7,8 @@ get:
 
     `user_id` filters the result. Only an admin may search without a filter,
     and only an admin may filter by a user other than themselves.
+
+    The endpoint a device authenticates with is never returned here.
   operationId: list_linked_devices
 
   parameters:
@@ -38,8 +40,12 @@ post:
     - Devices
   summary: Link a device
   description: |
-    Links a device to a Prosa user, storing the API key its requests will be translated with.  
-    The device must have previously contacted the middleware before it can be linked.
+    Creates a device endpoint bound to a Prosa API key, and returns it.
+
+    Set the returned `api_endpoint` as the Kobo's `api_endpoint`. Every request
+    the device makes then carries the credential in its path, which is what
+    authenticates it -- the device needs no other setup, and the middleware
+    needs no record of it beforehand.
 
     The device is linked to the user the token belongs to, unless `user_id`
     names another; only an admin may do that.
@@ -57,15 +63,15 @@ post:
           $ref: ../../components/schemas/LinkDeviceRequest.yaml
 
   responses:
-    '204':
-      description: Device successfully linked.
+    '200':
+      description: The device endpoint.
+      content:
+        application/json:
+          schema:
+            $ref: ../../components/schemas/LinkDeviceResponse.yaml
     '400':
-      description: The API key is missing, malformed, unknown to Prosa, or does not grant read access.
+      description: The name is empty, or the API key is malformed, unknown to Prosa, or does not grant read access.
     '401':
       description: The Prosa token is missing, malformed, expired, or not signed by Prosa.
     '403':
       description: The token may not link devices for the requested user.
-    '404':
-      description: Device not found (never contacted the server).
-    '409':
-      description: Device is already linked.

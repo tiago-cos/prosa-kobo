@@ -14,14 +14,11 @@ use chrono::{DateTime, Utc};
 use sqlx::SqlitePool;
 use std::collections::HashSet;
 
-/// Returns the sync token the device should present next, alongside the
-/// changes it has to apply.
 pub async fn translate_sync(
     pool: &SqlitePool,
     client: &dyn ProsaApi,
     sync_token: Option<i64>,
     server_url: &str,
-    book_expiration: i64,
     api_key: &str,
     device_id: &str,
 ) -> Result<(i64, Vec<SyncItem>), KoboError> {
@@ -45,16 +42,9 @@ pub async fn translate_sync(
     for book_id in books_to_update {
         let entitlement = BookEntitlement::new(&book_id, false);
         let reading_state = state::service::translate_get_state(client, &book_id, api_key)?;
-        let metadata = metadata::service::translate_metadata(
-            pool,
-            client,
-            &book_id,
-            server_url,
-            book_expiration,
-            api_key,
-            device_id,
-        )
-        .await?;
+        let metadata =
+            metadata::service::translate_metadata(pool, client, &book_id, server_url, api_key, device_id)
+                .await?;
 
         let response =
             SyncItem::Entitlement(NewEntitlementResponse::new(entitlement, reading_state, metadata));

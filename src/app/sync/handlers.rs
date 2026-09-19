@@ -1,8 +1,5 @@
 use super::service;
-use crate::{
-    CONFIG,
-    app::{AppState, authentication::AuthToken, error::KoboError},
-};
+use crate::app::{AppState, authentication::AuthToken, error::KoboError, server_url};
 use axum::{
     Extension, Json,
     extract::State,
@@ -17,11 +14,7 @@ pub async fn device_sync_handler(
     headers: HeaderMap,
     Extension(token): Extension<AuthToken>,
 ) -> Result<impl IntoResponse, KoboError> {
-    let server_url = match &CONFIG.server.public {
-        Some(s) => format!("{}://{}:{}", s.scheme, s.host, s.port),
-        None if host.contains(':') => format!("http://{host}"),
-        _ => format!("http://{host}:{}", CONFIG.server.bind.port),
-    };
+    let endpoint = format!("{}/{}", server_url(&host), token.lookup_key);
 
     let sync_token = headers
         .get("X-Kobo-Synctoken")
@@ -32,8 +25,7 @@ pub async fn device_sync_handler(
         &state.pool,
         state.prosa_client.as_ref(),
         sync_token,
-        &server_url,
-        CONFIG.download_token.book_expiration,
+        &endpoint,
         &token.api_key,
         &token.device_id,
     )

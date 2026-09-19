@@ -3,7 +3,7 @@ delete:
     - Devices
   summary: Unlink a device
   description: |
-    Unlinks a device from the user it is linked to.
+    Unlinks a device, which stops its endpoint working immediately.
 
     A regular user may unlink their own devices; an admin may unlink anyone's.
   operationId: unlink_device
@@ -19,6 +19,4 @@ delete:
     '403':
       description: The token may not unlink this device.
     '404':
-      description: Device not linked.
-    '409':
-      description: Device is already unlinked.
+      description: Device not found.

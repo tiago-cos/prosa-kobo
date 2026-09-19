@@ -25,6 +25,12 @@ info:
     admin may act on anyone's, and is the only one who may list devices without
     filtering by user. The API key is supplied once, when linking.
 
+    A Kobo authenticates differently. Linking returns an endpoint carrying a
+    secret path segment, and that endpoint is the device's credential: every
+    request it makes arrives under that segment, which is what identifies the
+    device and selects the API key its requests are translated with. Nothing
+    expires, and the device holds no token of its own.
+
     This middleware **completely replaces the official Kobo backend**, no requests are proxied to Kobo’s original servers.
 
     # Configuration
@@ -233,22 +239,17 @@ info:
 
     ## Next Steps
 
-    1.  **Point Your Kobo Device to Prosa-Kobo**  
-        On your Kobo device, edit the `.kobo/Kobo/Kobo eReader.conf` file and change the `api_endpoint` value to the Prosa-Kobo server’s host.
+    1.  **Link the Device**  
+        Call the [Link Device](https://tiago-cos.github.io/prosa-kobo/#tag/Devices/operation/link_device) endpoint with your Prosa JWT, a name for the device and a Prosa API key. It returns an `api_endpoint`.
 
-    2.  **Attempt a Sync**  
-        Try syncing the device. The first attempt will fail since the device is not yet linked.
+    2.  **Point Your Kobo Device to Prosa-Kobo**  
+        On your Kobo device, edit the `.kobo/Kobo/Kobo eReader.conf` file and set `api_endpoint` to the value you were just given, including the path it ends with.
 
-    3.  **Check for Unlinked Devices**  
-        Retrieve the device ID using the [List Unlinked Devices](https://tiago-cos.github.io/prosa-kobo/#tag/Devices/operation/list_unlinked_devices) endpoint.
+    3.  **Sync**  
+        The device is authenticated from its first request. There is nothing to approve afterwards.
 
-    4.  **Link the Device**  
-        Link the device to a Prosa API key with the [Link Device](https://tiago-cos.github.io/prosa-kobo/#tag/Devices/operation/link_device) endpoint, authenticated with your Prosa JWT.
-
-    _**Important Note on Sync Issues**_  
-    Sometimes, even after linking a device, sync may still fail. This happens because Kobo devices do not immediately invalidate their old OAuth tokens, even when receiving a `403` or `401` response.  
-    - If this occurs, simply wait. The old token will expire within **1 hour**.  
-    - To avoid this issue entirely, make sure you do **not sync or connect to the internet** before changing the endpoint on your device.
+    Treat that endpoint as a secret: anyone who has it can reach the library it
+    is linked to. To revoke it, unlink the device.
 
     You’re now ready to sync your Kobo device with Prosa through Prosa-Kobo!
 
@@ -275,8 +276,6 @@ servers:
         description: The server host
         
 paths:
-  /devices/unlinked:
-    $ref: "paths/devices/unlinked.yaml"
   /devices/linked:
     $ref: "paths/devices/linked.yaml"
   /devices/linked/{device_id}:

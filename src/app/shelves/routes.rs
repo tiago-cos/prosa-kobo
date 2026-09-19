@@ -1,8 +1,7 @@
 use super::handlers;
-use crate::app::{AppState, authentication::middleware::extract_token_middleware};
+use crate::app::AppState;
 use axum::{
     Router,
-    middleware::from_fn_with_state,
     routing::{delete, post, put},
 };
 
@@ -14,6 +13,5 @@ pub fn get_routes(state: AppState) -> Router {
         .route("/v1/library/tags/{shelf_id}", put(handlers::rename_shelf_handler))
         .route("/v1/library/tags/{shelf_id}/items", post(handlers::add_book_to_shelf_handler))
         .route("/v1/library/tags/{shelf_id}/items/delete", post(handlers::delete_books_from_shelf_handler))
-        .layer(from_fn_with_state(state.clone(), extract_token_middleware))
         .with_state(state)
 }

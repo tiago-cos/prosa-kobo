@@ -5,4 +5,3 @@ pub mod routes;
 mod service;
 
 pub use models::{AuthToken, ProsaToken};
-pub use service::*;

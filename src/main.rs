@@ -21,7 +21,6 @@ static CONFIG: LazyLock<Configuration> =
 #[tokio::main]
 async fn main() {
     create_parent_dir(&CONFIG.database.file_path).await.unwrap();
-    create_parent_dir(&CONFIG.auth.jwt_key_path).await.unwrap();
 
     let db_pool = database::init(&CONFIG.database.file_path).await;
 

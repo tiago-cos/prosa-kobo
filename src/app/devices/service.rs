@@ -1,95 +1,54 @@
 use super::{
     data,
-    models::{DeviceError, LinkedDevice, UnlinkedDevice},
+    models::{DeviceError, LinkedDevice},
 };
 use crate::{
-    CONFIG,
     app::error::KoboError,
     client::prosa::{ClientError, ProsaApi},
 };
-use base64::{Engine, prelude::BASE64_URL_SAFE};
-use sha2::{Digest, Sha256};
+use base64::{Engine, prelude::BASE64_URL_SAFE_NO_PAD};
+use rand::RngCore;
 use sqlx::SqlitePool;
-use std::time::{SystemTime, UNIX_EPOCH};
 
-pub async fn add_unlinked_device(pool: &SqlitePool, device_id: &str) -> () {
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("Time went backwards")
-        .as_secs() as i64;
-
-    data::add_unlinked_device(pool, device_id, now).await;
-}
-
-pub async fn get_unlinked_devices(pool: &SqlitePool) -> Vec<UnlinkedDevice> {
-    remove_expired_unlinked_devices(pool).await;
-
-    data::get_unlinked_devices(pool).await
-}
+const LOOKUP_KEY_SIZE: usize = 32;
 
 pub async fn link_device(
     pool: &SqlitePool,
     client: &dyn ProsaApi,
-    device_id: &str,
     user_id: &str,
+    name: &str,
     api_key: &str,
-) -> Result<(), KoboError> {
-    verify_api_key(client, api_key)?;
-
-    remove_expired_unlinked_devices(pool).await;
-
-    if data::get_linked_device(pool, device_id).await.is_some() {
-        return Err(DeviceError::DeviceAlreadyLinked.into());
+) -> Result<(String, String), KoboError> {
+    if name.trim().is_empty() {
+        return Err(DeviceError::InvalidDeviceName.into());
     }
 
-    data::remove_unlinked_device(pool, device_id).await?;
-    data::add_linked_device(pool, device_id, user_id, api_key).await?;
+    verify_api_key(client, api_key)?;
 
-    Ok(())
+    let device_id = generate_secret(16);
+    let lookup_key = generate_secret(LOOKUP_KEY_SIZE);
+
+    data::add_linked_device(pool, &device_id, &lookup_key, user_id, name, api_key).await?;
+
+    Ok((device_id, lookup_key))
 }
 
 pub async fn unlink_device(pool: &SqlitePool, device_id: &str) -> Result<(), KoboError> {
-    if data::get_unlinked_device(pool, device_id).await.is_some() {
-        return Err(DeviceError::DeviceAlreadyUnlinked.into());
-    }
-
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("Time went backwards")
-        .as_secs() as i64;
-
     data::remove_linked_device(pool, device_id).await?;
-    data::add_unlinked_device(pool, device_id, now).await;
 
     Ok(())
-}
-
-pub async fn get_linked_devices(pool: &SqlitePool, user_id: Option<&str>) -> Vec<LinkedDevice> {
-    data::get_linked_devices(pool, user_id).await
 }
 
 pub async fn get_linked_device(pool: &SqlitePool, device_id: &str) -> Option<LinkedDevice> {
     data::get_linked_device(pool, device_id).await
 }
 
-pub async fn get_unlinked_device(pool: &SqlitePool, device_id: &str) -> Option<UnlinkedDevice> {
-    remove_expired_unlinked_devices(pool).await;
-
-    data::get_unlinked_device(pool, device_id).await
+pub async fn get_device_by_lookup_key(pool: &SqlitePool, lookup_key: &str) -> Option<LinkedDevice> {
+    data::get_device_by_lookup_key(pool, lookup_key).await
 }
 
-async fn remove_expired_unlinked_devices(pool: &SqlitePool) {
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("Time went backwards")
-        .as_secs() as i64;
-
-    data::remove_expired_unlinked_devices(pool, now - CONFIG.devices.unlinked_expiration).await;
-}
-
-pub fn generate_device_id(device_id: &str, user_key: &str) -> String {
-    let digest = Sha256::digest(device_id.to_owned() + user_key);
-    BASE64_URL_SAFE.encode(digest)
+pub async fn get_linked_devices(pool: &SqlitePool, user_id: Option<&str>) -> Vec<LinkedDevice> {
+    data::get_linked_devices(pool, user_id).await
 }
 
 fn verify_api_key(client: &dyn ProsaApi, api_key: &str) -> Result<(), KoboError> {
@@ -112,6 +71,13 @@ fn is_valid_api_key(key: &str) -> bool {
 
     key.chars()
         .all(|c| c.is_ascii_alphanumeric() || c == '+' || c == '/' || c == '=')
+}
+
+fn generate_secret(size: usize) -> String {
+    let mut bytes = vec![0u8; size];
+    rand::rng().fill_bytes(&mut bytes);
+
+    BASE64_URL_SAFE_NO_PAD.encode(bytes)
 }
 
 #[cfg(test)]

@@ -1,6 +1,6 @@
 use super::{BookMetadata, DownloadUrl};
 use crate::{
-    app::{books, covers, error::KoboError},
+    app::{covers, error::KoboError},
     client::{
         ProsaMetadata,
         prosa::{ClientError, ProsaApi},
@@ -13,7 +13,6 @@ pub async fn translate_metadata(
     client: &dyn ProsaApi,
     book_id: &str,
     server_url: &str,
-    book_expiration: i64,
     api_key: &str,
     device_id: &str,
 ) -> Result<BookMetadata, KoboError> {
@@ -26,15 +25,13 @@ pub async fn translate_metadata(
 
     let mut metadata = BookMetadata::new(book_id, metadata_response);
 
-    let book_token = books::generate_token(pool, book_id, book_expiration, device_id).await;
-    let download_url = format!("{server_url}/books/{book_id}?token={book_token}");
+    let download_url = format!("{server_url}/books/{book_id}");
     let download_url = DownloadUrl::new(&download_url, size_response);
 
     let cover_token = covers::get_token(pool, book_id, device_id).await;
-    let cover_token = format!("?token={cover_token}");
 
     metadata.download_urls.push(download_url);
-    metadata.cover_image_id.push_str(&cover_token);
+    metadata.cover_image_id = format!("{book_id}?v={cover_token}");
 
     Ok(metadata)
 }

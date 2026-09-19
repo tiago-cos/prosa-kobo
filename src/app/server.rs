@@ -3,16 +3,21 @@ use super::{
 };
 use crate::{
     CONFIG,
-    app::{shelves, tracing},
+    app::{authentication::middleware::extract_device_middleware, shelves, tracing},
     client::prosa::{Client, ProsaApi},
 };
-use axum::{Router, http::StatusCode, middleware::from_fn, routing::get};
+use axum::{
+    Router,
+    http::StatusCode,
+    middleware::{from_fn, from_fn_with_state},
+    routing::get,
+};
 use log::{error, info, warn};
 use sqlx::SqlitePool;
 use std::{process::exit, sync::Arc, time::Duration};
 use tokio::{net::TcpListener, time::sleep};
+use tower::ServiceBuilder;
 
-/// The Prosa release this middleware is written against.
 const EXPECTED_PROSA_VERSION: &str = "0.2.0";
 
 const PROSA_RETRY_INTERVAL: Duration = Duration::from_secs(5);
@@ -51,9 +56,7 @@ pub async fn run(pool: SqlitePool) {
 
     info!("Middleware started on http://{host}");
 
-    let app = Router::new()
-        .route("/health", get(|| async { StatusCode::NO_CONTENT }))
-        .merge(devices::routes::get_routes(state.clone()))
+    let device = Router::new()
         .merge(initialization::routes::get_routes(state.clone()))
         .merge(sync::routes::get_routes(state.clone()))
         .merge(authentication::routes::get_routes(state.clone()))
@@ -63,15 +66,30 @@ pub async fn run(pool: SqlitePool) {
         .merge(state::routes::get_routes(state.clone()))
         .merge(annotations::routes::get_routes(state.clone()))
         .merge(shelves::routes::get_routes(state.clone()))
-        .merge(proxy::routes::get_routes(state.clone()))
+        .merge(proxy::routes::get_routes(state.clone()));
+
+    let device = ServiceBuilder::new()
+        .layer(from_fn_with_state(state.clone(), extract_device_middleware))
+        .service(device);
+
+    let app = Router::new()
+        .route("/health", get(|| async { StatusCode::NO_CONTENT }))
+        .merge(devices::routes::get_routes(state.clone()))
+        .fallback_service(device)
         .layer(from_fn(tracing::log_layer));
 
     let listener = TcpListener::bind(host).await.unwrap();
     axum::serve(listener, app).await.unwrap();
 }
 
-/// Holds startup until Prosa answers, then refuses to serve against a release
-/// this middleware does not speak.
+pub fn server_url(host: &str) -> String {
+    match &CONFIG.server.public {
+        Some(public) => format!("{}://{}:{}", public.scheme, public.host, public.port),
+        None if host.contains(':') => format!("http://{host}"),
+        _ => format!("http://{host}:{}", CONFIG.server.bind.port),
+    }
+}
+
 async fn await_prosa(client: &dyn ProsaApi, prosa_url: &str) {
     let health = loop {
         match client.health() {
@@ -102,8 +120,6 @@ async fn await_prosa(client: &dyn ProsaApi, prosa_url: &str) {
     );
 }
 
-/// Patch releases stay compatible, so only the major and minor have to match.
-/// A version that does not parse is treated as incompatible.
 fn is_compatible(reported: &str) -> bool {
     fn major_minor(version: &str) -> Option<(&str, &str)> {
         let mut parts = version.split('.');

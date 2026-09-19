@@ -1,27 +1,12 @@
-use super::models::{
-    AuthError, JWTClaims, OAUTH_CONFIGS, OAUTH_TOKEN, PROSA_ISSUER, ProsaJWTClaims, ProsaToken,
-};
+use super::models::{AuthError, OAUTH_CONFIGS, OAUTH_TOKEN, PROSA_ISSUER, ProsaJWTClaims, ProsaToken};
 use crate::{
     CONFIG,
     client::prosa::{Client, ProsaApi},
 };
 use base64::{Engine, prelude::BASE64_STANDARD};
-use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, jwk::JwkSet};
-use rand::{TryRngCore, rngs::OsRng};
+use jsonwebtoken::{Algorithm, DecodingKey, Validation, jwk::JwkSet};
 use serde_json::Value;
-use std::{
-    collections::HashMap,
-    fs,
-    path::Path,
-    sync::LazyLock,
-    time::{SystemTime, UNIX_EPOCH},
-};
-
-static ENCODING_KEY: LazyLock<EncodingKey> =
-    LazyLock::new(|| EncodingKey::from_secret(&load_or_generate_jwt_secret()));
-
-static DECODING_KEY: LazyLock<DecodingKey> =
-    LazyLock::new(|| DecodingKey::from_secret(&load_or_generate_jwt_secret()));
+use std::{collections::HashMap, sync::LazyLock};
 
 static PROSA_KEYS: LazyLock<HashMap<String, DecodingKey>> = LazyLock::new(|| {
     let client = Client::new(&CONFIG.prosa.scheme, &CONFIG.prosa.host, CONFIG.prosa.port);
@@ -30,32 +15,6 @@ static PROSA_KEYS: LazyLock<HashMap<String, DecodingKey>> = LazyLock::new(|| {
 
     decoding_keys(&jwks)
 });
-
-pub fn generate_jwt(device_id: &str, duration: u64) -> String {
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("Failed to get time since epoch")
-        .as_secs();
-
-    let claims = JWTClaims {
-        device_id: device_id.to_string(),
-        exp: now + duration,
-    };
-
-    let token =
-        jsonwebtoken::encode(&Header::default(), &claims, &ENCODING_KEY).expect("Failed to encode token");
-
-    BASE64_STANDARD.encode(token)
-}
-
-pub fn verify_jwt(token: &str) -> Result<String, AuthError> {
-    let token = BASE64_STANDARD.decode(token).or(Err(AuthError::InvalidToken))?;
-    let token = String::from_utf8(token).or(Err(AuthError::InvalidToken))?;
-    let validation = Validation::default();
-    let token = jsonwebtoken::decode::<JWTClaims>(&token, &DECODING_KEY, &validation)?;
-
-    Ok(token.claims.device_id)
-}
 
 pub fn verify_prosa_jwt(token: &str) -> Result<ProsaToken, AuthError> {
     decode_prosa_jwt(&PROSA_KEYS, token)
@@ -91,44 +50,22 @@ fn decoding_keys(jwks: &JwkSet) -> HashMap<String, DecodingKey> {
         .collect()
 }
 
-pub fn generate_oauth_config(host: &str, device_id: &str) -> Value {
-    let json_string = OAUTH_CONFIGS
-        .replace("{host}", host)
-        .replace("{device_id}", device_id);
+pub fn generate_oauth_config(host: &str) -> Value {
+    let json_string = OAUTH_CONFIGS.replace("{host}", host);
 
     serde_json::from_str(&json_string).expect("Failed to parse JSON")
 }
 
-pub fn generate_oauth_token(jwt_token: &str, jwt_duration: u64) -> Value {
-    let json_string = OAUTH_TOKEN
-        .replace("{jwt_token}", jwt_token)
-        .replace("{jwt_duration}", &jwt_duration.to_string());
-
-    serde_json::from_str(&json_string).expect("Failed to parse JSON")
-}
-
-fn load_or_generate_jwt_secret() -> Vec<u8> {
-    let path = Path::new(&CONFIG.auth.jwt_key_path);
-
-    if path.exists() {
-        return fs::read(path).expect("Failed to read JWT secret");
-    }
-
-    let mut key = [0u8; 32];
-    OsRng
-        .try_fill_bytes(&mut key)
-        .expect("Failed to generate JWT secret");
-
-    fs::write(path, key).expect("Failed to write JWT secret");
-
-    key.to_vec()
+pub fn generate_oauth_token() -> Value {
+    serde_json::from_str(OAUTH_TOKEN).expect("Failed to parse JSON")
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::app::authentication::models::ProsaRole;
-    use jsonwebtoken::jwk::Jwk;
+    use jsonwebtoken::{EncodingKey, Header, jwk::Jwk};
+    use std::time::{SystemTime, UNIX_EPOCH};
 
     const TEST_PRIVATE_KEY: &str = concat!(
         "MIIEowIBAAKCAQEAqW5moAsjTnf9nkk9pkbd1Ffwlo4NNTlrFJwwBqi5m6XIdUytD2Xlb7lty27HkBmI5JT+e5JGgFTYoW0z",

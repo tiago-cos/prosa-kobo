@@ -25,9 +25,6 @@ pub enum AuthError {
     #[strum(message = "Forbidden", detailed_message = "You may not act for this user.")]
     #[strum(props(StatusCode = "403"))]
     Forbidden,
-    #[strum(message = "MissingDeviceId", detailed_message = "No device id was provided.")]
-    #[strum(props(StatusCode = "401"))]
-    MissingDeviceId,
     #[strum(message = "UnauthenticatedDevice", detailed_message = "Device is recognized, but is unauthenticated.")]
     #[strum(props(StatusCode = "401"))]
     UnauthenticatedDevice,
@@ -49,17 +46,22 @@ impl From<JwtError> for AuthError {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
-pub struct JWTClaims {
-    pub device_id: String,
-    pub exp: u64,
-}
-
 #[derive(Clone)]
 pub struct AuthToken {
     pub device_id: String,
+    pub lookup_key: String,
     pub api_key: String,
 }
+
+pub const DEVICE_AUTH_RESPONSE: &str = r#"
+{
+  "AccessToken": "unused",
+  "TokenType": "Bearer",
+  "RefreshToken": "unused",
+  "UserKey": "unused",
+  "TrackingId": "unused"
+}
+"#;
 
 pub const PROSA_ISSUER: &str = "prosa";
 
@@ -120,15 +122,15 @@ impl From<ProsaJWTClaims> for ProsaToken {
     }
 }
 
-pub const OAUTH_CONFIGS: &str = r#"{ "token_endpoint": "{host}/oauth/connect/token?device_id={device_id}" }"#;
+pub const OAUTH_CONFIGS: &str = r#"{ "token_endpoint": "{host}/oauth/connect/token" }"#;
 
 pub const OAUTH_TOKEN: &str = r#"
 {
-  "id_token": "{jwt_token}",
-  "access_token": "{jwt_token}",
-  "expires_in": {jwt_duration},
+  "id_token": "unused",
+  "access_token": "unused",
+  "expires_in": 31536000,
   "token_type": "Bearer",
-  "refresh_token": "{jwt_token}",
+  "refresh_token": "unused",
   "scope": "openid profile kobo_profile public_api_authenticated public_api_anonymous offline_access"
 }
 "#;

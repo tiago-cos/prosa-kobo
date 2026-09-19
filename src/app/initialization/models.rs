@@ -84,7 +84,7 @@ pub const RESPONSE: &str = r#"
         "social_host": "https://social.kobobooks.com",
         "reading_services_host": "{host}",
         "discovery_host": "https://discovery.kobobooks.com",
-        "oauth_host": "{host}/oauth/{device_id}",
+        "oauth_host": "{host}/oauth",
         "eula_page": "https://www.kobo.com/termsofuse?style=onestore",
         "password_retrieval_page": "https://www.kobo.com/passwordretrieval.html",
         "store_search": "https://www.kobo.com/{region}/{language}/Search?Query={query}",

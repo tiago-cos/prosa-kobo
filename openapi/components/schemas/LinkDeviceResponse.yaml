@@ -1,0 +1,15 @@
+type: object
+properties:
+  device_id:
+    type: string
+    description: Identifies the device to the management endpoints.
+    example: 8Nn3sBOoRdSK5xUlpEDdxA
+  api_endpoint:
+    type: string
+    description: |
+      The value to set as `api_endpoint` on the Kobo. It carries the device's
+      credential, so it is returned once, here, and never listed again.
+    example: http://192.168.0.1:5001/hT3kQ0vZ9mWpYc8LrNfJ2dGxAeBu6SsV1oIiKlMn
+required:
+  - device_id
+  - api_endpoint

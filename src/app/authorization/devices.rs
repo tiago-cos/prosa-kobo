@@ -16,18 +16,6 @@ use axum::{
 };
 use std::collections::HashMap;
 
-pub async fn can_read_unlinked_devices(
-    Extension(token): Extension<ProsaToken>,
-    request: Request,
-    next: Next,
-) -> Result<impl IntoResponse, KoboError> {
-    if !token.can(READ) {
-        return Err(AuthError::Forbidden.into());
-    }
-
-    Ok(next.run(request).await)
-}
-
 pub async fn can_search_linked_devices(
     Extension(token): Extension<ProsaToken>,
     Query(params): Query<HashMap<String, String>>,

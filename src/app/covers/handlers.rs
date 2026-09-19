@@ -1,6 +1,7 @@
 use super::service;
-use crate::app::{AppState, covers::models::CoverTokenError, error::KoboError};
+use crate::app::{AppState, authentication::AuthToken, error::KoboError};
 use axum::{
+    Extension,
     extract::{Path, Query, State},
     response::IntoResponse,
 };
@@ -11,13 +12,9 @@ pub async fn download_cover_handler(
     State(state): State<AppState>,
     Path(book_id): Path<String>,
     Query(params): Query<HashMap<String, String>>,
+    Extension(token): Extension<AuthToken>,
 ) -> Result<impl IntoResponse, KoboError> {
-    let Some(cover_token) = params.get("token") else {
-        return Err(CoverTokenError::InvalidToken.into());
-    };
-
-    let mut cover =
-        service::download_cover(&state.pool, state.prosa_client.as_ref(), &book_id, cover_token).await?;
+    let mut cover = service::download_cover(state.prosa_client.as_ref(), &book_id, &token.api_key)?;
 
     let width: Option<u32> = params.get("width").and_then(|s| s.parse().ok());
     let height: Option<u32> = params.get("height").and_then(|s| s.parse().ok());

@@ -1,22 +1,15 @@
 use super::{models::TestRequest, service};
-use crate::{CONFIG, app::authentication::AuthToken};
+use crate::app::{authentication::AuthToken, server_url};
 use axum::{Extension, Json, response::IntoResponse};
 use axum_extra::extract::Host;
 
 pub async fn device_initialization_handler(
-    Host(host): Host,
     Extension(token): Extension<AuthToken>,
+    Host(host): Host,
 ) -> impl IntoResponse {
-    let server_url = match &CONFIG.server.public {
-        Some(s) => format!("{}://{}:{}", s.scheme, s.host, s.port),
-        None if host.contains(':') => format!("http://{host}"),
-        _ => format!("http://{host}:{}", CONFIG.server.bind.port),
-    };
+    let endpoint = format!("{}/{}", server_url(&host), token.lookup_key);
 
-    Json(service::generate_initialization_response(
-        &server_url,
-        &token.device_id,
-    ))
+    Json(service::generate_initialization_response(&endpoint))
 }
 
 pub async fn tests_handler(Json(request): Json<TestRequest>) -> impl IntoResponse {

@@ -1,29 +1,16 @@
 use crate::{
-    app::{
-        covers::{
-            data,
-            models::{COVER_TOKEN_SIZE, CoverTokenError},
-        },
-        devices,
-        error::KoboError,
-    },
+    app::{covers::data, covers::models::COVER_TOKEN_SIZE, error::KoboError},
     client::prosa::ProsaApi,
 };
 use base64::{Engine, prelude::BASE64_URL_SAFE};
-use image::{ImageError, imageops::FilterType};
-use image::{ImageFormat, ImageReader};
+use image::{ImageError, ImageFormat, ImageReader, imageops::FilterType};
 use rand::RngCore;
 use sqlx::SqlitePool;
 use std::io::Cursor;
 
-pub async fn download_cover(
-    pool: &SqlitePool,
-    client: &dyn ProsaApi,
-    book_id: &str,
-    cover_token: &str,
-) -> Result<Vec<u8>, KoboError> {
-    let api_key = verify_token(pool, book_id, cover_token).await?;
-    let cover = client.download_cover(book_id, &api_key)?;
+pub fn download_cover(client: &dyn ProsaApi, book_id: &str, api_key: &str) -> Result<Vec<u8>, KoboError> {
+    let cover = client.download_cover(book_id, api_key)?;
+
     Ok(cover)
 }
 
@@ -46,6 +33,8 @@ pub async fn get_token(pool: &SqlitePool, book_id: &str, device_id: &str) -> Str
     }
 }
 
+/// The Kobo refetches a cover only when its id changes, so the id carries a
+/// value that is rotated whenever the cover does.
 pub async fn update_token(pool: &SqlitePool, book_id: &str, device_id: &str) -> String {
     let mut bytes = vec![0u8; COVER_TOKEN_SIZE];
     rand::rng().fill_bytes(&mut bytes);
@@ -55,19 +44,4 @@ pub async fn update_token(pool: &SqlitePool, book_id: &str, device_id: &str) -> 
     data::add_token(pool, book_id, &token, device_id).await;
 
     token
-}
-
-async fn verify_token(pool: &SqlitePool, book_id: &str, token: &str) -> Result<String, CoverTokenError> {
-    let verifier = data::verify_token(pool, token).await?;
-
-    if verifier.book_id != book_id {
-        return Err(CoverTokenError::InvalidToken);
-    }
-
-    let api_key = match devices::service::get_linked_device(pool, &verifier.device_id).await {
-        Some(d) => d.api_key,
-        None => return Err(CoverTokenError::InvalidToken),
-    };
-
-    Ok(api_key)
 }

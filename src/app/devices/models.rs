@@ -1,9 +1,5 @@
 use serde::{Deserialize, Serialize};
-use sqlx::{
-    error::{DatabaseError, ErrorKind},
-    prelude::FromRow,
-    sqlite::SqliteError,
-};
+use sqlx::{prelude::FromRow, sqlite::SqliteError};
 use strum_macros::{EnumMessage, EnumProperty};
 
 type SqlxError = sqlx::Error;
@@ -14,14 +10,10 @@ pub enum DeviceError {
     #[strum(detailed_message = "The requested device does not exist or is not accessible.")]
     #[strum(props(StatusCode = "404"))]
     DeviceNotFound,
-    #[strum(message = "DeviceAlreadyLinked")]
-    #[strum(detailed_message = "This device is already linked.")]
-    #[strum(props(StatusCode = "409"))]
-    DeviceAlreadyLinked,
-    #[strum(message = "DeviceAlreadyUnlinked")]
-    #[strum(detailed_message = "This device is already unlinked.")]
-    #[strum(props(StatusCode = "409"))]
-    DeviceAlreadyUnlinked,
+    #[strum(message = "InvalidDeviceName")]
+    #[strum(detailed_message = "A device name must be provided.")]
+    #[strum(props(StatusCode = "400"))]
+    InvalidDeviceName,
     #[strum(message = "InvalidApiKey")]
     #[strum(detailed_message = "The provided api key is invalid.")]
     #[strum(props(StatusCode = "400"))]
@@ -35,18 +27,48 @@ pub enum DeviceError {
     InternalError,
 }
 
-#[derive(Serialize, FromRow)]
-pub struct UnlinkedDevice {
-    pub device_id: String,
-    pub timestamp: i64,
-}
-
-#[derive(Serialize, FromRow)]
+#[derive(FromRow)]
 pub struct LinkedDevice {
     pub device_id: String,
+    pub lookup_key: String,
     pub user_id: String,
-    #[serde(skip)]
+    pub name: String,
     pub api_key: String,
+}
+
+#[derive(Serialize)]
+pub struct LinkedDeviceResponse {
+    pub device_id: String,
+    pub user_id: String,
+    pub name: String,
+}
+
+impl From<LinkedDevice> for LinkedDeviceResponse {
+    fn from(device: LinkedDevice) -> Self {
+        Self {
+            device_id: device.device_id,
+            user_id: device.user_id,
+            name: device.name,
+        }
+    }
+}
+
+#[derive(Serialize)]
+pub struct LinkDeviceResponse {
+    pub device_id: String,
+    pub api_endpoint: String,
+}
+
+#[derive(Deserialize)]
+pub struct LinkDeviceRequest {
+    pub user_id: Option<String>,
+    pub name: String,
+    pub api_key: String,
+}
+
+#[derive(Deserialize)]
+pub struct ListLinkedDevicesQuery {
+    pub user_id: Option<String>,
 }
 
 impl From<SqlxError> for DeviceError {
@@ -60,85 +82,7 @@ impl From<SqlxError> for DeviceError {
 }
 
 impl From<&SqliteError> for DeviceError {
-    fn from(error: &SqliteError) -> Self {
-        match error.kind() {
-            ErrorKind::UniqueViolation => DeviceError::DeviceAlreadyLinked,
-            _ => DeviceError::InternalError,
-        }
+    fn from(_: &SqliteError) -> Self {
+        DeviceError::InternalError
     }
-}
-
-#[derive(Deserialize)]
-pub struct ListLinkedDevicesQuery {
-    pub user_id: Option<String>,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "PascalCase")]
-#[allow(unused)]
-pub struct DeviceAuthRequest {
-    pub affiliate_name: String,
-    pub app_version: String,
-    pub client_key: String,
-    pub device_id: String,
-    pub platform_id: String,
-    pub serial_number: String,
-    pub user_key: String,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "PascalCase")]
-pub struct DeviceAuthResponse {
-    pub access_token: String,
-    pub token_type: String,
-    pub refresh_token: String,
-    pub user_key: String,
-    pub tracking_id: String,
-}
-
-impl DeviceAuthResponse {
-    pub fn new(token: &str, refresh_token: &str, user_key: &str) -> Self {
-        DeviceAuthResponse {
-            access_token: token.to_string(),
-            token_type: "Bearer".to_string(),
-            refresh_token: refresh_token.to_string(),
-            user_key: user_key.to_string(),
-            tracking_id: "placeholder".to_string(),
-        }
-    }
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "PascalCase")]
-#[allow(unused)]
-pub struct RefreshTokenRequest {
-    pub app_version: String,
-    pub client_key: String,
-    pub platform_id: String,
-    pub refresh_token: String,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "PascalCase")]
-pub struct RefreshTokenResponse {
-    pub access_token: String,
-    pub token_type: String,
-    pub refresh_token: String,
-}
-
-impl RefreshTokenResponse {
-    pub fn new(token: &str, refresh_token: &str) -> Self {
-        RefreshTokenResponse {
-            access_token: token.to_string(),
-            token_type: "Bearer".to_string(),
-            refresh_token: refresh_token.to_string(),
-        }
-    }
-}
-
-#[derive(Deserialize)]
-pub struct LinkDeviceRequest {
-    pub user_id: Option<String>,
-    pub device_id: String,
-    pub api_key: String,
 }

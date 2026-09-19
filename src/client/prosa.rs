@@ -45,8 +45,6 @@ pub enum ClientError {
     InternalError,
 }
 
-/// The slice of the Prosa API the middleware speaks, kept as a trait so tests
-/// can stand a fake in front of the services instead of a live backend.
 pub trait ProsaApi: Send + Sync {
     fn health(&self) -> Result<ProsaHealth, ClientError>;
 
@@ -387,7 +385,6 @@ fn round_rating(rating: f32) -> u8 {
         return u8::MAX;
     }
 
-    // Bounded above, so the cast cannot truncate.
     rating as u8
 }
 

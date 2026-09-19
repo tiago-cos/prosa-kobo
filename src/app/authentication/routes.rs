@@ -8,7 +8,9 @@ use axum::{
 #[rustfmt::skip]
 pub fn get_routes(state: AppState) -> Router {
     Router::new()
-        .route("/oauth/{device_id}/.well-known/openid-configuration", get(handlers::oauth_configs_handler))
+        .route("/oauth/.well-known/openid-configuration", get(handlers::oauth_configs_handler))
         .route("/oauth/connect/token", post(handlers::oauth_token_handler))
+        .route("/v1/auth/device", post(handlers::device_auth_handler))
+        .route("/v1/auth/refresh", post(handlers::device_auth_handler))
         .with_state(state)
 }

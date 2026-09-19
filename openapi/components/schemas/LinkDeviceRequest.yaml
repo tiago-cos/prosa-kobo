@@ -1,12 +1,12 @@
 type: object
 properties:
-  device_id:
+  name:
     type: string
-    description: Unique identifier of the device to link.
-    example: oPiX_QFFX8eXKmW-R4pFkO7jfPeZ9bPs9pmcekCCFXM=
+    description: A name for the device, shown when listing linked devices.
+    example: Bedside Kobo
   api_key:
     type: string
-    description: Prosa API key that will be associated with the device.
+    description: Prosa API key the device's requests will be translated with.
     example: uXl248ck5oWd9uXl248c5oWd9uXl2
   user_id:
     type: string
@@ -16,5 +16,5 @@ properties:
       the token belongs to. Only admins may name another user.
     example: 14ae396c-07c3-437d-a0a0-ef48189ba40a
 required:
-  - device_id
+  - name
   - api_key
