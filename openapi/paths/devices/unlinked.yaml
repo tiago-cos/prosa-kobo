@@ -7,9 +7,9 @@ get:
 
     A device drops off this list once `devices.unlinked_expiration` has passed
     since it made contact, and reappears the next time it tries to sync.
-  operationId: list_unlinked_devices
 
-  security: []
+    Any valid Prosa token may read this list.
+  operationId: list_unlinked_devices
 
   responses:
     '200':
@@ -20,3 +20,5 @@ get:
             type: array
             items:
               $ref: ../../components/schemas/DeviceLog.yaml
+    '401':
+      description: The Prosa token is missing, malformed, expired, or not signed by Prosa.

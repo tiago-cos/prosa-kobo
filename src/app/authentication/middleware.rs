@@ -1,5 +1,10 @@
 use super::{models::AuthError, service};
-use crate::app::{AppState, authentication::models::AuthToken, devices, error::KoboError};
+use crate::app::{
+    AppState,
+    authentication::models::{AuthToken, ProsaToken},
+    devices,
+    error::KoboError,
+};
 use axum::{
     extract::{Request, State},
     http::{HeaderMap, HeaderValue},
@@ -45,4 +50,26 @@ fn handle_jwt(header: &HeaderValue) -> Result<String, AuthError> {
     let device_id = service::verify_jwt(token)?;
 
     Ok(device_id)
+}
+
+pub async fn extract_prosa_token_middleware(
+    headers: HeaderMap,
+    mut request: Request,
+    next: Next,
+) -> Result<impl IntoResponse, KoboError> {
+    let header = headers.get("Authorization").ok_or(AuthError::MissingAuth)?;
+    let token: ProsaToken = service::verify_prosa_jwt(bearer_token(header)?)?;
+
+    request.extensions_mut().insert(token);
+
+    Ok(next.run(request).await)
+}
+
+fn bearer_token(header: &HeaderValue) -> Result<&str, AuthError> {
+    let header = header.to_str().or(Err(AuthError::InvalidAuthHeader))?;
+
+    header
+        .split_whitespace()
+        .nth(1)
+        .ok_or(AuthError::InvalidAuthHeader)
 }

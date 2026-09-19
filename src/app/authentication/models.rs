@@ -22,6 +22,9 @@ pub enum AuthError {
     #[strum(message = "MissingAuth", detailed_message = "No authentication was provided.")]
     #[strum(props(StatusCode = "401"))]
     MissingAuth,
+    #[strum(message = "Forbidden", detailed_message = "You may not act for this user.")]
+    #[strum(props(StatusCode = "403"))]
+    Forbidden,
     #[strum(message = "MissingDeviceId", detailed_message = "No device id was provided.")]
     #[strum(props(StatusCode = "401"))]
     MissingDeviceId,
@@ -81,6 +84,24 @@ pub struct ProsaToken {
     pub is_admin: bool,
     pub capabilities: Vec<String>,
     pub session_id: String,
+}
+
+pub const READ: &str = "Read";
+pub const CREATE: &str = "Create";
+pub const DELETE: &str = "Delete";
+
+impl ProsaToken {
+    pub fn can(&self, capability: &str) -> bool {
+        self.capabilities.iter().any(|held| held == capability)
+    }
+
+    pub fn can_act_for(&self, user_id: &str) -> bool {
+        self.is_admin || self.user_id == user_id
+    }
+
+    pub fn owner_or_self<'a>(&'a self, requested: Option<&'a str>) -> &'a str {
+        requested.unwrap_or(&self.user_id)
+    }
 }
 
 impl From<ProsaJWTClaims> for ProsaToken {

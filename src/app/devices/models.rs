@@ -26,10 +26,6 @@ pub enum DeviceError {
     #[strum(detailed_message = "The provided api key is invalid.")]
     #[strum(props(StatusCode = "400"))]
     InvalidApiKey,
-    #[strum(message = "MissingApiKey")]
-    #[strum(detailed_message = "The api key must be provided.")]
-    #[strum(props(StatusCode = "400"))]
-    MissingApiKey,
     #[strum(message = "InsufficientApiKey")]
     #[strum(detailed_message = "The provided api key does not grant read access.")]
     #[strum(props(StatusCode = "400"))]
@@ -48,6 +44,8 @@ pub struct UnlinkedDevice {
 #[derive(Serialize, FromRow)]
 pub struct LinkedDevice {
     pub device_id: String,
+    pub user_id: String,
+    #[serde(skip)]
     pub api_key: String,
 }
 
@@ -68,6 +66,11 @@ impl From<&SqliteError> for DeviceError {
             _ => DeviceError::InternalError,
         }
     }
+}
+
+#[derive(Deserialize)]
+pub struct ListLinkedDevicesQuery {
+    pub user_id: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -135,6 +138,7 @@ impl RefreshTokenResponse {
 
 #[derive(Deserialize)]
 pub struct LinkDeviceRequest {
+    pub user_id: Option<String>,
     pub device_id: String,
     pub api_key: String,
 }

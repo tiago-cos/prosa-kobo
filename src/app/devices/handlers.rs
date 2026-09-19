@@ -1,17 +1,18 @@
 use super::{
     models::{
-        DeviceAuthRequest, DeviceAuthResponse, LinkDeviceRequest, RefreshTokenRequest, RefreshTokenResponse,
+        DeviceAuthRequest, DeviceAuthResponse, LinkDeviceRequest, ListLinkedDevicesQuery,
+        RefreshTokenRequest, RefreshTokenResponse,
     },
     service,
 };
 use crate::{
     CONFIG,
-    app::{AppState, Pool, authentication, devices::models::DeviceError, error::KoboError},
+    app::{AppState, Pool, authentication, authentication::ProsaToken, error::KoboError},
 };
 use axum::{
-    Json,
-    extract::{Path, State},
-    http::{HeaderMap, StatusCode},
+    Extension, Json,
+    extract::{Path, Query, State},
+    http::StatusCode,
     response::IntoResponse,
 };
 
@@ -54,12 +55,14 @@ pub async fn get_unlinked_devices_handler(State(pool): State<Pool>) -> impl Into
 
 pub async fn link_device_handler(
     State(state): State<AppState>,
+    Extension(token): Extension<ProsaToken>,
     Json(body): Json<LinkDeviceRequest>,
 ) -> Result<StatusCode, KoboError> {
     service::link_device(
         &state.pool,
         state.prosa_client.as_ref(),
         &body.device_id,
+        token.owner_or_self(body.user_id.as_deref()),
         &body.api_key,
     )
     .await?;
@@ -69,29 +72,16 @@ pub async fn link_device_handler(
 
 pub async fn get_linked_devices_handler(
     State(pool): State<Pool>,
-    headers: HeaderMap,
-) -> Result<impl IntoResponse, KoboError> {
-    let api_key = headers
-        .get("api-key")
-        .and_then(|value| value.to_str().ok())
-        .ok_or(DeviceError::MissingApiKey)?;
-
-    let device_list = service::get_linked_devices(&pool, api_key).await?;
-
-    Ok(Json(device_list))
+    Query(query): Query<ListLinkedDevicesQuery>,
+) -> impl IntoResponse {
+    Json(service::get_linked_devices(&pool, query.user_id.as_deref()).await)
 }
 
 pub async fn unlink_device_handler(
     State(pool): State<Pool>,
-    headers: HeaderMap,
     Path(device_id): Path<String>,
 ) -> Result<StatusCode, KoboError> {
-    let api_key = headers
-        .get("api-key")
-        .and_then(|value| value.to_str().ok())
-        .ok_or(DeviceError::MissingApiKey)?;
-
-    service::unlink_device(&pool, &device_id, api_key).await?;
+    service::unlink_device(&pool, &device_id).await?;
 
     Ok(StatusCode::NO_CONTENT)
 }

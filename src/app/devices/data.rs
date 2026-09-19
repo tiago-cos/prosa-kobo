@@ -77,14 +77,20 @@ pub async fn get_unlinked_devices(pool: &SqlitePool) -> Vec<UnlinkedDevice> {
     devices
 }
 
-pub async fn add_linked_device(pool: &SqlitePool, device_id: &str, api_key: &str) -> Result<(), DeviceError> {
+pub async fn add_linked_device(
+    pool: &SqlitePool,
+    device_id: &str,
+    user_id: &str,
+    api_key: &str,
+) -> Result<(), DeviceError> {
     sqlx::query(
         r"
-        INSERT INTO linked_devices (device_id, api_key)
-        VALUES ($1, $2)
+        INSERT INTO linked_devices (device_id, user_id, api_key)
+        VALUES ($1, $2, $3)
         ",
     )
     .bind(device_id)
+    .bind(user_id)
     .bind(api_key)
     .execute(pool)
     .await?;
@@ -92,19 +98,14 @@ pub async fn add_linked_device(pool: &SqlitePool, device_id: &str, api_key: &str
     Ok(())
 }
 
-pub async fn remove_linked_device(
-    pool: &SqlitePool,
-    device_id: &str,
-    api_key: &str,
-) -> Result<(), DeviceError> {
+pub async fn remove_linked_device(pool: &SqlitePool, device_id: &str) -> Result<(), DeviceError> {
     let result = sqlx::query(
         r"
         DELETE FROM linked_devices
-        WHERE device_id = $1 AND api_key = $2
+        WHERE device_id = $1
         ",
     )
     .bind(device_id)
-    .bind(api_key)
     .execute(pool)
     .await
     .expect("Failed to delete linked device");
@@ -119,7 +120,7 @@ pub async fn remove_linked_device(
 pub async fn get_linked_device(pool: &SqlitePool, device_id: &str) -> Option<LinkedDevice> {
     let device: Option<LinkedDevice> = sqlx::query_as(
         r"
-        SELECT device_id, api_key
+        SELECT device_id, user_id, api_key
         FROM linked_devices
         WHERE device_id = $1
         ",
@@ -132,15 +133,15 @@ pub async fn get_linked_device(pool: &SqlitePool, device_id: &str) -> Option<Lin
     device
 }
 
-pub async fn get_linked_devices(pool: &SqlitePool, api_key: &str) -> Vec<String> {
-    let devices: Vec<String> = sqlx::query_scalar(
+pub async fn get_linked_devices(pool: &SqlitePool, user_id: Option<&str>) -> Vec<LinkedDevice> {
+    let devices: Vec<LinkedDevice> = sqlx::query_as(
         r"
-        SELECT device_id
+        SELECT device_id, user_id, api_key
         FROM linked_devices
-        WHERE api_key = $1
+        WHERE $1 IS NULL OR user_id = $1
         ",
     )
-    .bind(api_key)
+    .bind(user_id)
     .fetch_all(pool)
     .await
     .expect("Failed to get linked devices");

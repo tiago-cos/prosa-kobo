@@ -5,6 +5,7 @@ pub async fn create_tables(pool: &SqlitePool) {
         r"
         CREATE TABLE IF NOT EXISTS linked_devices (
             device_id TEXT PRIMARY KEY NOT NULL,
+            user_id TEXT NOT NULL,
             api_key TEXT NOT NULL
         );
 

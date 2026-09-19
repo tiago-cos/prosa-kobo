@@ -20,6 +20,11 @@ info:
     Each Kobo device that contacts the middleware can be associated with a Prosa API key.  
     When a device is linked to an API key, all of its requests are translated into Prosa API calls, and the responses are converted back into Kobo-compatible responses before being returned to the device.  
 
+    The device management endpoints are authenticated with a Prosa JWT, obtained
+    from Prosa's `/auth/login`. A user may only act on their own devices; a Prosa
+    admin may act on anyone's, and is the only one who may list devices without
+    filtering by user. The API key is supplied once, when linking.
+
     This middleware **completely replaces the official Kobo backend**, no requests are proxied to Kobo’s original servers.
 
     # Configuration
@@ -238,7 +243,7 @@ info:
         Retrieve the device ID using the [List Unlinked Devices](https://tiago-cos.github.io/prosa-kobo/#tag/Devices/operation/list_unlinked_devices) endpoint.
 
     4.  **Link the Device**  
-        Link the device to a Prosa API key with the [Link Device](https://tiago-cos.github.io/prosa-kobo/#tag/Devices/operation/link_device) endpoint.
+        Link the device to a Prosa API key with the [Link Device](https://tiago-cos.github.io/prosa-kobo/#tag/Devices/operation/link_device) endpoint, authenticated with your Prosa JWT.
 
     _**Important Note on Sync Issues**_  
     Sometimes, even after linking a device, sync may still fail. This happens because Kobo devices do not immediately invalidate their old OAuth tokens, even when receiving a `403` or `401` response.  
@@ -259,6 +264,9 @@ x-tagGroups:
     tags:
       - Devices
       
+security:
+  - prosaToken: []
+
 servers:
   - url: http://{host}
     variables:
@@ -273,3 +281,11 @@ paths:
     $ref: "paths/devices/linked.yaml"
   /devices/linked/{device_id}:
     $ref: "paths/devices/linked/{device_id}.yaml"
+
+components:
+  securitySchemes:
+    prosaToken:
+      description: "Prosa user authentication JWT."
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

@@ -8,6 +8,13 @@ properties:
     type: string
     description: Prosa API key that will be associated with the device.
     example: uXl248ck5oWd9uXl248c5oWd9uXl2
+  user_id:
+    type: string
+    format: uuid
+    description: |
+      _(Optional)_ The Prosa user to link the device to. Defaults to the user
+      the token belongs to. Only admins may name another user.
+    example: 14ae396c-07c3-437d-a0a0-ef48189ba40a
 required:
   - device_id
   - api_key

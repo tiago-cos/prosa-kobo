@@ -1,8 +1,8 @@
 mod handlers;
 pub mod middleware;
-mod models;
+pub mod models;
 pub mod routes;
 mod service;
 
-pub use models::AuthToken;
+pub use models::{AuthToken, ProsaToken};
 pub use service::*;

@@ -1,0 +1,14 @@
+type: object
+properties:
+  device_id:
+    type: string
+    description: Unique identifier of the linked device.
+    example: oPiX_QFFX8eXKmW-R4pFkO7jfPeZ9bPs9pmcekCCFXM=
+  user_id:
+    type: string
+    format: uuid
+    description: The Prosa user the device is linked to.
+    example: 14ae396c-07c3-437d-a0a0-ef48189ba40a
+required:
+  - device_id
+  - user_id

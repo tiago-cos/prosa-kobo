@@ -31,6 +31,7 @@ pub async fn link_device(
     pool: &SqlitePool,
     client: &dyn ProsaApi,
     device_id: &str,
+    user_id: &str,
     api_key: &str,
 ) -> Result<(), KoboError> {
     verify_api_key(client, api_key)?;
@@ -42,16 +43,12 @@ pub async fn link_device(
     }
 
     data::remove_unlinked_device(pool, device_id).await?;
-    data::add_linked_device(pool, device_id, api_key).await?;
+    data::add_linked_device(pool, device_id, user_id, api_key).await?;
 
     Ok(())
 }
 
-pub async fn unlink_device(pool: &SqlitePool, device_id: &str, api_key: &str) -> Result<(), KoboError> {
-    if !is_valid_api_key(api_key) {
-        return Err(DeviceError::InvalidApiKey.into());
-    }
-
+pub async fn unlink_device(pool: &SqlitePool, device_id: &str) -> Result<(), KoboError> {
     if data::get_unlinked_device(pool, device_id).await.is_some() {
         return Err(DeviceError::DeviceAlreadyUnlinked.into());
     }
@@ -61,18 +58,14 @@ pub async fn unlink_device(pool: &SqlitePool, device_id: &str, api_key: &str) ->
         .expect("Time went backwards")
         .as_secs() as i64;
 
-    data::remove_linked_device(pool, device_id, api_key).await?;
+    data::remove_linked_device(pool, device_id).await?;
     data::add_unlinked_device(pool, device_id, now).await;
 
     Ok(())
 }
 
-pub async fn get_linked_devices(pool: &SqlitePool, api_key: &str) -> Result<Vec<String>, KoboError> {
-    if !is_valid_api_key(api_key) {
-        return Err(DeviceError::InvalidApiKey.into());
-    }
-
-    Ok(data::get_linked_devices(pool, api_key).await)
+pub async fn get_linked_devices(pool: &SqlitePool, user_id: Option<&str>) -> Vec<LinkedDevice> {
+    data::get_linked_devices(pool, user_id).await
 }
 
 pub async fn get_linked_device(pool: &SqlitePool, device_id: &str) -> Option<LinkedDevice> {

@@ -3,20 +3,22 @@ delete:
     - Devices
   summary: Unlink a device
   description: |
-    Unlinks a device from a user account using the provided API key.  
-    The API key must match the one the device is currently linked to.
+    Unlinks a device from the user it is linked to.
+
+    A regular user may unlink their own devices; an admin may unlink anyone's.
   operationId: unlink_device
 
   parameters:
     - $ref: ../../../components/parameters/DeviceId.yaml
-    - $ref: ../../../components/parameters/ApiKey.yaml
 
   responses:
     '204':
       description: Device successfully unlinked.
-    '400':
-      description: Missing or invalid API key.
+    '401':
+      description: The Prosa token is missing, malformed, expired, or not signed by Prosa.
+    '403':
+      description: The token may not unlink this device.
     '404':
-      description: Device not linked to this API key.
+      description: Device not linked.
     '409':
       description: Device is already unlinked.

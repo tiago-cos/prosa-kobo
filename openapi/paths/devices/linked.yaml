@@ -2,39 +2,51 @@ get:
   tags:
     - Devices
   summary: List linked devices
-  description: Returns the list of device IDs that are linked to the provided API key.
+  description: |
+    Returns linked devices, with the user each one belongs to.
+
+    `user_id` filters the result. Only an admin may search without a filter,
+    and only an admin may filter by a user other than themselves.
   operationId: list_linked_devices
 
   parameters:
-    - $ref: ../../components/parameters/ApiKey.yaml
-
-  security: []
+    - name: user_id
+      in: query
+      required: false
+      description: _(Optional)_ Filters the result to one user's devices. Required unless the caller is an admin.
+      schema:
+        type: string
+        format: uuid
+      example: 14ae396c-07c3-437d-a0a0-ef48189ba40a
 
   responses:
     '200':
-      description: A list of linked device IDs.
+      description: A list of linked devices.
       content:
         application/json:
           schema:
             type: array
             items:
-              type: string
-              description: Device ID.
-              example: oPiX_QFFX8eXKmW-R4pFkO7jfPeZ9bPs9pmcekCCFXM=
-    '400':
-      description: Missing or invalid API key.
+              $ref: ../../components/schemas/LinkedDevice.yaml
+    '401':
+      description: The Prosa token is missing, malformed, expired, or not signed by Prosa.
+    '403':
+      description: The filter names another user, or is absent and the caller is not an admin.
 
 post:
   tags:
     - Devices
   summary: Link a device
   description: |
-    Links a device to a user account using a Prosa API key.  
+    Links a device to a Prosa user, storing the API key its requests will be translated with.  
     The device must have previously contacted the middleware before it can be linked.
 
-    The key is checked against Prosa before the link is stored, so a key that
-    has been revoked, has expired, or was mistyped is refused here rather than
-    failing the first time the device syncs.
+    The device is linked to the user the token belongs to, unless `user_id`
+    names another; only an admin may do that.
+
+    The API key is checked against Prosa before the link is stored, so a key
+    that has been revoked, has expired, or was mistyped is refused here rather
+    than failing the first time the device syncs.
   operationId: link_device
 
   requestBody:
@@ -49,6 +61,10 @@ post:
       description: Device successfully linked.
     '400':
       description: The API key is missing, malformed, unknown to Prosa, or does not grant read access.
+    '401':
+      description: The Prosa token is missing, malformed, expired, or not signed by Prosa.
+    '403':
+      description: The token may not link devices for the requested user.
     '404':
       description: Device not found (never contacted the server).
     '409':
