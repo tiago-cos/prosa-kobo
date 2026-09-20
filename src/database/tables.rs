@@ -8,7 +8,8 @@ pub async fn create_tables(pool: &SqlitePool) {
             lookup_key TEXT NOT NULL UNIQUE,
             user_id TEXT NOT NULL,
             name TEXT NOT NULL,
-            api_key TEXT NOT NULL
+            api_key TEXT NOT NULL,
+            client_device_id TEXT UNIQUE
         );
 
         CREATE TABLE IF NOT EXISTS cover_versions (

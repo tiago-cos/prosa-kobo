@@ -34,6 +34,7 @@ pub struct LinkedDevice {
     pub user_id: String,
     pub name: String,
     pub api_key: String,
+    pub client_device_id: Option<String>,
 }
 
 #[derive(Serialize)]

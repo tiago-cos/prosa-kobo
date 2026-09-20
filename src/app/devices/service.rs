@@ -47,6 +47,14 @@ pub async fn get_device_by_lookup_key(pool: &SqlitePool, lookup_key: &str) -> Op
     data::get_device_by_lookup_key(pool, lookup_key).await
 }
 
+pub async fn get_device_by_client_id(pool: &SqlitePool, client_device_id: &str) -> Option<LinkedDevice> {
+    data::get_device_by_client_id(pool, client_device_id).await
+}
+
+pub async fn claim_client_device_id(pool: &SqlitePool, device_id: &str, client_device_id: &str) {
+    data::claim_client_device_id(pool, device_id, client_device_id).await;
+}
+
 pub async fn get_linked_devices(pool: &SqlitePool, user_id: Option<&str>) -> Vec<LinkedDevice> {
     data::get_linked_devices(pool, user_id).await
 }
