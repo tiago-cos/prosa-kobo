@@ -1,13 +1,19 @@
-use super::models::{ReadingState, UPDATE_STATE_RESPONSE};
+use super::models::{Location, ReadingState, UPDATE_STATE_RESPONSE};
 use crate::{
-    app::{error::KoboError, state::models::RatingResponse},
-    client::{ProsaLocation, ProsaReadingStatus, prosa::ProsaApi},
+    app::{
+        Kepubs, ProsaClient,
+        error::KoboError,
+        kepub::{self, KoboPosition},
+        state::models::RatingResponse,
+    },
+    client::{ProsaReadingStatus, prosa::ProsaApi},
 };
 use chrono::{DateTime, Utc};
 use serde_json::Value;
 
-pub fn translate_get_state(
-    client: &dyn ProsaApi,
+pub async fn translate_get_state(
+    kepubs: &Kepubs,
+    client: &ProsaClient,
     book_id: &str,
     api_key: &str,
 ) -> Result<ReadingState, KoboError> {
@@ -19,24 +25,29 @@ pub fn translate_get_state(
         ProsaReadingStatus::Reading => "Reading",
     };
 
-    // A bookmark we cannot parse is no bookmark: the device gets the book
+    // A bookmark we cannot translate is no bookmark: the device gets the book
     // without a reading position rather than a broken one.
-    let location = state_response
-        .location
-        .and_then(|location| location.parse::<ProsaLocation>().ok());
+    let position = match state_response.location {
+        Some(location) => {
+            let kepub = kepub::get_kepub(kepubs, client, book_id, api_key).await?;
+            kepub::to_kobo_position(&kepub, &location)
+        }
+        None => None,
+    };
 
     let state = ReadingState::new(
         book_id,
         status,
-        location.as_ref().map(ProsaLocation::fragment),
-        location.map(|location| location.source),
+        position.as_ref().map(|position| position.span.clone()),
+        position.map(|position| position.chapter),
     );
 
     Ok(state)
 }
 
-pub fn translate_update_state(
-    client: &dyn ProsaApi,
+pub async fn translate_update_state(
+    kepubs: &Kepubs,
+    client: &ProsaClient,
     book_id: &str,
     state: &ReadingState,
     api_key: &str,
@@ -47,16 +58,13 @@ pub fn translate_update_state(
         _ => ProsaReadingStatus::Reading,
     };
 
-    // The device names the chapter relative to the book file it downloaded,
-    // as `<book>.kepub.epub!!OEBPS/chapter.xhtml`; Prosa wants the tail.
-    let location = state.current_bookmark.location.as_ref().map(|location| {
-        let source = match location.source.split_once("!!") {
-            Some((_, source)) => source,
-            None => location.source.as_str(),
-        };
-
-        format!("{source}#{}", location.value)
-    });
+    let location = match &state.current_bookmark.location {
+        Some(location) => {
+            let kepub = kepub::get_kepub(kepubs, client, book_id, api_key).await?;
+            kepub::to_prosa_location(&kepub, &bookmark_position(location))
+        }
+        None => None,
+    };
 
     client.patch_state(book_id, location.as_deref(), status, api_key)?;
 
@@ -85,6 +93,17 @@ pub fn translate_get_rating(
     let rating = client.fetch_rating(book_id, api_key)?;
 
     Ok(RatingResponse::new(book_id, rating))
+}
+
+// The device names the chapter relative to the book file it downloaded, as
+// `<book>.kepub.epub!!OEBPS/chapter.xhtml`; only the tail names a document.
+fn bookmark_position(location: &Location) -> KoboPosition {
+    let chapter = match location.source.split_once("!!") {
+        Some((_, source)) => source,
+        None => location.source.as_str(),
+    };
+
+    KoboPosition::new(chapter, &location.value, 0)
 }
 
 pub fn unix_millis_to_string(timestamp_millis: i64) -> String {

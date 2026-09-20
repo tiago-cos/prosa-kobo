@@ -1,6 +1,7 @@
-use super::models::{KepubCache, KepubError};
+use super::models::{KepubCache, KepubError, KoboPosition};
 use crate::app::{ProsaClient, error::KoboError};
-use kepub_rs::Converter;
+use kepub_rs::{Converter, epub_to_kobo_location, kobo_to_epub_location};
+use log::warn;
 use std::{io::Cursor, sync::Arc};
 
 pub async fn get_kepub(
@@ -37,4 +38,23 @@ fn convert(epub: &[u8]) -> Result<Vec<u8>, KepubError> {
         .map_err(|_| KepubError::ConversionFailed)?;
 
     Ok(kepub.into_inner())
+}
+
+pub fn to_prosa_location(kepub: &[u8], position: &KoboPosition) -> Option<String> {
+    let kobo = format!("{}#{}:{}", position.chapter, position.span, position.offset);
+
+    kobo_to_epub_location(Cursor::new(kepub), &kobo)
+        .inspect_err(|e| warn!("Could not translate {kobo} into a Prosa location: {e}"))
+        .ok()
+}
+
+pub fn to_kobo_position(kepub: &[u8], location: &str) -> Option<KoboPosition> {
+    let kobo = epub_to_kobo_location(Cursor::new(kepub), location)
+        .inspect_err(|e| warn!("Could not translate {location} into a Kobo position: {e}"))
+        .ok()?;
+
+    let (chapter, rest) = kobo.rsplit_once('#')?;
+    let (span, offset) = rest.rsplit_once(':')?;
+
+    Some(KoboPosition::new(chapter, span, offset.parse().ok()?))
 }

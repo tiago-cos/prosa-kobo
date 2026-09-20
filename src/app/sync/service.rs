@@ -44,7 +44,7 @@ pub async fn translate_sync(
 
     for book_id in books_to_update {
         let entitlement = BookEntitlement::new(&book_id, false);
-        let reading_state = state::service::translate_get_state(client.as_ref(), &book_id, api_key)?;
+        let reading_state = state::service::translate_get_state(kepubs, client, &book_id, api_key).await?;
         let metadata = metadata::service::translate_metadata(
             pool, kepubs, client, &book_id, server_url, api_key, device_id,
         )

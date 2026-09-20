@@ -1,17 +1,24 @@
 use super::{
     data,
-    models::{Annotation, CheckContentRequest, GetAnnotationsResponse, PatchAnnotationsRequest},
-};
-use crate::{
-    app::error::KoboError,
-    client::{
-        ProsaAnnotation, ProsaAnnotationRequest,
-        prosa::{ClientError, ProsaApi},
+    models::{
+        Annotation, AnnotationLocation, AnnotationSpan, CheckContentRequest, GetAnnotationsResponse,
+        PatchAnnotationsRequest,
     },
 };
+use crate::{
+    app::{
+        Kepubs, ProsaClient,
+        error::KoboError,
+        kepub::{self, KoboPosition},
+        state::service::unix_millis_to_string,
+    },
+    client::{ProsaAnnotation, ProsaAnnotationRequest, prosa::ClientError},
+};
 use base64::{Engine, prelude::BASE64_STANDARD};
+use log::warn;
 use rand::RngCore;
 use sqlx::SqlitePool;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 pub async fn get_etag(pool: &SqlitePool, book_id: &str) -> String {
     match data::get_etag(pool, book_id).await {
@@ -24,7 +31,7 @@ pub async fn get_etag(pool: &SqlitePool, book_id: &str) -> String {
         .expect("Etag should be present")
 }
 
-pub async fn update_etag(pool: &SqlitePool, book_id: &str) -> () {
+pub async fn update_etag(pool: &SqlitePool, book_id: &str) {
     let mut random = [0u8; 32];
     rand::rng().fill_bytes(&mut random);
     let etag = BASE64_STANDARD.encode(random);
@@ -53,39 +60,58 @@ pub async fn get_changed_annotations(pool: &SqlitePool, books: Vec<CheckContentR
     changed
 }
 
-pub fn get_annotations(
-    client: &dyn ProsaApi,
+pub async fn get_annotations(
+    kepubs: &Kepubs,
+    client: &ProsaClient,
     book_id: &str,
     api_key: &str,
-) -> Result<GetAnnotationsResponse, ClientError> {
+) -> Result<GetAnnotationsResponse, KoboError> {
     let annotation_ids = client.list_annotations(book_id, api_key)?;
-    let mut annotations: Vec<ProsaAnnotation> = Vec::new();
+    let mut stored: Vec<ProsaAnnotation> = Vec::new();
 
     for id in annotation_ids {
-        let annotation = client.get_annotation(book_id, &id, api_key)?;
-        annotations.push(annotation);
+        stored.push(client.get_annotation(book_id, &id, api_key)?);
     }
 
-    let annotations: Vec<Annotation> = annotations.into_iter().map(Into::into).collect();
+    if stored.is_empty() {
+        return Ok(GetAnnotationsResponse::new(Vec::new()));
+    }
+
+    let kepub = kepub::get_kepub(kepubs, client, book_id, api_key).await?;
+
+    let annotations = stored
+        .into_iter()
+        .filter_map(|annotation| to_kobo_annotation(&kepub, annotation))
+        .collect();
 
     Ok(GetAnnotationsResponse::new(annotations))
 }
 
-pub fn patch_annotations(
-    client: &dyn ProsaApi,
+pub async fn patch_annotations(
+    kepubs: &Kepubs,
+    client: &ProsaClient,
     book_id: &str,
     request: PatchAnnotationsRequest,
     api_key: &str,
 ) -> Result<(), KoboError> {
-    for annotation in request.updated_annotations.unwrap_or_default() {
-        let request: ProsaAnnotationRequest = annotation.clone().into();
-        let result = client.add_annotation(book_id, &request, api_key);
-        let note = &annotation.note_text.unwrap_or_default();
+    let updated = request.updated_annotations.unwrap_or_default();
 
-        if let Err(ClientError::Conflict) = result {
-            client.patch_annotation(book_id, &annotation.id, note, api_key)?;
-        } else {
-            result?;
+    if !updated.is_empty() {
+        let kepub = kepub::get_kepub(kepubs, client, book_id, api_key).await?;
+
+        for annotation in updated {
+            let Some(request) = to_prosa_annotation(&kepub, &annotation) else {
+                continue;
+            };
+
+            let result = client.add_annotation(book_id, &request, api_key);
+            let note = &annotation.note_text.unwrap_or_default();
+
+            if let Err(ClientError::Conflict) = result {
+                client.patch_annotation(book_id, &annotation.id, note, api_key)?;
+            } else {
+                result?;
+            }
         }
     }
 
@@ -96,93 +122,303 @@ pub fn patch_annotations(
     Ok(())
 }
 
+fn to_kobo_annotation(kepub: &[u8], annotation: ProsaAnnotation) -> Option<Annotation> {
+    let start = kepub::to_kobo_position(kepub, &annotation.start_location)?;
+    let end = kepub::to_kobo_position(kepub, &annotation.end_location)?;
+
+    let span = AnnotationSpan {
+        chapter_filename: start.chapter,
+        end_char: end.offset + 1,
+        end_path: end.span,
+        start_char: start.offset,
+        start_path: start.span,
+    };
+
+    let now: i64 = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("Failed to get time since epoch")
+        .as_millis()
+        .try_into()
+        .expect("Failed to get current timestamp");
+
+    Some(Annotation {
+        client_last_modified_utc: unix_millis_to_string(now),
+        id: annotation.annotation_id,
+        location: AnnotationLocation { span },
+        r#type: match annotation.note {
+            Some(_) => "note".to_owned(),
+            None => "highlight".to_owned(),
+        },
+        note_text: annotation.note,
+    })
+}
+
+fn to_prosa_annotation(kepub: &[u8], annotation: &Annotation) -> Option<ProsaAnnotationRequest> {
+    let span = &annotation.location.span;
+
+    let start = KoboPosition::new(&span.chapter_filename, &span.start_path, span.start_char);
+    let end = KoboPosition::new(
+        &span.chapter_filename,
+        &span.end_path,
+        span.end_char.saturating_sub(1),
+    );
+
+    let (Some(start_location), Some(end_location)) = (
+        kepub::to_prosa_location(kepub, &start),
+        kepub::to_prosa_location(kepub, &end),
+    ) else {
+        warn!("Dropping annotation {}: its span does not resolve", annotation.id);
+        return None;
+    };
+
+    Some(ProsaAnnotationRequest {
+        start_location,
+        end_location,
+        note: annotation.note_text.clone(),
+        annotation_id: Some(annotation.id.clone()),
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::{
-        app::annotations::models::{Annotation, AnnotationLocation, AnnotationSpan},
+        app::kepub::KepubCache,
         client::mock::{MockProsaClient, ProsaMethod},
     };
+    use regex::Regex;
+    use std::{fs, io::Cursor, sync::Arc};
 
-    fn prosa_annotation(note: Option<&str>) -> ProsaAnnotation {
-        ProsaAnnotation {
-            annotation_id: "annotation".to_owned(),
-            start_location: "OEBPS/chapter-001.xhtml#0/2/t1:44".to_owned(),
-            end_location: "OEBPS/chapter-001.xhtml#0/3/t0:12".to_owned(),
-            note: note.map(str::to_owned),
-        }
+    const BOOK: &str = "book";
+    const EPUB: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/books/The_Great_Gatsby.epub");
+
+    struct Fixture {
+        cache: Kepubs,
+        client: Arc<MockProsaClient>,
+        chapter: String,
+        start: String,
+        end: String,
     }
 
-    fn kobo_annotation(note: Option<&str>) -> Annotation {
-        Annotation {
-            client_last_modified_utc: "2026-01-01T00:00:00.0000000Z".to_owned(),
-            id: "annotation".to_owned(),
-            location: AnnotationLocation {
-                span: AnnotationSpan {
-                    chapter_filename: "OEBPS/chapter-001.xhtml".to_owned(),
-                    end_char: 13,
-                    end_path: "0/3/t0".to_owned(),
-                    start_char: 44,
-                    start_path: "0/2/t1".to_owned(),
+    impl Fixture {
+        /// Reads a chapter and two of its koboSpans out of the converted book,
+        /// so the annotations under test address positions that really exist.
+        async fn new() -> Self {
+            let client = Arc::new(MockProsaClient::new());
+            client.seed_file(BOOK, fs::read(EPUB).expect("Failed to read the test epub"));
+
+            let cache: Kepubs = Arc::new(KepubCache::new(64 * 1024 * 1024));
+            let prosa = Arc::clone(&client) as ProsaClient;
+
+            let kepub = kepub::get_kepub(&cache, &prosa, BOOK, "key")
+                .await
+                .expect("Failed to convert the test epub");
+
+            let (chapter, start, end) = spanned_chapter(&kepub);
+
+            Self {
+                cache,
+                client,
+                chapter,
+                start,
+                end,
+            }
+        }
+
+        fn prosa(&self) -> ProsaClient {
+            Arc::clone(&self.client) as ProsaClient
+        }
+
+        fn annotation(&self, note: Option<&str>) -> Annotation {
+            Annotation {
+                client_last_modified_utc: "2026-01-01T00:00:00.0000000Z".to_owned(),
+                id: "annotation".to_owned(),
+                location: AnnotationLocation {
+                    span: AnnotationSpan {
+                        chapter_filename: self.chapter.clone(),
+                        end_char: 1,
+                        end_path: self.end.clone(),
+                        start_char: 0,
+                        start_path: self.start.clone(),
+                    },
                 },
-            },
-            note_text: note.map(str::to_owned),
-            r#type: "note".to_owned(),
+                note_text: note.map(str::to_owned),
+                r#type: "note".to_owned(),
+            }
+        }
+
+        async fn patch(&self, request: PatchAnnotationsRequest) {
+            patch_annotations(&self.cache, &self.prosa(), BOOK, request, "key")
+                .await
+                .expect("Failed to patch annotations");
         }
     }
 
-    #[test]
-    fn creates_an_annotation_under_the_id_the_device_chose() {
-        let client = MockProsaClient::new();
-        client.seed_book("book");
+    fn spanned_chapter(kepub: &[u8]) -> (String, String, String) {
+        let mut archive = zip::ZipArchive::new(Cursor::new(kepub)).expect("Failed to open the kepub");
+        let id = Regex::new(r#"id="(kobo\.\d+\.\d+)""#).expect("Failed to build regex");
 
-        let request = PatchAnnotationsRequest {
-            updated_annotations: Some(vec![kobo_annotation(Some("A note"))]),
+        let documents: Vec<String> = archive
+            .file_names()
+            .filter(|name| name.contains(".xhtml") || name.contains(".htm"))
+            .map(str::to_owned)
+            .collect();
+
+        for name in documents {
+            let mut body = String::new();
+            let mut file = archive.by_name(&name).expect("Failed to open a content document");
+
+            if std::io::Read::read_to_string(&mut file, &mut body).is_err() {
+                continue;
+            }
+
+            let mut spans = id.captures_iter(&body).map(|span| span[1].to_owned());
+
+            if let (Some(start), Some(end)) = (spans.next(), spans.next()) {
+                return (name, start, end);
+            }
+        }
+
+        panic!("The converted book has no spanned chapter to build fixtures from");
+    }
+
+    fn update(annotations: Vec<Annotation>) -> PatchAnnotationsRequest {
+        PatchAnnotationsRequest {
+            updated_annotations: Some(annotations),
             deleted_annotation_ids: None,
-        };
+        }
+    }
 
-        patch_annotations(&client, "book", request, "key").expect("Failed to patch annotations");
+    #[tokio::test]
+    async fn creates_an_annotation_under_the_id_the_device_chose() {
+        let fixture = Fixture::new().await;
+        fixture
+            .patch(update(vec![fixture.annotation(Some("A note"))]))
+            .await;
 
-        let stored = client.stored_annotations("book");
+        let stored = fixture.client.stored_annotations(BOOK);
         let annotation = stored.first().expect("Expected one annotation");
 
         assert_eq!(annotation.annotation_id, "annotation");
         assert_eq!(annotation.note.as_deref(), Some("A note"));
-        assert_eq!(client.call_count(ProsaMethod::PatchAnnotation), 0);
+        assert_eq!(fixture.client.call_count(ProsaMethod::PatchAnnotation), 0);
     }
 
-    #[test]
-    fn updates_the_note_when_the_annotation_already_exists() {
-        let client = MockProsaClient::new();
-        client.seed_annotation("book", prosa_annotation(None));
+    #[tokio::test]
+    async fn stores_a_prosa_location_rather_than_the_span_the_device_sent() {
+        let fixture = Fixture::new().await;
+        fixture.patch(update(vec![fixture.annotation(None)])).await;
 
-        let request = PatchAnnotationsRequest {
-            updated_annotations: Some(vec![kobo_annotation(Some("A later note"))]),
-            deleted_annotation_ids: None,
-        };
+        let stored = fixture.client.stored_annotations(BOOK);
+        let annotation = stored.first().expect("Expected one annotation");
 
-        patch_annotations(&client, "book", request, "key").expect("Failed to patch annotations");
+        assert!(
+            annotation
+                .start_location
+                .starts_with(&format!("{}#", fixture.chapter))
+        );
+        assert!(!annotation.start_location.contains("kobo."));
+        assert!(!annotation.end_location.contains("kobo."));
+    }
 
-        let stored = client.stored_annotations("book");
+    #[tokio::test]
+    async fn an_annotation_round_trips_back_to_the_span_it_came_from() {
+        let fixture = Fixture::new().await;
+        let sent = fixture.annotation(None);
+
+        fixture.patch(update(vec![sent.clone()])).await;
+
+        let returned = get_annotations(&fixture.cache, &fixture.prosa(), BOOK, "key")
+            .await
+            .expect("Failed to get annotations");
+
+        let returned = returned.annotations.first().expect("Expected one annotation");
+
+        assert_eq!(
+            returned.location.span.chapter_filename,
+            sent.location.span.chapter_filename
+        );
+        assert_eq!(returned.location.span.start_path, sent.location.span.start_path);
+        assert_eq!(returned.location.span.start_char, sent.location.span.start_char);
+        assert_eq!(returned.location.span.end_path, sent.location.span.end_path);
+        assert_eq!(returned.location.span.end_char, sent.location.span.end_char);
+    }
+
+    #[tokio::test]
+    async fn translates_an_annotation_prosa_already_held() {
+        let fixture = Fixture::new().await;
+        let kepub = kepub::get_kepub(&fixture.cache, &fixture.prosa(), BOOK, "key")
+            .await
+            .expect("Failed to convert the test epub");
+
+        let position = KoboPosition::new(&fixture.chapter, &fixture.start, 0);
+        let location = kepub::to_prosa_location(&kepub, &position).expect("Expected a location");
+
+        fixture.client.seed_annotation(
+            BOOK,
+            ProsaAnnotation {
+                annotation_id: "stored".to_owned(),
+                start_location: location.clone(),
+                end_location: location,
+                note: None,
+            },
+        );
+
+        let returned = get_annotations(&fixture.cache, &fixture.prosa(), BOOK, "key")
+            .await
+            .expect("Failed to get annotations");
+
+        let returned = returned.annotations.first().expect("Expected one annotation");
+
+        assert_eq!(returned.id, "stored");
+        assert_eq!(returned.r#type, "highlight");
+        assert_eq!(returned.location.span.chapter_filename, fixture.chapter);
+        assert_eq!(returned.location.span.start_path, fixture.start);
+        assert_eq!(returned.location.span.start_char, 0);
+        assert_eq!(returned.location.span.end_char, 1);
+    }
+
+    #[tokio::test]
+    async fn updates_the_note_when_the_annotation_already_exists() {
+        let fixture = Fixture::new().await;
+
+        fixture.patch(update(vec![fixture.annotation(None)])).await;
+        fixture
+            .patch(update(vec![fixture.annotation(Some("A later note"))]))
+            .await;
+
+        let stored = fixture.client.stored_annotations(BOOK);
         let annotation = stored.first().expect("Expected one annotation");
 
         assert_eq!(stored.len(), 1);
         assert_eq!(annotation.note.as_deref(), Some("A later note"));
-        assert_eq!(client.call_count(ProsaMethod::PatchAnnotation), 1);
+        assert_eq!(fixture.client.call_count(ProsaMethod::PatchAnnotation), 1);
     }
 
-    #[test]
-    fn deletes_the_annotations_the_device_removed() {
-        let client = MockProsaClient::new();
-        client.seed_annotation("book", prosa_annotation(None));
+    #[tokio::test]
+    async fn drops_an_annotation_whose_span_the_book_does_not_have() {
+        let fixture = Fixture::new().await;
+        let mut annotation = fixture.annotation(None);
+        annotation.location.span.start_path = "kobo.99999.1".to_owned();
 
-        let request = PatchAnnotationsRequest {
-            updated_annotations: None,
-            deleted_annotation_ids: Some(vec!["annotation".to_owned()]),
-        };
+        fixture.patch(update(vec![annotation])).await;
 
-        patch_annotations(&client, "book", request, "key").expect("Failed to patch annotations");
+        assert!(fixture.client.stored_annotations(BOOK).is_empty());
+        assert_eq!(fixture.client.call_count(ProsaMethod::AddAnnotation), 0);
+    }
 
-        assert!(client.stored_annotations("book").is_empty());
+    #[tokio::test]
+    async fn deletes_the_annotations_the_device_removed() {
+        let fixture = Fixture::new().await;
+        fixture.patch(update(vec![fixture.annotation(None)])).await;
+
+        fixture
+            .patch(PatchAnnotationsRequest {
+                updated_annotations: None,
+                deleted_annotation_ids: Some(vec!["annotation".to_owned()]),
+            })
+            .await;
+
+        assert!(fixture.client.stored_annotations(BOOK).is_empty());
     }
 }

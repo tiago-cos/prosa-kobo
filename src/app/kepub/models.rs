@@ -12,6 +12,23 @@ pub enum KepubError {
     ConversionFailed,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct KoboPosition {
+    pub chapter: String,
+    pub span: String,
+    pub offset: u32,
+}
+
+impl KoboPosition {
+    pub fn new(chapter: &str, span: &str, offset: u32) -> Self {
+        Self {
+            chapter: chapter.to_owned(),
+            span: span.to_owned(),
+            offset,
+        }
+    }
+}
+
 pub struct KepubCache {
     capacity: u64,
     entries: Mutex<Entries>,

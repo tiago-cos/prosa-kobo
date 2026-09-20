@@ -4,7 +4,6 @@ pub mod cover;
 pub mod health;
 pub mod identity;
 pub mod keys;
-pub mod location;
 pub mod metadata;
 pub mod prosa;
 pub mod shelf;
@@ -15,6 +14,5 @@ pub mod sync;
 pub mod mock;
 
 pub use annotations::{ProsaAnnotation, ProsaAnnotationRequest};
-pub use location::ProsaLocation;
 pub use metadata::ProsaMetadata;
 pub use state::ProsaReadingStatus;
