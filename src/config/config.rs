@@ -7,6 +7,7 @@ pub struct Configuration {
     pub server: Server,
     pub database: Database,
     pub prosa: Prosa,
+    pub kepub: Kepub,
 }
 
 #[derive(Default, Deserialize)]
@@ -38,6 +39,12 @@ pub struct Prosa {
     pub scheme: String,
 }
 
+#[derive(Deserialize)]
+#[serde(default)]
+pub struct Kepub {
+    pub cache_size_mb: u64,
+}
+
 #[derive(Deserialize, Clone)]
 #[serde(default)]
 pub struct Database {
@@ -60,6 +67,12 @@ impl Default for Prosa {
             port: 5000,
             scheme: "http".to_string(),
         }
+    }
+}
+
+impl Default for Kepub {
+    fn default() -> Self {
+        Self { cache_size_mb: 256 }
     }
 }
 

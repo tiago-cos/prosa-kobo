@@ -1,14 +1,12 @@
 use super::models::NewEntitlementResponse;
-use crate::{
-    app::{
-        annotations, covers,
-        error::KoboError,
-        metadata::{self, BookMetadata},
-        shelves::models::{DeletedShelfResponse, NewShelfResponse},
-        state::{self, models::ReadingState},
-        sync::models::{BookEntitlement, SyncItem},
-    },
-    client::prosa::ProsaApi,
+use crate::app::{
+    Kepubs, ProsaClient, annotations, covers,
+    error::KoboError,
+    kepub,
+    metadata::{self, BookMetadata},
+    shelves::models::{DeletedShelfResponse, NewShelfResponse},
+    state::{self, models::ReadingState},
+    sync::models::{BookEntitlement, SyncItem},
 };
 use chrono::{DateTime, Utc};
 use sqlx::SqlitePool;
@@ -16,7 +14,8 @@ use std::collections::HashSet;
 
 pub async fn translate_sync(
     pool: &SqlitePool,
-    client: &dyn ProsaApi,
+    kepubs: &Kepubs,
+    client: &ProsaClient,
     sync_token: Option<i64>,
     server_url: &str,
     api_key: &str,
@@ -35,16 +34,21 @@ pub async fn translate_sync(
         covers::bump_version(pool, device_id, book_id).await;
     }
 
+    for book_id in &books.file {
+        kepub::evict(kepubs, book_id);
+    }
+
     let mut books_to_update: HashSet<String> = books.file.into_iter().collect();
     books_to_update.extend(books.cover);
     books_to_update.extend(books.metadata);
 
     for book_id in books_to_update {
         let entitlement = BookEntitlement::new(&book_id, false);
-        let reading_state = state::service::translate_get_state(client, &book_id, api_key)?;
-        let metadata =
-            metadata::service::translate_metadata(pool, client, &book_id, server_url, api_key, device_id)
-                .await?;
+        let reading_state = state::service::translate_get_state(client.as_ref(), &book_id, api_key)?;
+        let metadata = metadata::service::translate_metadata(
+            pool, kepubs, client, &book_id, server_url, api_key, device_id,
+        )
+        .await?;
 
         let response =
             SyncItem::Entitlement(NewEntitlementResponse::new(entitlement, reading_state, metadata));

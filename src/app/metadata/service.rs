@@ -1,22 +1,20 @@
 use super::{BookMetadata, DownloadUrl};
 use crate::{
-    app::{covers, error::KoboError},
-    client::{
-        ProsaMetadata,
-        prosa::{ClientError, ProsaApi},
-    },
+    app::{Kepubs, ProsaClient, covers, error::KoboError, kepub},
+    client::{ProsaMetadata, prosa::ClientError},
 };
 use sqlx::SqlitePool;
 
 pub async fn translate_metadata(
     pool: &SqlitePool,
-    client: &dyn ProsaApi,
+    kepubs: &Kepubs,
+    client: &ProsaClient,
     book_id: &str,
     server_url: &str,
     api_key: &str,
     device_id: &str,
 ) -> Result<BookMetadata, KoboError> {
-    let size_response = client.fetch_book_file_metadata(book_id, api_key)?.file_size;
+    let kepub_size = kepub::get_kepub(kepubs, client, book_id, api_key).await?.len() as u64;
     let metadata_response = match client.fetch_metadata(book_id, api_key) {
         Ok(response) => response,
         Err(ClientError::NotFound) => ProsaMetadata::default(),
@@ -26,7 +24,7 @@ pub async fn translate_metadata(
     let mut metadata = BookMetadata::new(book_id, metadata_response);
 
     let download_url = format!("{server_url}/books/{book_id}");
-    let download_url = DownloadUrl::new(&download_url, size_response);
+    let download_url = DownloadUrl::new(&download_url, kepub_size);
 
     let cover_version = covers::get_version(pool, device_id, book_id).await;
 

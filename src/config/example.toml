@@ -17,4 +17,5 @@ scheme = "http"
 host = "127.0.0.1"
 port = 5000
 
-
+[kepub]
+cache_size_mb = 256

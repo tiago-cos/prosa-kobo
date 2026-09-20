@@ -6,6 +6,7 @@ mod covers;
 mod devices;
 mod error;
 mod initialization;
+mod kepub;
 mod metadata;
 mod proxy;
 mod server;

@@ -1,12 +1,16 @@
 use crate::{
-    app::error::KoboError,
+    app::{Kepubs, ProsaClient, error::KoboError, kepub},
     client::prosa::{ClientError, ProsaApi},
 };
+use std::sync::Arc;
 
-pub fn download_book(client: &dyn ProsaApi, book_id: &str, api_key: &str) -> Result<Vec<u8>, KoboError> {
-    let book = client.download_book(book_id, api_key)?;
-
-    Ok(book)
+pub async fn download_book(
+    kepubs: &Kepubs,
+    client: &ProsaClient,
+    book_id: &str,
+    api_key: &str,
+) -> Result<Arc<[u8]>, KoboError> {
+    kepub::get_kepub(kepubs, client, book_id, api_key).await
 }
 
 pub fn delete_book(client: &dyn ProsaApi, book_id: &str, api_key: &str) -> Result<(), KoboError> {

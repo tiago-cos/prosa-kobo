@@ -1,5 +1,5 @@
 use super::{
-    annotations, authentication, books, covers, devices, initialization, metadata, proxy, state, sync,
+    annotations, authentication, books, covers, devices, initialization, kepub, metadata, proxy, state, sync,
 };
 use crate::{
     CONFIG,
@@ -24,11 +24,13 @@ const PROSA_RETRY_INTERVAL: Duration = Duration::from_secs(5);
 
 pub type Pool = Arc<SqlitePool>;
 pub type ProsaClient = Arc<dyn ProsaApi>;
+pub type Kepubs = Arc<kepub::KepubCache>;
 
 #[derive(Clone)]
 pub struct AppState {
     pub pool: Pool,
     pub prosa_client: ProsaClient,
+    pub kepubs: Kepubs,
 }
 
 pub async fn run(pool: SqlitePool) {
@@ -50,6 +52,7 @@ pub async fn run(pool: SqlitePool) {
     let state = AppState {
         prosa_client,
         pool: Arc::new(pool),
+        kepubs: Arc::new(kepub::KepubCache::new(CONFIG.kepub.cache_size_mb * 1024 * 1024)),
     };
 
     let host = format!("{}:{}", CONFIG.server.bind.host, CONFIG.server.bind.port);
