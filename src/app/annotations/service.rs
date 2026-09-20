@@ -130,11 +130,11 @@ fn to_kobo_annotation(kepub: &[u8], annotation: ProsaAnnotation) -> Option<Annot
     let end = kepub::to_kobo_position(kepub, &annotation.end_location)?;
 
     let span = AnnotationSpan {
-        chapter_filename: start.chapter,
-        end_char: end.offset + 1,
-        end_path: end.span,
+        chapter_filename: start.chapter.clone(),
+        end_char: end.offset,
+        end_path: end.selector(),
         start_char: start.offset,
-        start_path: start.span,
+        start_path: start.selector(),
     };
 
     let now: i64 = SystemTime::now()
@@ -160,11 +160,7 @@ fn to_prosa_annotation(kepub: &[u8], annotation: &Annotation) -> Option<ProsaAnn
     let span = &annotation.location.span;
 
     let start = KoboPosition::new(&span.chapter_filename, &span.start_path, span.start_char);
-    let end = KoboPosition::new(
-        &span.chapter_filename,
-        &span.end_path,
-        span.end_char.saturating_sub(1),
-    );
+    let end = KoboPosition::new(&span.chapter_filename, &span.end_path, span.end_char);
 
     let (Some(start_location), Some(end_location)) = (
         kepub::to_prosa_location(kepub, &start),
@@ -240,9 +236,9 @@ mod tests {
                     span: AnnotationSpan {
                         chapter_filename: self.chapter.clone(),
                         end_char: 1,
-                        end_path: self.end.clone(),
+                        end_path: selector(&self.end),
                         start_char: 0,
-                        start_path: self.start.clone(),
+                        start_path: selector(&self.start),
                     },
                 },
                 note_text: note.map(str::to_owned),
@@ -285,6 +281,10 @@ mod tests {
         panic!("The converted book has no spanned chapter to build fixtures from");
     }
 
+    fn selector(span: &str) -> String {
+        format!("span#{}", span.replace('.', r"\."))
+    }
+
     fn update(annotations: Vec<Annotation>) -> PatchAnnotationsRequest {
         PatchAnnotationsRequest {
             updated_annotations: Some(annotations),
@@ -305,6 +305,24 @@ mod tests {
         assert_eq!(annotation.annotation_id, "annotation");
         assert_eq!(annotation.note.as_deref(), Some("A note"));
         assert_eq!(fixture.client.call_count(ProsaMethod::PatchAnnotation), 0);
+    }
+
+    #[tokio::test]
+    async fn a_one_character_highlight_keeps_its_two_ends_apart() {
+        let fixture = Fixture::new().await;
+        let mut annotation = fixture.annotation(None);
+        annotation.location.span.end_path = annotation.location.span.start_path.clone();
+        annotation.location.span.start_char = 4;
+        annotation.location.span.end_char = 5;
+
+        fixture.patch(update(vec![annotation])).await;
+
+        let stored = fixture.client.stored_annotations(BOOK);
+        let annotation = stored.first().expect("Expected one annotation");
+
+        assert_ne!(annotation.start_location, annotation.end_location);
+        assert!(annotation.start_location.ends_with(":4"));
+        assert!(annotation.end_location.ends_with(":5"));
     }
 
     #[tokio::test]
@@ -342,6 +360,7 @@ mod tests {
             sent.location.span.chapter_filename
         );
         assert_eq!(returned.location.span.start_path, sent.location.span.start_path);
+        assert!(returned.location.span.start_path.starts_with("span#kobo"));
         assert_eq!(returned.location.span.start_char, sent.location.span.start_char);
         assert_eq!(returned.location.span.end_path, sent.location.span.end_path);
         assert_eq!(returned.location.span.end_char, sent.location.span.end_char);
@@ -354,15 +373,17 @@ mod tests {
             .await
             .expect("Failed to convert the test epub");
 
-        let position = KoboPosition::new(&fixture.chapter, &fixture.start, 0);
-        let location = kepub::to_prosa_location(&kepub, &position).expect("Expected a location");
+        let caret = |offset| {
+            let position = KoboPosition::new(&fixture.chapter, &fixture.start, offset);
+            kepub::to_prosa_location(&kepub, &position).expect("Expected a location")
+        };
 
         fixture.client.seed_annotation(
             BOOK,
             ProsaAnnotation {
                 annotation_id: "stored".to_owned(),
-                start_location: location.clone(),
-                end_location: location,
+                start_location: caret(0),
+                end_location: caret(1),
                 note: None,
             },
         );
@@ -376,7 +397,7 @@ mod tests {
         assert_eq!(returned.id, "stored");
         assert_eq!(returned.r#type, "highlight");
         assert_eq!(returned.location.span.chapter_filename, fixture.chapter);
-        assert_eq!(returned.location.span.start_path, fixture.start);
+        assert_eq!(returned.location.span.start_path, selector(&fixture.start));
         assert_eq!(returned.location.span.start_char, 0);
         assert_eq!(returned.location.span.end_char, 1);
     }
@@ -402,7 +423,7 @@ mod tests {
     async fn drops_an_annotation_whose_span_the_book_does_not_have() {
         let fixture = Fixture::new().await;
         let mut annotation = fixture.annotation(None);
-        annotation.location.span.start_path = "kobo.99999.1".to_owned();
+        annotation.location.span.start_path = selector("kobo.99999.1");
 
         fixture.patch(update(vec![annotation])).await;
 

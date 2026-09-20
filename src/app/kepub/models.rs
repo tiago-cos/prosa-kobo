@@ -23,10 +23,24 @@ impl KoboPosition {
     pub fn new(chapter: &str, span: &str, offset: u32) -> Self {
         Self {
             chapter: chapter.to_owned(),
-            span: span.to_owned(),
+            span: span_id(span),
             offset,
         }
     }
+
+    pub fn selector(&self) -> String {
+        format!("span#{}", self.span.replace('\\', r"\\").replace('.', r"\."))
+    }
+}
+
+fn span_id(span: &str) -> String {
+    let tail = span.rsplit_once('#').map_or(span, |(_, tail)| tail);
+
+    tail.trim()
+        .split([' ', '\t', '>', '[', '/', ':'])
+        .next()
+        .unwrap_or_default()
+        .replace('\\', "")
 }
 
 pub struct KepubCache {
