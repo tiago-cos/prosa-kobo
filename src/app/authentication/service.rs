@@ -1,23 +1,28 @@
 use super::models::{AuthError, OAUTH_CONFIGS, OAUTH_TOKEN, PROSA_ISSUER, ProsaJWTClaims, ProsaToken};
-use crate::{
-    CONFIG,
-    client::prosa::{Client, ProsaApi},
-};
+use crate::client::prosa::ProsaApi;
 use base64::{Engine, prelude::BASE64_STANDARD};
 use jsonwebtoken::{Algorithm, DecodingKey, Validation, jwk::JwkSet};
 use serde_json::Value;
-use std::{collections::HashMap, sync::LazyLock};
+use std::{collections::HashMap, sync::OnceLock};
 
-static PROSA_KEYS: LazyLock<HashMap<String, DecodingKey>> = LazyLock::new(|| {
-    let client = Client::new(&CONFIG.prosa.scheme, &CONFIG.prosa.host, CONFIG.prosa.port);
+static PROSA_KEYS: OnceLock<HashMap<String, DecodingKey>> = OnceLock::new();
 
-    let jwks = client.jwks().expect("Failed to fetch Prosa signing keys");
+pub fn load_prosa_keys(client: &dyn ProsaApi) {
+    PROSA_KEYS.get_or_init(|| {
+        let jwks = client.jwks().expect("Failed to fetch Prosa signing keys");
 
-    decoding_keys(&jwks)
-});
+        decoding_keys(&jwks)
+    });
+}
+
+fn prosa_keys() -> &'static HashMap<String, DecodingKey> {
+    PROSA_KEYS
+        .get()
+        .expect("Prosa signing keys accessed before initialization")
+}
 
 pub fn verify_prosa_jwt(token: &str) -> Result<ProsaToken, AuthError> {
-    decode_prosa_jwt(&PROSA_KEYS, token)
+    decode_prosa_jwt(prosa_keys(), token)
 }
 
 fn decode_prosa_jwt(keys: &HashMap<String, DecodingKey>, token: &str) -> Result<ProsaToken, AuthError> {

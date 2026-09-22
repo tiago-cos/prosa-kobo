@@ -49,6 +49,8 @@ pub async fn run(pool: SqlitePool) {
 
     await_prosa(prosa_client.as_ref(), &prosa_url).await;
 
+    authentication::service::load_prosa_keys(prosa_client.as_ref());
+
     let state = AppState {
         prosa_client,
         pool: Arc::new(pool),
@@ -59,6 +61,13 @@ pub async fn run(pool: SqlitePool) {
 
     info!("Middleware started on http://{host}");
 
+    let app = router(&state);
+
+    let listener = TcpListener::bind(host).await.unwrap();
+    axum::serve(listener, app).await.unwrap();
+}
+
+pub fn router(state: &AppState) -> Router {
     let device = Router::new()
         .merge(initialization::routes::get_routes(state.clone()))
         .merge(sync::routes::get_routes(state.clone()))
@@ -75,14 +84,11 @@ pub async fn run(pool: SqlitePool) {
         .layer(from_fn_with_state(state.clone(), extract_device_middleware))
         .service(device);
 
-    let app = Router::new()
+    Router::new()
         .route("/health", get(|| async { StatusCode::NO_CONTENT }))
         .merge(devices::routes::get_routes(state.clone()))
         .fallback_service(device)
-        .layer(from_fn(tracing::log_layer));
-
-    let listener = TcpListener::bind(host).await.unwrap();
-    axum::serve(listener, app).await.unwrap();
+        .layer(from_fn(tracing::log_layer))
 }
 
 pub fn server_url(host: &str) -> String {

@@ -4,7 +4,6 @@ use axum::extract::FromRef;
 use sqlx::{Pool, Sqlite, SqlitePool, sqlite::SqliteConnectOptions};
 use std::sync::Arc;
 
-#[allow(dead_code)]
 pub async fn init(filename: &str) -> Pool<Sqlite> {
     let db_options = SqliteConnectOptions::new()
         .filename(filename)
@@ -17,7 +16,6 @@ pub async fn init(filename: &str) -> Pool<Sqlite> {
     pool
 }
 
-#[allow(dead_code)]
 pub async fn debug_init(filename: &str) -> Pool<Sqlite> {
     let db_options = SqliteConnectOptions::new()
         .filename(filename)

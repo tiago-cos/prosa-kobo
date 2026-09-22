@@ -96,9 +96,6 @@ pub async fn patch_annotations(
 ) -> Result<(), KoboError> {
     let updated = request.updated_annotations.unwrap_or_default();
 
-    // TODO remove
-    println!("{updated:#?}");
-
     if !updated.is_empty() {
         let kepub = kepub::get_kepub(kepubs, client, book_id, api_key).await?;
 

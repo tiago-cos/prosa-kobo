@@ -5,9 +5,8 @@
 //! a test can assert what the middleware asked for. Any method can also be made
 //! to fail on demand, which is how the error paths are reached without data.
 //!
-//! The crate has no library target, so outside its own tests nothing here is
-//! called from within it.
-#![cfg_attr(not(test), allow(dead_code))]
+//! Nothing in the middleware itself calls any of this; it exists for tests,
+//! and the `mock` feature is what makes it reachable from them.
 
 use super::{
     ProsaAnnotation, ProsaAnnotationRequest, ProsaMetadata, ProsaReadingStatus,

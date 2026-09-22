@@ -187,3 +187,49 @@ mod tests {
         assert!(cache.get("other").is_some());
     }
 }
+
+#[cfg(test)]
+mod position_tests {
+    use super::*;
+
+    fn span_of(raw: &str) -> String {
+        KoboPosition::new("chapter.xhtml", raw, 0).span
+    }
+
+    #[test]
+    fn reads_the_selector_an_annotation_carries() {
+        assert_eq!(span_of(r"span#kobo\.4\.1"), "kobo.4.1");
+    }
+
+    #[test]
+    fn reads_the_bare_id_a_bookmark_carries() {
+        assert_eq!(span_of("kobo.4.1"), "kobo.4.1");
+    }
+
+    #[test]
+    fn reads_a_selector_that_was_never_escaped() {
+        assert_eq!(span_of("span#kobo.4.1"), "kobo.4.1");
+    }
+
+    #[test]
+    fn keeps_only_the_element_a_longer_selector_ends_at() {
+        assert_eq!(span_of(r"div#chapter > span#kobo\.4\.1"), "kobo.4.1");
+        assert_eq!(span_of(r"span#kobo\.4\.1:first-child"), "kobo.4.1");
+        assert_eq!(span_of(r"span#kobo\.4\.1[data-x]"), "kobo.4.1");
+    }
+
+    #[test]
+    fn writes_the_selector_the_device_expects() {
+        let position = KoboPosition::new("chapter.xhtml", "kobo.4.1", 0);
+
+        assert_eq!(position.selector(), r"span#kobo\.4\.1");
+    }
+
+    #[test]
+    fn a_selector_round_trips() {
+        let raw = r"span#kobo\.12\.3";
+        let position = KoboPosition::new("chapter.xhtml", raw, 0);
+
+        assert_eq!(position.selector(), raw);
+    }
+}

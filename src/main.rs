@@ -1,22 +1,6 @@
-#![allow(clippy::unreadable_literal)]
-#![allow(clippy::cast_possible_wrap)]
-#![allow(clippy::struct_excessive_bools)]
-#![allow(clippy::struct_field_names)]
-#![allow(clippy::module_inception)]
-#![allow(clippy::large_enum_variant)]
-#![allow(clippy::cast_possible_truncation)]
-#![allow(clippy::cast_sign_loss)]
-
-use config::Configuration;
-use std::{io::Error, path::Path, sync::LazyLock};
+use prosa_kobo::{CONFIG, app, database};
+use std::{io::Error, path::Path};
 use tokio::fs;
-mod app;
-mod client;
-mod config;
-mod database;
-
-static CONFIG: LazyLock<Configuration> =
-    LazyLock::new(|| Configuration::new().expect("Failed to load configuration"));
 
 #[tokio::main]
 async fn main() {

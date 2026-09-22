@@ -1,12 +1,12 @@
 mod annotations;
-mod authentication;
+pub mod authentication;
 mod authorization;
 mod books;
 mod covers;
 mod devices;
 mod error;
 mod initialization;
-mod kepub;
+pub mod kepub;
 mod metadata;
 mod proxy;
 mod server;
