@@ -19,8 +19,11 @@ use super::{
     sync::ProsaSync,
 };
 use jsonwebtoken::jwk::JwkSet;
+use kepub_rs::{KepubError, compare_locations, location_is_text, validate_epub_location};
 use std::{
+    cmp::Ordering,
     collections::HashMap,
+    io::Cursor,
     sync::{Mutex, MutexGuard},
 };
 
@@ -402,11 +405,13 @@ impl ProsaApi for MockProsaClient {
         )?;
 
         let mut library = self.library();
-        let state = library
-            .book(book_id)?
-            .state
-            .as_mut()
-            .ok_or(ClientError::NotFound)?;
+        let book = library.book(book_id)?;
+
+        if let Some(location) = location {
+            validate_location(book.file.as_deref(), location)?;
+        }
+
+        let state = book.state.as_mut().ok_or(ClientError::NotFound)?;
 
         if let Some(location) = location {
             state.location = Some(location.to_owned());
@@ -506,11 +511,24 @@ impl ProsaApi for MockProsaClient {
 
         let book = library.book(book_id)?;
 
+        validate_span(
+            book.file.as_deref(),
+            &annotation.start_location,
+            &annotation.end_location,
+        )?;
+
         if book
             .annotations
             .iter()
             .any(|stored| stored.annotation_id == annotation_id)
         {
+            return Err(ClientError::Conflict);
+        }
+
+        if book.annotations.iter().any(|stored| {
+            stored.start_location == annotation.start_location
+                && stored.end_location == annotation.end_location
+        }) {
             return Err(ClientError::Conflict);
         }
 
@@ -684,6 +702,52 @@ impl ProsaApi for MockProsaClient {
     }
 }
 
+fn readable(error: &KepubError) -> bool {
+    !matches!(
+        error,
+        KepubError::Io(_) | KepubError::Zip(_) | KepubError::InvalidEpub(_)
+    )
+}
+
+fn validate_span(file: Option<&[u8]>, start: &str, end: &str) -> Result<(), ClientError> {
+    if ![start, end]
+        .into_iter()
+        .all(|location| location_is_text(location).unwrap_or(false))
+    {
+        return Err(ClientError::BadRequest);
+    }
+
+    let Some(file) = file else {
+        return distinct(start, end);
+    };
+
+    match compare_locations(Cursor::new(file), start, end) {
+        Ok(Ordering::Less) => Ok(()),
+        Ok(_) => Err(ClientError::BadRequest),
+        Err(error) if readable(&error) => Err(ClientError::BadRequest),
+        Err(_) => distinct(start, end),
+    }
+}
+
+fn validate_location(file: Option<&[u8]>, location: &str) -> Result<(), ClientError> {
+    let Some(file) = file else {
+        return Ok(());
+    };
+
+    match validate_epub_location(Cursor::new(file), location) {
+        Err(error) if readable(&error) => Err(ClientError::BadRequest),
+        _ => Ok(()),
+    }
+}
+
+fn distinct(start: &str, end: &str) -> Result<(), ClientError> {
+    if start == end {
+        return Err(ClientError::BadRequest);
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -712,6 +776,136 @@ mod tests {
             .expect("Failed to list annotations");
 
         assert_eq!(listed, vec!["annotation".to_owned()]);
+    }
+
+    fn span(start: &str, end: &str) -> ProsaAnnotationRequest {
+        ProsaAnnotationRequest {
+            start_location: start.to_owned(),
+            end_location: end.to_owned(),
+            note: None,
+            annotation_id: None,
+        }
+    }
+
+    #[test]
+    fn refuses_a_span_that_covers_no_text() {
+        let client = MockProsaClient::new();
+        client.seed_book("book");
+
+        let collapsed = span(
+            "OEBPS/chapter-001.xhtml#0/2/t1:44",
+            "OEBPS/chapter-001.xhtml#0/2/t1:44",
+        );
+
+        assert_eq!(
+            client.add_annotation("book", &collapsed, "key"),
+            Err(ClientError::BadRequest)
+        );
+    }
+
+    #[test]
+    fn refuses_an_end_that_names_a_whole_element() {
+        let client = MockProsaClient::new();
+        client.seed_book("book");
+
+        let image = span("OEBPS/chapter-001.xhtml#0/2/t1:44", "OEBPS/chapter-030.xhtml#0/0");
+
+        assert_eq!(
+            client.add_annotation("book", &image, "key"),
+            Err(ClientError::BadRequest)
+        );
+    }
+
+    #[test]
+    fn refuses_a_second_annotation_over_the_same_span() {
+        let client = MockProsaClient::new();
+        client.seed_book("book");
+
+        client
+            .add_annotation("book", &annotation("first"), "key")
+            .expect("Failed to add annotation");
+
+        let mut second = annotation("second");
+        second.start_location = annotation("first").start_location;
+        second.end_location = annotation("first").end_location;
+
+        assert_eq!(
+            client.add_annotation("book", &second, "key"),
+            Err(ClientError::Conflict)
+        );
+    }
+
+    const EPUB: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/books/The_Great_Gatsby.epub");
+    const EARLIER: &str = "OEBPS/7860148755851063127_64317-h-2.htm.xhtml#0/0/0/t0:0";
+    const LATER: &str = "OEBPS/7860148755851063127_64317-h-2.htm.xhtml#0/1/t0:2";
+
+    fn seeded_book() -> MockProsaClient {
+        let client = MockProsaClient::new();
+        client.seed_file("book", std::fs::read(EPUB).expect("Failed to read the test epub"));
+
+        client
+    }
+
+    #[test]
+    fn takes_a_span_the_book_holds() {
+        let client = seeded_book();
+
+        assert!(
+            client
+                .add_annotation("book", &span(EARLIER, LATER), "key")
+                .is_ok()
+        );
+    }
+
+    #[test]
+    fn refuses_a_span_the_book_does_not_hold() {
+        let client = seeded_book();
+        let nowhere = span("OEBPS/nowhere.xhtml#0/2/t1:44", "OEBPS/nowhere.xhtml#0/2/t1:50");
+
+        assert_eq!(
+            client.add_annotation("book", &nowhere, "key"),
+            Err(ClientError::BadRequest)
+        );
+    }
+
+    #[test]
+    fn refuses_a_span_whose_ends_are_the_wrong_way_round() {
+        let client = seeded_book();
+
+        assert_eq!(
+            client.add_annotation("book", &span(LATER, EARLIER), "key"),
+            Err(ClientError::BadRequest)
+        );
+    }
+
+    #[test]
+    fn refuses_a_reading_position_the_book_does_not_hold() {
+        let client = seeded_book();
+        client.seed_state(
+            "book",
+            ProsaState {
+                location: None,
+                statistics: ProsaStatistics {
+                    rating: None,
+                    reading_status: ProsaReadingStatus::Unread,
+                },
+            },
+        );
+
+        assert_eq!(
+            client.patch_state(
+                "book",
+                Some("OEBPS/nowhere.xhtml#0/t0:1"),
+                ProsaReadingStatus::Reading,
+                "key"
+            ),
+            Err(ClientError::BadRequest)
+        );
+        assert!(
+            client
+                .patch_state("book", Some(EARLIER), ProsaReadingStatus::Reading, "key")
+                .is_ok()
+        );
     }
 
     #[test]
