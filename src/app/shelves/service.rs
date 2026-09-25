@@ -8,8 +8,24 @@ pub fn translate_add_shelf(
     shelf_name: &str,
     api_key: &str,
 ) -> Result<String, KoboError> {
-    let shelf_id = client.create_shelf(shelf_name, None, None, api_key)?;
-    Ok(shelf_id)
+    match client.create_shelf(shelf_name, None, None, api_key) {
+        Err(ClientError::Conflict) => {
+            find_shelf(client, shelf_name, api_key)?.ok_or_else(|| ClientError::Conflict.into())
+        }
+        result => Ok(result?),
+    }
+}
+
+fn find_shelf(client: &dyn ProsaApi, shelf_name: &str, api_key: &str) -> Result<Option<String>, KoboError> {
+    let username = client.identity(api_key)?.username;
+
+    for shelf_id in client.search_shelves(&username, shelf_name, api_key)? {
+        if client.get_shelf_metadata(&shelf_id, api_key)?.name == shelf_name {
+            return Ok(Some(shelf_id));
+        }
+    }
+
+    Ok(None)
 }
 
 pub fn translate_add_book_to_shelf(

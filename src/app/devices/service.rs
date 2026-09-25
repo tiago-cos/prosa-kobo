@@ -102,6 +102,7 @@ mod tests {
         ProsaIdentity {
             auth_type: ProsaAuthType::ApiKey,
             user_id: "a-user".to_owned(),
+            username: "a-name".to_owned(),
             is_admin: false,
             capabilities: vec!["Read".to_owned(), "Create".to_owned()],
             key_id: Some("a-key".to_owned()),

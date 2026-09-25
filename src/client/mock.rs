@@ -50,6 +50,7 @@ pub enum ProsaMethod {
     PatchAnnotation,
     DeleteAnnotation,
     CreateShelf,
+    SearchShelves,
     GetShelfMetadata,
     UpdateShelfName,
     DeleteShelf,
@@ -102,6 +103,12 @@ impl MockLibrary {
 
     fn shelf(&mut self, shelf_id: &str) -> Result<&mut MockShelf, ClientError> {
         self.shelves.get_mut(shelf_id).ok_or(ClientError::NotFound)
+    }
+
+    fn caller(&self, api_key: &str) -> String {
+        self.identities
+            .get(api_key)
+            .map_or_else(|| "owner".to_owned(), |identity| identity.user_id.clone())
     }
 
     fn generate_id(&mut self, prefix: &str) -> String {
@@ -185,6 +192,19 @@ impl MockProsaClient {
             .or_default()
             .annotations
             .push(annotation);
+
+        self
+    }
+
+    pub fn seed_owned_shelf(&self, owner_id: &str, shelf_id: &str, name: &str, book_ids: &[&str]) -> &Self {
+        self.library().shelves.insert(
+            shelf_id.to_owned(),
+            MockShelf {
+                name: name.to_owned(),
+                owner_id: owner_id.to_owned(),
+                books: book_ids.iter().map(|id| (*id).to_owned()).collect(),
+            },
+        );
 
         self
     }
@@ -602,8 +622,13 @@ impl ProsaApi for MockProsaClient {
         )?;
 
         let mut library = self.library();
+        let owner_id = owner_id.map_or_else(|| library.caller(api_key), str::to_owned);
 
-        if library.shelves.values().any(|shelf| shelf.name == shelf_name) {
+        if library
+            .shelves
+            .values()
+            .any(|shelf| shelf.owner_id == owner_id && shelf.name == shelf_name)
+        {
             return Err(ClientError::Conflict);
         }
 
@@ -620,12 +645,41 @@ impl ProsaApi for MockProsaClient {
             shelf_id.clone(),
             MockShelf {
                 name: shelf_name.to_owned(),
-                owner_id: owner_id.unwrap_or("owner").to_owned(),
+                owner_id,
                 books: Vec::new(),
             },
         );
 
         Ok(shelf_id)
+    }
+
+    fn search_shelves(&self, username: &str, name: &str, api_key: &str) -> Result<Vec<String>, ClientError> {
+        self.record(ProsaMethod::SearchShelves, &[username, name], api_key)?;
+
+        let library = self.library();
+
+        let caller = library.identities.get(api_key);
+        if caller.is_some_and(|caller| !caller.is_admin && caller.username != username) {
+            return Err(ClientError::Forbidden);
+        }
+
+        let owner_id = library
+            .identities
+            .values()
+            .find(|identity| identity.username == username)
+            .map(|identity| identity.user_id.clone())
+            .ok_or(ClientError::NotFound)?;
+
+        let name = name.to_lowercase();
+        let mut shelf_ids: Vec<String> = library
+            .shelves
+            .iter()
+            .filter(|(_, shelf)| shelf.owner_id == owner_id && shelf.name.to_lowercase().contains(&name))
+            .map(|(shelf_id, _)| shelf_id.clone())
+            .collect();
+        shelf_ids.sort();
+
+        Ok(shelf_ids)
     }
 
     fn get_shelf_metadata(&self, shelf_id: &str, api_key: &str) -> Result<ProsaShelfMetadata, ClientError> {

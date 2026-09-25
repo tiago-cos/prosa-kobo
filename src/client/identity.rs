@@ -27,6 +27,7 @@ pub enum ProsaAuthType {
 pub struct ProsaIdentity {
     pub auth_type: ProsaAuthType,
     pub user_id: String,
+    pub username: String,
     pub is_admin: bool,
     pub capabilities: Vec<String>,
     pub key_id: Option<String>,

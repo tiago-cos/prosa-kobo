@@ -32,6 +32,7 @@ const CACHE_SIZE: u64 = 16 * 1024 * 1024;
 
 pub const API_KEY: &str = "anapikey";
 pub const USER: &str = "user";
+pub const USERNAME: &str = "reader";
 pub const DEVICE_HARDWARE_ID: &str = "N123456789012";
 pub const HOST: &str = "middleware.test:5001";
 
@@ -99,6 +100,7 @@ impl Harness {
             ProsaIdentity {
                 auth_type: ProsaAuthType::ApiKey,
                 user_id: USER.to_owned(),
+                username: USERNAME.to_owned(),
                 is_admin: false,
                 capabilities: vec!["Read".to_owned(), "Create".to_owned(), "Update".to_owned()],
                 key_id: Some("key".to_owned()),

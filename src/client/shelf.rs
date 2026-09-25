@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use ureq::{Agent, Error};
 
+const SEARCH_PAGE_SIZE: u64 = 100;
+
 pub struct ShelfClient {
     pub url: String,
     pub agent: Agent,
@@ -27,6 +29,25 @@ impl ShelfClient {
             .send_json(request)?
             .body_mut()
             .read_to_string()
+    }
+
+    pub fn search_shelves(
+        &self,
+        username: &str,
+        name: &str,
+        page: u64,
+        api_key: &str,
+    ) -> Result<ProsaShelfSearch, Error> {
+        self.agent
+            .get(format!("{}/shelves", self.url))
+            .header("api-key", api_key)
+            .query("username", username)
+            .query("name", name)
+            .query("page", page.to_string())
+            .query("size", SEARCH_PAGE_SIZE.to_string())
+            .call()?
+            .body_mut()
+            .read_json::<ProsaShelfSearch>()
     }
 
     pub fn get_shelf_metadata(&self, shelf_id: &str, api_key: &str) -> Result<ProsaShelfMetadata, Error> {
@@ -93,6 +114,13 @@ pub struct ProsaShelfMetadata {
     pub name: String,
     pub owner_id: String,
     pub book_count: u64,
+}
+
+#[derive(Deserialize, Clone, Debug, PartialEq, Eq)]
+pub struct ProsaShelfSearch {
+    pub shelf_ids: Vec<String>,
+    pub total_pages: u64,
+    pub current_page: u64,
 }
 
 #[derive(Serialize, Debug)]

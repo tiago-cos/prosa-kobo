@@ -117,6 +117,8 @@ pub trait ProsaApi: Send + Sync {
         api_key: &str,
     ) -> Result<String, ClientError>;
 
+    fn search_shelves(&self, username: &str, name: &str, api_key: &str) -> Result<Vec<String>, ClientError>;
+
     fn get_shelf_metadata(&self, shelf_id: &str, api_key: &str) -> Result<ProsaShelfMetadata, ClientError>;
 
     fn update_shelf_name(&self, shelf_id: &str, shelf_name: &str, api_key: &str) -> Result<(), ClientError>;
@@ -332,6 +334,22 @@ impl ProsaApi for Client {
         Ok(self
             .shelf_client
             .create_shelf(shelf_name, owner_id, shelf_id, api_key)?)
+    }
+
+    fn search_shelves(&self, username: &str, name: &str, api_key: &str) -> Result<Vec<String>, ClientError> {
+        let mut shelf_ids = Vec::new();
+        let mut page = 1;
+
+        loop {
+            let result = self.shelf_client.search_shelves(username, name, page, api_key)?;
+            shelf_ids.extend(result.shelf_ids);
+
+            if result.current_page >= result.total_pages {
+                return Ok(shelf_ids);
+            }
+
+            page += 1;
+        }
     }
 
     fn get_shelf_metadata(&self, shelf_id: &str, api_key: &str) -> Result<ProsaShelfMetadata, ClientError> {
