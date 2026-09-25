@@ -240,7 +240,7 @@ impl Drop for Harness {
 }
 
 pub fn fixture(name: &str) -> Vec<u8> {
-    std::fs::read(format!("{}/tests/books/{name}", env!("CARGO_MANIFEST_DIR")))
+    std::fs::read(format!("{}/tests/fixtures/{name}", env!("CARGO_MANIFEST_DIR")))
         .unwrap_or_else(|_| panic!("Failed to read the fixture {name}"))
 }
 

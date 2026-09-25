@@ -187,7 +187,10 @@ mod tests {
 
     const BOOK: &str = "book";
     const ANNOTATION: &str = "0b7f8a4e-5c1d-4e2a-9f3b-6d8c1a2e4f50";
-    const EPUB: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/books/The_Great_Gatsby.epub");
+    const EPUB: &str = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/fixtures/The_Great_Gatsby.epub"
+    );
 
     struct Fixture {
         cache: Kepubs,

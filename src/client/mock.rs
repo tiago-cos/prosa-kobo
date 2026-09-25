@@ -896,7 +896,10 @@ mod tests {
         );
     }
 
-    const EPUB: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/books/The_Great_Gatsby.epub");
+    const EPUB: &str = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/fixtures/The_Great_Gatsby.epub"
+    );
     const EARLIER: &str = "OEBPS/7860148755851063127_64317-h-2.htm.xhtml#0/0/0/t0:0";
     const LATER: &str = "OEBPS/7860148755851063127_64317-h-2.htm.xhtml#0/1/t0:2";
 
