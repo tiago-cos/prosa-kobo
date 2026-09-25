@@ -1,6 +1,5 @@
 use super::handlers;
 use crate::app::{
-    AppState,
     authentication::middleware::extract_prosa_token_middleware,
     authorization::devices::{can_link_device, can_search_linked_devices, can_unlink_device},
 };
@@ -11,7 +10,7 @@ use axum::{
 };
 
 #[rustfmt::skip]
-pub fn get_routes(state: AppState) -> Router {
+pub fn get_routes() -> Router {
     Router::new()
         .route("/devices/linked", get(handlers::get_linked_devices_handler)
             .route_layer(from_fn(can_search_linked_devices))
@@ -23,5 +22,4 @@ pub fn get_routes(state: AppState) -> Router {
             .route_layer(from_fn(can_unlink_device))
         )
         .layer(from_fn(extract_prosa_token_middleware))
-        .with_state(state)
 }

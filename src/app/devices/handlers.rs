@@ -4,24 +4,24 @@ use super::{
 };
 use crate::{
     CONFIG,
-    app::{AppState, authentication::ProsaToken, error::KoboError},
+    app::{authentication::ProsaToken, error::KoboError},
+    client::prosa_client,
 };
 use axum::{
     Extension, Json,
-    extract::{Path, Query, State},
+    extract::{Path, Query},
     http::StatusCode,
     response::IntoResponse,
 };
 use axum_extra::extract::Host;
 
 pub async fn link_device_handler(
-    State(state): State<AppState>,
     Extension(token): Extension<ProsaToken>,
     Host(host): Host,
     Json(body): Json<LinkDeviceRequest>,
 ) -> Result<impl IntoResponse, KoboError> {
     let (device_id, lookup_key) = service::link_device(
-        state.prosa_client.as_ref(),
+        prosa_client(),
         token.owner_or_self(body.user_id.as_deref()),
         &body.name,
         &body.api_key,

@@ -1,16 +1,14 @@
-use super::models::{KepubCache, KepubError, KoboPosition};
-use crate::app::{ProsaClient, error::KoboError};
+use super::models::{KepubError, KoboPosition};
+use crate::{
+    app::{KEPUBS, error::KoboError},
+    client::prosa::ProsaApi,
+};
 use kepub_rs::{Converter, epub_to_kobo_location, kobo_to_epub_location};
 use log::warn;
 use std::{io::Cursor, sync::Arc};
 
-pub async fn get_kepub(
-    cache: &Arc<KepubCache>,
-    client: &ProsaClient,
-    book_id: &str,
-    api_key: &str,
-) -> Result<Arc<[u8]>, KoboError> {
-    if let Some(kepub) = cache.get(book_id) {
+pub async fn get_kepub(client: &dyn ProsaApi, book_id: &str, api_key: &str) -> Result<Arc<[u8]>, KoboError> {
+    if let Some(kepub) = KEPUBS.get(book_id) {
         return Ok(kepub);
     }
 
@@ -21,13 +19,13 @@ pub async fn get_kepub(
         .expect("Kepub conversion task failed")?
         .into();
 
-    cache.insert(book_id, &kepub);
+    KEPUBS.insert(book_id, &kepub);
 
     Ok(kepub)
 }
 
-pub fn evict(cache: &Arc<KepubCache>, book_id: &str) {
-    cache.evict(book_id);
+pub fn evict(book_id: &str) {
+    KEPUBS.evict(book_id);
 }
 
 fn convert(epub: &[u8]) -> Result<Vec<u8>, KepubError> {

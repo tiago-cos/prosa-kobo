@@ -11,8 +11,11 @@ port = 5001
 
 [database]
 file_path = "persistence/database.db"
+# Size of the SQLite connection pool.
 max_connections = 16
+# How long a statement waits for a contended write before failing.
 busy_timeout_seconds = 10
+# Snapshot the database (VACUUM INTO) before applying or reverting migrations.
 backup_before_migration = true
 
 [prosa]

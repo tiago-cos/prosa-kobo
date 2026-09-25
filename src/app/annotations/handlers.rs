@@ -2,10 +2,13 @@ use super::{
     models::{CheckContentRequest, PatchAnnotationsRequest},
     service,
 };
-use crate::app::{AppState, authentication::AuthToken, error::KoboError};
+use crate::{
+    app::{authentication::AuthToken, error::KoboError},
+    client::prosa_client,
+};
 use axum::{
     Extension, Json,
-    extract::{Path, State},
+    extract::Path,
     http::{HeaderMap, HeaderValue, StatusCode},
     response::IntoResponse,
 };
@@ -19,12 +22,10 @@ pub async fn check_for_changes_handler(
 }
 
 pub async fn get_annotations_handler(
-    State(state): State<AppState>,
     Path(book_id): Path<String>,
     Extension(token): Extension<AuthToken>,
 ) -> Result<impl IntoResponse, KoboError> {
-    let annotations =
-        service::get_annotations(&state.kepubs, &state.prosa_client, &book_id, &token.api_key).await?;
+    let annotations = service::get_annotations(prosa_client(), &book_id, &token.api_key).await?;
     let etag = service::get_etag(&book_id).await;
 
     let mut headers = HeaderMap::new();
@@ -38,18 +39,10 @@ pub async fn get_annotations_handler(
 }
 
 pub async fn patch_annotations_handler(
-    State(state): State<AppState>,
     Path(book_id): Path<String>,
     Extension(token): Extension<AuthToken>,
     Json(request): Json<PatchAnnotationsRequest>,
 ) -> Result<impl IntoResponse, KoboError> {
-    service::patch_annotations(
-        &state.kepubs,
-        &state.prosa_client,
-        &book_id,
-        request,
-        &token.api_key,
-    )
-    .await?;
+    service::patch_annotations(prosa_client(), &book_id, request, &token.api_key).await?;
     Ok(StatusCode::NO_CONTENT)
 }

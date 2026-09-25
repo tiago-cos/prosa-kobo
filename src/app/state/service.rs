@@ -1,7 +1,6 @@
 use super::models::{Location, ReadingState, UPDATE_STATE_RESPONSE};
 use crate::{
     app::{
-        Kepubs, ProsaClient,
         error::KoboError,
         kepub::{self, KoboPosition},
         state::models::RatingResponse,
@@ -12,8 +11,7 @@ use chrono::{DateTime, Utc};
 use serde_json::Value;
 
 pub async fn translate_get_state(
-    kepubs: &Kepubs,
-    client: &ProsaClient,
+    client: &dyn ProsaApi,
     book_id: &str,
     api_key: &str,
 ) -> Result<ReadingState, KoboError> {
@@ -29,7 +27,7 @@ pub async fn translate_get_state(
     // without a reading position rather than a broken one.
     let position = match state_response.location {
         Some(location) => {
-            let kepub = kepub::get_kepub(kepubs, client, book_id, api_key).await?;
+            let kepub = kepub::get_kepub(client, book_id, api_key).await?;
             kepub::to_kobo_position(&kepub, &location)
         }
         None => None,
@@ -46,8 +44,7 @@ pub async fn translate_get_state(
 }
 
 pub async fn translate_update_state(
-    kepubs: &Kepubs,
-    client: &ProsaClient,
+    client: &dyn ProsaApi,
     book_id: &str,
     state: &ReadingState,
     api_key: &str,
@@ -60,7 +57,7 @@ pub async fn translate_update_state(
 
     let location = match &state.current_bookmark.location {
         Some(location) => {
-            let kepub = kepub::get_kepub(kepubs, client, book_id, api_key).await?;
+            let kepub = kepub::get_kepub(client, book_id, api_key).await?;
             kepub::to_prosa_location(&kepub, &bookmark_position(location))
         }
         None => None,

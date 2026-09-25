@@ -1,4 +1,9 @@
-use prosa_kobo::{CONFIG, app, database};
+use prosa_kobo::{
+    CONFIG, app,
+    client::{self, prosa::Client},
+    database,
+};
+use std::sync::Arc;
 use std::{io::Error, path::Path};
 use tokio::fs;
 
@@ -61,6 +66,11 @@ async fn start() -> Result<(), StartupError> {
         Command::Serve => {
             let pool = database::init(&CONFIG.database.file_path).await?;
             database::set_pool(pool)?;
+            client::set_prosa_client(Arc::new(Client::new(
+                &CONFIG.prosa.scheme,
+                &CONFIG.prosa.host,
+                CONFIG.prosa.port,
+            )))?;
             app::run().await;
         }
     }

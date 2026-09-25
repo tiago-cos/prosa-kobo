@@ -7,12 +7,14 @@ use super::{
 };
 use crate::{
     app::{
-        Kepubs, ProsaClient,
         error::KoboError,
         kepub::{self, KoboPosition},
         state::service::unix_millis_to_string,
     },
-    client::{ProsaAnnotation, ProsaAnnotationRequest, prosa::ClientError},
+    client::{
+        ProsaAnnotation, ProsaAnnotationRequest,
+        prosa::{ClientError, ProsaApi},
+    },
     database::pool,
 };
 use base64::{Engine, prelude::BASE64_STANDARD};
@@ -61,8 +63,7 @@ pub async fn get_changed_annotations(books: Vec<CheckContentRequest>) -> Vec<Str
 }
 
 pub async fn get_annotations(
-    kepubs: &Kepubs,
-    client: &ProsaClient,
+    client: &dyn ProsaApi,
     book_id: &str,
     api_key: &str,
 ) -> Result<GetAnnotationsResponse, KoboError> {
@@ -77,7 +78,7 @@ pub async fn get_annotations(
         return Ok(GetAnnotationsResponse::new(Vec::new()));
     }
 
-    let kepub = kepub::get_kepub(kepubs, client, book_id, api_key).await?;
+    let kepub = kepub::get_kepub(client, book_id, api_key).await?;
 
     let annotations = stored
         .into_iter()
@@ -88,8 +89,7 @@ pub async fn get_annotations(
 }
 
 pub async fn patch_annotations(
-    kepubs: &Kepubs,
-    client: &ProsaClient,
+    client: &dyn ProsaApi,
     book_id: &str,
     request: PatchAnnotationsRequest,
     api_key: &str,
@@ -97,7 +97,7 @@ pub async fn patch_annotations(
     let updated = request.updated_annotations.unwrap_or_default();
 
     if !updated.is_empty() {
-        let kepub = kepub::get_kepub(kepubs, client, book_id, api_key).await?;
+        let kepub = kepub::get_kepub(client, book_id, api_key).await?;
 
         for annotation in updated {
             let Some(request) = to_prosa_annotation(&kepub, &annotation) else {
@@ -178,12 +178,9 @@ fn to_prosa_annotation(kepub: &[u8], annotation: &Annotation) -> Option<ProsaAnn
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        app::kepub::KepubCache,
-        client::mock::{MockProsaClient, ProsaMethod},
-    };
+    use crate::client::mock::{MockProsaClient, ProsaMethod};
     use regex::Regex;
-    use std::{fs, io::Cursor, sync::Arc};
+    use std::{fs, io::Cursor};
 
     const BOOK: &str = "book";
     const ANNOTATION: &str = "0b7f8a4e-5c1d-4e2a-9f3b-6d8c1a2e4f50";
@@ -193,8 +190,7 @@ mod tests {
     );
 
     struct Fixture {
-        cache: Kepubs,
-        client: Arc<MockProsaClient>,
+        client: MockProsaClient,
         chapter: String,
         start: String,
         end: String,
@@ -204,29 +200,21 @@ mod tests {
         /// Reads a chapter and two of its koboSpans out of the converted book,
         /// so the annotations under test address positions that really exist.
         async fn new() -> Self {
-            let client = Arc::new(MockProsaClient::new());
+            let client = MockProsaClient::new();
             client.seed_file(BOOK, fs::read(EPUB).expect("Failed to read the test epub"));
 
-            let cache: Kepubs = Arc::new(KepubCache::new(64 * 1024 * 1024));
-            let prosa = Arc::clone(&client) as ProsaClient;
-
-            let kepub = kepub::get_kepub(&cache, &prosa, BOOK, "key")
+            let kepub = kepub::get_kepub(&client, BOOK, "key")
                 .await
                 .expect("Failed to convert the test epub");
 
             let (chapter, start, end) = spanned_chapter(&kepub);
 
             Self {
-                cache,
                 client,
                 chapter,
                 start,
                 end,
             }
-        }
-
-        fn prosa(&self) -> ProsaClient {
-            Arc::clone(&self.client) as ProsaClient
         }
 
         fn annotation(&self, note: Option<&str>) -> Annotation {
@@ -248,7 +236,7 @@ mod tests {
         }
 
         async fn patch(&self, request: PatchAnnotationsRequest) {
-            patch_annotations(&self.cache, &self.prosa(), BOOK, request, "key")
+            patch_annotations(&self.client, BOOK, request, "key")
                 .await
                 .expect("Failed to patch annotations");
         }
@@ -350,7 +338,7 @@ mod tests {
 
         fixture.patch(update(vec![sent.clone()])).await;
 
-        let returned = get_annotations(&fixture.cache, &fixture.prosa(), BOOK, "key")
+        let returned = get_annotations(&fixture.client, BOOK, "key")
             .await
             .expect("Failed to get annotations");
 
@@ -370,7 +358,7 @@ mod tests {
     #[tokio::test]
     async fn translates_an_annotation_prosa_already_held() {
         let fixture = Fixture::new().await;
-        let kepub = kepub::get_kepub(&fixture.cache, &fixture.prosa(), BOOK, "key")
+        let kepub = kepub::get_kepub(&fixture.client, BOOK, "key")
             .await
             .expect("Failed to convert the test epub");
 
@@ -389,7 +377,7 @@ mod tests {
             },
         );
 
-        let returned = get_annotations(&fixture.cache, &fixture.prosa(), BOOK, "key")
+        let returned = get_annotations(&fixture.client, BOOK, "key")
             .await
             .expect("Failed to get annotations");
 

@@ -4,11 +4,11 @@ use super::{
 use crate::{
     CONFIG,
     app::{authentication::middleware::extract_device_middleware, shelves, tracing},
-    client::prosa::{Client, ProsaApi},
+    client::{prosa::ProsaApi, prosa_client},
 };
 use axum::{Router, http::StatusCode, middleware::from_fn, routing::get};
 use log::{error, info, warn};
-use std::{process::exit, sync::Arc, time::Duration};
+use std::{process::exit, sync::LazyLock, time::Duration};
 use tokio::{net::TcpListener, time::sleep};
 use tower::ServiceBuilder;
 
@@ -16,14 +16,8 @@ const EXPECTED_PROSA_VERSION: &str = "0.2.0";
 
 const PROSA_RETRY_INTERVAL: Duration = Duration::from_secs(5);
 
-pub type ProsaClient = Arc<dyn ProsaApi>;
-pub type Kepubs = Arc<kepub::KepubCache>;
-
-#[derive(Clone)]
-pub struct AppState {
-    pub prosa_client: ProsaClient,
-    pub kepubs: Kepubs,
-}
+pub static KEPUBS: LazyLock<kepub::KepubCache> =
+    LazyLock::new(|| kepub::KepubCache::new(CONFIG.kepub.cache_size_mb * 1024 * 1024));
 
 pub async fn run() {
     let prosa_url = format!(
@@ -31,43 +25,32 @@ pub async fn run() {
         CONFIG.prosa.scheme, CONFIG.prosa.host, CONFIG.prosa.port
     );
 
-    let prosa_client = Arc::new(Client::new(
-        &CONFIG.prosa.scheme,
-        &CONFIG.prosa.host,
-        CONFIG.prosa.port,
-    ));
+    await_prosa(prosa_client(), &prosa_url).await;
 
-    await_prosa(prosa_client.as_ref(), &prosa_url).await;
-
-    authentication::service::load_prosa_keys(prosa_client.as_ref());
-
-    let state = AppState {
-        prosa_client,
-        kepubs: Arc::new(kepub::KepubCache::new(CONFIG.kepub.cache_size_mb * 1024 * 1024)),
-    };
+    authentication::service::load_prosa_keys(prosa_client());
 
     let host = format!("{}:{}", CONFIG.server.bind.host, CONFIG.server.bind.port);
 
     info!("Middleware started on http://{host}");
 
-    let app = router(&state);
+    let app = router();
 
     let listener = TcpListener::bind(host).await.unwrap();
     axum::serve(listener, app).await.unwrap();
 }
 
-pub fn router(state: &AppState) -> Router {
+pub fn router() -> Router {
     let device = Router::new()
-        .merge(initialization::routes::get_routes(state.clone()))
-        .merge(sync::routes::get_routes(state.clone()))
-        .merge(authentication::routes::get_routes(state.clone()))
-        .merge(metadata::routes::get_routes(state.clone()))
-        .merge(books::routes::get_routes(state.clone()))
-        .merge(covers::routes::get_routes(state.clone()))
-        .merge(state::routes::get_routes(state.clone()))
-        .merge(annotations::routes::get_routes(state.clone()))
-        .merge(shelves::routes::get_routes(state.clone()))
-        .merge(proxy::routes::get_routes(state.clone()));
+        .merge(initialization::routes::get_routes())
+        .merge(sync::routes::get_routes())
+        .merge(authentication::routes::get_routes())
+        .merge(metadata::routes::get_routes())
+        .merge(books::routes::get_routes())
+        .merge(covers::routes::get_routes())
+        .merge(state::routes::get_routes())
+        .merge(annotations::routes::get_routes())
+        .merge(shelves::routes::get_routes())
+        .merge(proxy::routes::get_routes());
 
     let device = ServiceBuilder::new()
         .layer(from_fn(extract_device_middleware))
@@ -75,7 +58,7 @@ pub fn router(state: &AppState) -> Router {
 
     Router::new()
         .route("/health", get(|| async { StatusCode::NO_CONTENT }))
-        .merge(devices::routes::get_routes(state.clone()))
+        .merge(devices::routes::get_routes())
         .fallback_service(device)
         .layer(from_fn(tracing::log_layer))
 }

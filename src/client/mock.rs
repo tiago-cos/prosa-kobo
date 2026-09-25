@@ -129,6 +129,12 @@ impl MockProsaClient {
         Self::default()
     }
 
+    pub fn reset(&self) {
+        *self.library() = MockLibrary::default();
+        self.errors.lock().expect(POISONED).clear();
+        self.calls.lock().expect(POISONED).clear();
+    }
+
     // Seeding
 
     /// Registers a book with no data attached, so calls addressing it stop

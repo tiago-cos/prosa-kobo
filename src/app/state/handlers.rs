@@ -1,57 +1,52 @@
 use std::collections::HashMap;
 
 use super::{models::UpdateStateRequest, service};
-use crate::app::{
-    AppState, ProsaClient,
-    authentication::AuthToken,
-    error::KoboError,
-    state::models::{REVIEWS_MOCK_RESPONSE, StateError},
+use crate::{
+    app::{
+        authentication::AuthToken,
+        error::KoboError,
+        state::models::{REVIEWS_MOCK_RESPONSE, StateError},
+    },
+    client::prosa_client,
 };
 use axum::{
     Extension, Json,
-    extract::{Path, Query, State},
+    extract::{Path, Query},
     response::IntoResponse,
 };
 use serde_json::Value;
 
 pub async fn get_state_handler(
-    State(state): State<AppState>,
     Path(book_id): Path<String>,
     Extension(token): Extension<AuthToken>,
 ) -> Result<impl IntoResponse, KoboError> {
-    let response =
-        service::translate_get_state(&state.kepubs, &state.prosa_client, &book_id, &token.api_key).await?;
+    let response = service::translate_get_state(prosa_client(), &book_id, &token.api_key).await?;
 
     Ok(Json(vec![response]))
 }
 
 pub async fn update_state_handler(
-    State(app): State<AppState>,
     Path(book_id): Path<String>,
     Extension(token): Extension<AuthToken>,
     Json(request): Json<UpdateStateRequest>,
 ) -> Result<impl IntoResponse, KoboError> {
     let state = request.reading_states.first().ok_or(StateError::MissingState)?;
 
-    let response =
-        service::translate_update_state(&app.kepubs, &app.prosa_client, &book_id, state, &token.api_key)
-            .await?;
+    let response = service::translate_update_state(prosa_client(), &book_id, state, &token.api_key).await?;
 
     Ok(Json(response))
 }
 
 pub async fn update_rating_handler(
-    State(client): State<ProsaClient>,
     Extension(token): Extension<AuthToken>,
     Path((book_id, rating)): Path<(String, u8)>,
 ) -> Result<impl IntoResponse, KoboError> {
-    service::translate_update_rating(client.as_ref(), &book_id, rating, &token.api_key)?;
+    service::translate_update_rating(prosa_client(), &book_id, rating, &token.api_key)?;
 
     Ok(())
 }
 
 pub async fn get_rating_handler(
-    State(client): State<ProsaClient>,
     Extension(token): Extension<AuthToken>,
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, KoboError> {
@@ -59,7 +54,7 @@ pub async fn get_rating_handler(
         return Err(StateError::MissingProductId.into());
     };
 
-    let response = service::translate_get_rating(client.as_ref(), book_id, &token.api_key)?;
+    let response = service::translate_get_rating(prosa_client(), book_id, &token.api_key)?;
 
     Ok(Json(response))
 }

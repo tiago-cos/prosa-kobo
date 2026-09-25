@@ -1,19 +1,21 @@
 use super::models::{ChangedReadingStateResponse, NewEntitlementResponse};
-use crate::app::{
-    Kepubs, ProsaClient, annotations, covers,
-    error::KoboError,
-    kepub,
-    metadata::{self, BookMetadata},
-    shelves::models::{DeletedShelfResponse, NewShelfResponse},
-    state::{self, models::ReadingState},
-    sync::models::{BookEntitlement, SyncItem},
+use crate::{
+    app::{
+        annotations, covers,
+        error::KoboError,
+        kepub,
+        metadata::{self, BookMetadata},
+        shelves::models::{DeletedShelfResponse, NewShelfResponse},
+        state::{self, models::ReadingState},
+        sync::models::{BookEntitlement, SyncItem},
+    },
+    client::prosa::ProsaApi,
 };
 use chrono::{DateTime, Utc};
 use std::collections::HashSet;
 
 pub async fn translate_sync(
-    kepubs: &Kepubs,
-    client: &ProsaClient,
+    client: &dyn ProsaApi,
     sync_token: Option<i64>,
     server_url: &str,
     api_key: &str,
@@ -33,7 +35,7 @@ pub async fn translate_sync(
     }
 
     for book_id in &books.file {
-        kepub::evict(kepubs, book_id);
+        kepub::evict(book_id);
     }
 
     let mut books_to_update: HashSet<String> = books.file.into_iter().collect();
@@ -48,10 +50,9 @@ pub async fn translate_sync(
 
     for book_id in books_to_update {
         let entitlement = BookEntitlement::new(&book_id, false);
-        let reading_state = state::service::translate_get_state(kepubs, client, &book_id, api_key).await?;
+        let reading_state = state::service::translate_get_state(client, &book_id, api_key).await?;
         let metadata =
-            metadata::service::translate_metadata(kepubs, client, &book_id, server_url, api_key, device_id)
-                .await?;
+            metadata::service::translate_metadata(client, &book_id, server_url, api_key, device_id).await?;
 
         let response =
             SyncItem::Entitlement(NewEntitlementResponse::new(entitlement, reading_state, metadata));
@@ -60,7 +61,7 @@ pub async fn translate_sync(
     }
 
     for book_id in states_to_update {
-        let reading_state = state::service::translate_get_state(kepubs, client, &book_id, api_key).await?;
+        let reading_state = state::service::translate_get_state(client, &book_id, api_key).await?;
         let response = SyncItem::ReadingState(ChangedReadingStateResponse::new(reading_state));
 
         translated_response.push(response);

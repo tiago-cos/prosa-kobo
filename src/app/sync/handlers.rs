@@ -1,15 +1,16 @@
 use super::service;
-use crate::app::{AppState, authentication::AuthToken, error::KoboError, server_url};
+use crate::{
+    app::{authentication::AuthToken, error::KoboError, server_url},
+    client::prosa_client,
+};
 use axum::{
     Extension, Json,
-    extract::State,
     http::{HeaderMap, HeaderValue},
     response::IntoResponse,
 };
 use axum_extra::extract::Host;
 
 pub async fn device_sync_handler(
-    State(state): State<AppState>,
     Host(host): Host,
     headers: HeaderMap,
     Extension(token): Extension<AuthToken>,
@@ -22,8 +23,7 @@ pub async fn device_sync_handler(
         .and_then(|s| s.parse::<i64>().ok());
 
     let (new_sync_token, response) = service::translate_sync(
-        &state.kepubs,
-        &state.prosa_client,
+        prosa_client(),
         sync_token,
         &endpoint,
         &token.api_key,

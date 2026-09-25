@@ -99,6 +99,10 @@ impl KepubCache {
         self.lock().remove(book_id);
     }
 
+    pub fn clear(&self) {
+        *self.lock() = Entries::default();
+    }
+
     fn lock(&self) -> std::sync::MutexGuard<'_, Entries> {
         self.entries
             .lock()

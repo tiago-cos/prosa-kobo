@@ -1,18 +1,20 @@
 use super::{BookMetadata, DownloadUrl};
 use crate::{
-    app::{Kepubs, ProsaClient, covers, error::KoboError, kepub},
-    client::{ProsaMetadata, prosa::ClientError},
+    app::{covers, error::KoboError, kepub},
+    client::{
+        ProsaMetadata,
+        prosa::{ClientError, ProsaApi},
+    },
 };
 
 pub async fn translate_metadata(
-    kepubs: &Kepubs,
-    client: &ProsaClient,
+    client: &dyn ProsaApi,
     book_id: &str,
     server_url: &str,
     api_key: &str,
     device_id: &str,
 ) -> Result<BookMetadata, KoboError> {
-    let kepub_size = kepub::get_kepub(kepubs, client, book_id, api_key).await?.len() as u64;
+    let kepub_size = kepub::get_kepub(client, book_id, api_key).await?.len() as u64;
     let metadata_response = match client.fetch_metadata(book_id, api_key) {
         Ok(response) => response,
         Err(ClientError::NotFound) => ProsaMetadata::default(),

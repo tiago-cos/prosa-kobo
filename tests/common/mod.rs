@@ -1,7 +1,6 @@
 #![allow(dead_code)]
 
 use axum::{
-    Router,
     body::{Body, to_bytes},
     http::{Method, Request, Response},
 };
@@ -10,19 +9,19 @@ use jsonwebtoken::jwk::JwkSet;
 use jsonwebtoken::{Algorithm, EncodingKey, Header};
 use prosa_kobo::{
     app::{
-        AppState, ProsaClient,
+        KEPUBS,
         authentication::{
             models::{PROSA_ISSUER, ProsaJWTClaims, ProsaRole},
             service::load_prosa_keys,
         },
-        devices,
-        kepub::KepubCache,
-        router,
+        devices, router,
     },
     client::{
         ProsaReadingStatus,
         identity::{ProsaAuthType, ProsaIdentity},
         mock::MockProsaClient,
+        prosa::ProsaApi,
+        set_prosa_client,
         state::{ProsaState, ProsaStatistics},
     },
     database,
@@ -35,8 +34,6 @@ use std::{
 use tokio::sync::{Mutex, MutexGuard, OnceCell};
 use tower::ServiceExt;
 
-const CACHE_SIZE: u64 = 16 * 1024 * 1024;
-
 pub const API_KEY: &str = "anapikey";
 pub const USER: &str = "user";
 pub const USERNAME: &str = "reader";
@@ -47,18 +44,17 @@ pub const HOST: &str = "middleware.test:5001";
 /// test can drive the real router without either running anywhere.
 pub struct Harness {
     pub client: Arc<MockProsaClient>,
-    pub state: AppState,
-    _database: MutexGuard<'static, ()>,
+    _in_use: MutexGuard<'static, ()>,
 }
 
 impl Harness {
     pub async fn new() -> Self {
-        static DATABASE: OnceCell<()> = OnceCell::const_new();
+        static SHARED: OnceCell<Arc<MockProsaClient>> = OnceCell::const_new();
         static IN_USE: Mutex<()> = Mutex::const_new(());
 
         let in_use = IN_USE.lock().await;
 
-        DATABASE
+        let client = SHARED
             .get_or_init(|| async {
                 let file = format!(
                     "{}/prosa-kobo-{}.db",
@@ -69,26 +65,26 @@ impl Harness {
                     .await
                     .expect("Failed to create the test database");
                 database::set_pool(pool).expect("Failed to install the test database");
+
+                let client = Arc::new(MockProsaClient::new());
+                set_prosa_client(Arc::clone(&client) as Arc<dyn ProsaApi>)
+                    .expect("Failed to install the mock Prosa client");
+
+                client
             })
             .await;
 
         empty_tables().await;
-
-        let client = Arc::new(MockProsaClient::new());
+        client.reset();
+        KEPUBS.clear();
 
         // A suite that signs its own tokens seeds the matching key set instead.
         client.seed_jwks(signing_keys());
         load_prosa_keys(client.as_ref());
 
-        let state = AppState {
-            prosa_client: Arc::clone(&client) as ProsaClient,
-            kepubs: Arc::new(KepubCache::new(CACHE_SIZE)),
-        };
-
         Self {
-            client,
-            state,
-            _database: in_use,
+            client: Arc::clone(client),
+            _in_use: in_use,
         }
     }
 
@@ -117,7 +113,7 @@ impl Harness {
         self.recognize(api_key);
 
         let (device_id, lookup_key) =
-            devices::service::link_device(self.state.prosa_client.as_ref(), USER, name, api_key)
+            devices::service::link_device(self.client.as_ref(), USER, name, api_key)
                 .await
                 .expect("Failed to link the device");
 
@@ -158,12 +154,8 @@ impl Harness {
         device
     }
 
-    pub fn app(&self) -> Router {
-        router(&self.state)
-    }
-
     pub async fn send(&self, request: Request<Body>) -> Response<Body> {
-        self.app().oneshot(request).await.expect("The router failed")
+        router().oneshot(request).await.expect("The router failed")
     }
 
     pub async fn get(&self, uri: &str) -> Response<Body> {

@@ -10,10 +10,7 @@ use super::{
     state::{ProsaReadingStatus, ProsaState, StateClient},
     sync::{ProsaSync, SyncClient},
 };
-use crate::app::AppState;
-use axum::extract::FromRef;
 use jsonwebtoken::jwk::JwkSet;
-use std::sync::Arc;
 use strum_macros::{EnumMessage, EnumProperty};
 use ureq::{Agent, Error};
 
@@ -404,12 +401,6 @@ fn round_rating(rating: f32) -> u8 {
     }
 
     rating as u8
-}
-
-impl FromRef<AppState> for Arc<dyn ProsaApi> {
-    fn from_ref(state: &AppState) -> Arc<dyn ProsaApi> {
-        Arc::clone(&state.prosa_client)
-    }
 }
 
 impl From<Error> for ClientError {
