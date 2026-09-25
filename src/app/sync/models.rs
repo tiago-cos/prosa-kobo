@@ -11,6 +11,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 #[serde(untagged)]
 pub enum SyncItem {
     Entitlement(NewEntitlementResponse),
+    ReadingState(ChangedReadingStateResponse),
     NewShelf(NewShelfResponse),
     DeletedShelf(DeletedShelfResponse),
 }
@@ -34,6 +35,26 @@ impl NewEntitlementResponse {
         };
         NewEntitlementResponse { new_entitlement }
     }
+}
+
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "PascalCase")]
+pub struct ChangedReadingStateResponse {
+    pub changed_reading_state: ChangedReadingState,
+}
+
+impl ChangedReadingStateResponse {
+    pub fn new(reading_state: ReadingState) -> Self {
+        ChangedReadingStateResponse {
+            changed_reading_state: ChangedReadingState { reading_state },
+        }
+    }
+}
+
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "PascalCase")]
+pub struct ChangedReadingState {
+    pub reading_state: ReadingState,
 }
 
 #[derive(Serialize, Debug)]

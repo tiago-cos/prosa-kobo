@@ -1,4 +1,4 @@
-use super::models::NewEntitlementResponse;
+use super::models::{ChangedReadingStateResponse, NewEntitlementResponse};
 use crate::app::{
     Kepubs, ProsaClient, annotations, covers,
     error::KoboError,
@@ -42,6 +42,12 @@ pub async fn translate_sync(
     books_to_update.extend(books.cover);
     books_to_update.extend(books.metadata);
 
+    let states_to_update: HashSet<String> = books
+        .state
+        .into_iter()
+        .filter(|book_id| !books_to_update.contains(book_id) && !books.deleted.contains(book_id))
+        .collect();
+
     for book_id in books_to_update {
         let entitlement = BookEntitlement::new(&book_id, false);
         let reading_state = state::service::translate_get_state(kepubs, client, &book_id, api_key).await?;
@@ -52,6 +58,13 @@ pub async fn translate_sync(
 
         let response =
             SyncItem::Entitlement(NewEntitlementResponse::new(entitlement, reading_state, metadata));
+
+        translated_response.push(response);
+    }
+
+    for book_id in states_to_update {
+        let reading_state = state::service::translate_get_state(kepubs, client, &book_id, api_key).await?;
+        let response = SyncItem::ReadingState(ChangedReadingStateResponse::new(reading_state));
 
         translated_response.push(response);
     }
