@@ -30,23 +30,11 @@ Pull requests are welcome. Please make sure to follow these guidelines:
      cargo fmt
      ```
 
-   - TypeScript code (in `tests/`):  
-
-     ```bash
-     npm run format
-     ```
-
 4. **Linting**
    - Rust (using the latest `clippy`):  
 
      ```bash
      cargo clippy --all-targets --all-features -- -W clippy::pedantic -D warnings
-     ```
-
-   - TypeScript (in `tests/`):  
-
-     ```bash
-     npm run lint
      ```
 
 5. **Commit Messages**

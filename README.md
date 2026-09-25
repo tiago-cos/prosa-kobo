@@ -37,34 +37,21 @@ cargo build --release
 
 ## Test Instructions
 
-1. Clone the repository:
+```bash
+cargo test
+```
 
-   ```bash
-   git clone https://github.com/tiago-cos/prosa-kobo.git
-   cd prosa-kobo/tests
-   ```
+The tests drive the real router in process, with an in-memory stand-in for
+Prosa, so nothing else needs to be running.
 
-2. Create a `.env.local` file in the `config` subfolder and configure the `MIDDLEWARE_URL` and `PROSA_URL` env variables (see `.env` in the same folder).
+`tests/prosa_contract.rs` checks that stand-in against the real thing. Its
+live half is skipped by default; to run it, start Prosa with an admin key and
+point the tests at it:
 
-3. Make sure both **Prosa** and **Prosa-Kobo** are running.
-
-   * Prosa requires `AUTH__ADMIN_KEY` to be set, for example:
-
-     ```bash
-     AUTH__ADMIN_KEY=admin_key ./prosa
-     ```
-
-   * Then run Prosa-Kobo:
-
-     ```bash
-     ./prosa-kobo
-     ```
-
-4. Run the tests:
-
-   ```bash
-   npm run test
-   ```
+```bash
+AUTH__ADMIN_KEY=admin_key ./prosa
+PROSA_URL=http://127.0.0.1:5000 PROSA_ADMIN_KEY=admin_key cargo test --test prosa_contract -- --ignored
+```
 
 ## Roadmap
 
