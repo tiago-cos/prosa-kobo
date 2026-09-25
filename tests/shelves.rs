@@ -17,6 +17,9 @@ fn items(book_ids: &[&str]) -> Value {
 async fn with_shelf(books: &[&str]) -> (Harness, Device) {
     let harness = Harness::new().await;
     let device = harness.linked().await;
+    for book in books {
+        harness.client.seed_book(book);
+    }
     harness.client.seed_shelf("shelf", "To read", books);
 
     (harness, device)
@@ -71,6 +74,7 @@ async fn answers_with_the_id_prosa_gave_the_shelf_as_plain_text() {
 async fn places_the_books_a_new_shelf_is_created_with() {
     let harness = Harness::new().await;
     let device = harness.linked().await;
+    harness.client.seed_book("first").seed_book("second");
 
     harness
         .json(
@@ -109,6 +113,7 @@ async fn reuses_the_shelf_already_holding_the_name() {
     let device = harness.linked().await;
     harness
         .client
+        .seed_book("new")
         .seed_owned_shelf(USER, "existing", "Favourites", &["old"]);
 
     let id = create(&harness, &device, "Favourites", &["new"]).await;
@@ -139,6 +144,7 @@ async fn keeps_another_users_shelf_of_the_same_name_out_of_it() {
     let device = harness.linked().await;
     harness
         .client
+        .seed_book("mine")
         .seed_owned_shelf("someone-else", "theirs", "Favourites", &["theirs"]);
 
     let id = create(&harness, &device, "Favourites", &["mine"]).await;
@@ -232,6 +238,7 @@ async fn deleting_a_shelf_prosa_no_longer_holds_still_succeeds() {
 #[tokio::test]
 async fn adds_the_books_and_names_them_back() {
     let (harness, device) = with_shelf(&[]).await;
+    harness.client.seed_book("first").seed_book("second");
 
     let response = harness
         .json(
