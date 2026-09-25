@@ -35,6 +35,27 @@ cd prosa-kobo
 cargo build --release
 ```
 
+## Database Migrations
+
+The schema is migrated automatically on startup, after a snapshot of the
+database is written next to it (`database.db.backup-…`). Snapshots are never
+deleted automatically.
+
+```bash
+prosa-kobo --migrate-status        # list applied and pending migrations
+prosa-kobo --migrate-down <ver>    # revert the schema down to <ver>
+```
+
+A binary can only revert the migrations it carries, so to move to an older
+Prosa-Kobo, run `--migrate-down` with the newer binary first, while the server
+is stopped. In Docker, check the status with
+`docker exec <container> prosa-kobo --migrate-status`, and revert with the
+container stopped:
+
+```bash
+docker run --rm --entrypoint prosa-kobo -v <volume>:/app/persistence <image> --migrate-down <ver>
+```
+
 ## Test Instructions
 
 ```bash
