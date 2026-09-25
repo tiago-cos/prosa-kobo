@@ -125,6 +125,19 @@ impl Harness {
         self.link("Kobo", API_KEY).await
     }
 
+    pub async fn introduced(&self) -> Device {
+        let device = self.linked().await;
+
+        self.request(
+            Method::GET,
+            &device.at("/v1/initialization"),
+            &[("x-kobo-deviceid", DEVICE_HARDWARE_ID)],
+        )
+        .await;
+
+        device
+    }
+
     pub fn app(&self) -> Router {
         router(&self.state)
     }
@@ -150,11 +163,27 @@ impl Harness {
     }
 
     pub async fn json(&self, method: Method, uri: &str, body: Value) -> Response<Body> {
-        let request = Request::builder()
+        self.json_with(method, uri, &[], body).await
+    }
+
+    pub async fn json_with(
+        &self,
+        method: Method,
+        uri: &str,
+        headers: &[(&str, &str)],
+        body: Value,
+    ) -> Response<Body> {
+        let mut request = Request::builder()
             .method(method)
             .uri(uri)
             .header("Host", HOST)
-            .header("Content-Type", "application/json")
+            .header("Content-Type", "application/json");
+
+        for (name, value) in headers {
+            request = request.header(*name, *value);
+        }
+
+        let request = request
             .body(Body::from(body.to_string()))
             .expect("Failed to build the request");
 
