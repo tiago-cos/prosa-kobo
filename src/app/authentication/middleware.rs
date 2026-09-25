@@ -1,12 +1,11 @@
 use super::{models::AuthError, service};
 use crate::app::{
-    Pool,
     authentication::models::{AuthToken, ProsaToken},
     devices,
     error::KoboError,
 };
 use axum::{
-    extract::{Request, State},
+    extract::Request,
     http::{self, HeaderMap, HeaderValue, Uri, uri::PathAndQuery},
     middleware::Next,
     response::IntoResponse,
@@ -24,7 +23,6 @@ const MAX_CLIENT_DEVICE_ID: usize = 128;
 /// `/api/v3/content` arrives with no key. Those are matched on the hardware id
 /// the device sends instead, which keyed requests record as they pass.
 pub async fn extract_device_middleware(
-    State(pool): State<Pool>,
     mut request: Request,
     next: Next,
 ) -> Result<impl IntoResponse, KoboError> {
@@ -35,13 +33,13 @@ pub async fn extract_device_middleware(
     let remainder = segments.next().unwrap_or_default();
     let client_device_id = client_device_id(request.headers()).map(str::to_owned);
 
-    let device = if let Some(device) = devices::service::get_device_by_lookup_key(&pool, lookup_key).await {
+    let device = if let Some(device) = devices::service::get_device_by_lookup_key(lookup_key).await {
         *request.uri_mut() = strip_lookup_key(request.uri(), remainder)?;
 
         if let Some(client_device_id) = &client_device_id
             && device.client_device_id.as_ref() != Some(client_device_id)
         {
-            devices::service::claim_client_device_id(&pool, &device.device_id, client_device_id).await;
+            devices::service::claim_client_device_id(&device.device_id, client_device_id).await;
         }
 
         device
@@ -51,7 +49,7 @@ pub async fn extract_device_middleware(
             return Err(AuthError::UnauthenticatedDevice.into());
         };
 
-        devices::service::get_device_by_client_id(&pool, client_device_id)
+        devices::service::get_device_by_client_id(client_device_id)
             .await
             .ok_or(AuthError::UnauthenticatedDevice)?
     };

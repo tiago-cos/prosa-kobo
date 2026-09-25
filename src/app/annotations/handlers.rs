@@ -2,7 +2,7 @@ use super::{
     models::{CheckContentRequest, PatchAnnotationsRequest},
     service,
 };
-use crate::app::{AppState, Pool, authentication::AuthToken, error::KoboError};
+use crate::app::{AppState, authentication::AuthToken, error::KoboError};
 use axum::{
     Extension, Json,
     extract::{Path, State},
@@ -11,10 +11,9 @@ use axum::{
 };
 
 pub async fn check_for_changes_handler(
-    State(pool): State<Pool>,
     Json(request): Json<Vec<CheckContentRequest>>,
 ) -> Result<impl IntoResponse, KoboError> {
-    let changed = service::get_changed_annotations(&pool, request).await;
+    let changed = service::get_changed_annotations(request).await;
 
     Ok(Json(changed))
 }
@@ -26,7 +25,7 @@ pub async fn get_annotations_handler(
 ) -> Result<impl IntoResponse, KoboError> {
     let annotations =
         service::get_annotations(&state.kepubs, &state.prosa_client, &book_id, &token.api_key).await?;
-    let etag = service::get_etag(&state.pool, &book_id).await;
+    let etag = service::get_etag(&book_id).await;
 
     let mut headers = HeaderMap::new();
     headers.insert(

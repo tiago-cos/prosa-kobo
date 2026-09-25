@@ -16,7 +16,6 @@ pub async fn metadata_handler(
     let endpoint = format!("{}/{}", server_url(&host), token.lookup_key);
 
     let response = service::translate_metadata(
-        &state.pool,
         &state.kepubs,
         &state.prosa_client,
         &book_id,

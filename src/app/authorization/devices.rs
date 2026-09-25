@@ -1,5 +1,4 @@
 use crate::app::{
-    Pool,
     authentication::{
         ProsaToken,
         models::{AuthError, CREATE, DELETE, READ},
@@ -10,7 +9,7 @@ use crate::app::{
 use axum::{
     Extension, Json,
     body::{Body, to_bytes},
-    extract::{FromRequest, Path, Query, Request, State},
+    extract::{FromRequest, Path, Query, Request},
     middleware::Next,
     response::IntoResponse,
 };
@@ -64,7 +63,6 @@ pub async fn can_link_device(
 
 pub async fn can_unlink_device(
     Extension(token): Extension<ProsaToken>,
-    State(pool): State<Pool>,
     Path(device_id): Path<String>,
     request: Request,
     next: Next,
@@ -73,7 +71,7 @@ pub async fn can_unlink_device(
         return Err(AuthError::Forbidden.into());
     }
 
-    if let Some(device) = devices::service::get_linked_device(&pool, &device_id).await
+    if let Some(device) = devices::service::get_linked_device(&device_id).await
         && !token.can_act_for(&device.user_id)
     {
         return Err(AuthError::Forbidden.into());

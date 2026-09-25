@@ -1,6 +1,6 @@
-use sqlx::SqlitePool;
+use sqlx::SqliteExecutor;
 
-pub async fn get_version(pool: &SqlitePool, device_id: &str, book_id: &str) -> Option<i64> {
+pub async fn get_version<'e>(db: impl SqliteExecutor<'e>, device_id: &str, book_id: &str) -> Option<i64> {
     sqlx::query_scalar(
         r"
         SELECT version
@@ -10,12 +10,12 @@ pub async fn get_version(pool: &SqlitePool, device_id: &str, book_id: &str) -> O
     )
     .bind(device_id)
     .bind(book_id)
-    .fetch_optional(pool)
+    .fetch_optional(db)
     .await
     .expect("Failed to get cover version")
 }
 
-pub async fn bump_version(pool: &SqlitePool, device_id: &str, book_id: &str) {
+pub async fn bump_version<'e>(db: impl SqliteExecutor<'e>, device_id: &str, book_id: &str) {
     sqlx::query(
         r"
         INSERT INTO cover_versions (device_id, book_id, version)
@@ -25,7 +25,7 @@ pub async fn bump_version(pool: &SqlitePool, device_id: &str, book_id: &str) {
     )
     .bind(device_id)
     .bind(book_id)
-    .execute(pool)
+    .execute(db)
     .await
     .expect("Failed to bump cover version");
 }

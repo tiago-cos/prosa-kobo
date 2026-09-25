@@ -4,13 +4,19 @@ mod migrations;
 pub use connection::{DatabaseError, connect, init};
 pub use migrations::{latest_version, revert_to, status};
 
-use crate::app::AppState;
-use axum::extract::FromRef;
 use sqlx::SqlitePool;
-use std::sync::Arc;
+use std::sync::OnceLock;
 
-impl FromRef<AppState> for Arc<SqlitePool> {
-    fn from_ref(state: &AppState) -> Arc<SqlitePool> {
-        Arc::clone(&state.pool)
-    }
+static DB_POOL: OnceLock<SqlitePool> = OnceLock::new();
+
+pub fn set_pool(pool: SqlitePool) -> Result<(), DatabaseError> {
+    DB_POOL
+        .set(pool)
+        .map_err(|_| "database pool was already initialized".into())
+}
+
+pub fn pool() -> &'static SqlitePool {
+    DB_POOL
+        .get()
+        .expect("database pool accessed before initialization")
 }

@@ -11,6 +11,8 @@ port = 5001
 
 [database]
 file_path = "persistence/database.db"
+max_connections = 16
+busy_timeout_seconds = 10
 backup_before_migration = true
 
 [prosa]

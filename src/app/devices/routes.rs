@@ -6,7 +6,7 @@ use crate::app::{
 };
 use axum::{
     Router,
-    middleware::{from_fn, from_fn_with_state},
+    middleware::from_fn,
     routing::{delete, get, post},
 };
 
@@ -20,7 +20,7 @@ pub fn get_routes(state: AppState) -> Router {
             .route_layer(from_fn(can_link_device))
         )
         .route("/devices/linked/{device_id}", delete(handlers::unlink_device_handler)
-            .route_layer(from_fn_with_state(state.clone(), can_unlink_device))
+            .route_layer(from_fn(can_unlink_device))
         )
         .layer(from_fn(extract_prosa_token_middleware))
         .with_state(state)

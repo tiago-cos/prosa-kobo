@@ -4,7 +4,7 @@ use super::{
 };
 use crate::{
     CONFIG,
-    app::{AppState, Pool, authentication::ProsaToken, error::KoboError},
+    app::{AppState, authentication::ProsaToken, error::KoboError},
 };
 use axum::{
     Extension, Json,
@@ -21,7 +21,6 @@ pub async fn link_device_handler(
     Json(body): Json<LinkDeviceRequest>,
 ) -> Result<impl IntoResponse, KoboError> {
     let (device_id, lookup_key) = service::link_device(
-        &state.pool,
         state.prosa_client.as_ref(),
         token.owner_or_self(body.user_id.as_deref()),
         &body.name,
@@ -41,11 +40,8 @@ pub async fn link_device_handler(
     }))
 }
 
-pub async fn get_linked_devices_handler(
-    State(pool): State<Pool>,
-    Query(query): Query<ListLinkedDevicesQuery>,
-) -> impl IntoResponse {
-    let devices: Vec<LinkedDeviceResponse> = service::get_linked_devices(&pool, query.user_id.as_deref())
+pub async fn get_linked_devices_handler(Query(query): Query<ListLinkedDevicesQuery>) -> impl IntoResponse {
+    let devices: Vec<LinkedDeviceResponse> = service::get_linked_devices(query.user_id.as_deref())
         .await
         .into_iter()
         .map(Into::into)
@@ -54,11 +50,8 @@ pub async fn get_linked_devices_handler(
     Json(devices)
 }
 
-pub async fn unlink_device_handler(
-    State(pool): State<Pool>,
-    Path(device_id): Path<String>,
-) -> Result<StatusCode, KoboError> {
-    service::unlink_device(&pool, &device_id).await?;
+pub async fn unlink_device_handler(Path(device_id): Path<String>) -> Result<StatusCode, KoboError> {
+    service::unlink_device(&device_id).await?;
 
     Ok(StatusCode::NO_CONTENT)
 }

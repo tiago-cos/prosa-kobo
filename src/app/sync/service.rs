@@ -9,11 +9,9 @@ use crate::app::{
     sync::models::{BookEntitlement, SyncItem},
 };
 use chrono::{DateTime, Utc};
-use sqlx::SqlitePool;
 use std::collections::HashSet;
 
 pub async fn translate_sync(
-    pool: &SqlitePool,
     kepubs: &Kepubs,
     client: &ProsaClient,
     sync_token: Option<i64>,
@@ -31,7 +29,7 @@ pub async fn translate_sync(
     // Handle books
 
     for book_id in &books.cover {
-        covers::bump_version(pool, device_id, book_id).await;
+        covers::bump_version(device_id, book_id).await;
     }
 
     for book_id in &books.file {
@@ -51,10 +49,9 @@ pub async fn translate_sync(
     for book_id in books_to_update {
         let entitlement = BookEntitlement::new(&book_id, false);
         let reading_state = state::service::translate_get_state(kepubs, client, &book_id, api_key).await?;
-        let metadata = metadata::service::translate_metadata(
-            pool, kepubs, client, &book_id, server_url, api_key, device_id,
-        )
-        .await?;
+        let metadata =
+            metadata::service::translate_metadata(kepubs, client, &book_id, server_url, api_key, device_id)
+                .await?;
 
         let response =
             SyncItem::Entitlement(NewEntitlementResponse::new(entitlement, reading_state, metadata));
@@ -82,7 +79,7 @@ pub async fn translate_sync(
     // Handle annotations
 
     for book_id in books.annotations {
-        annotations::service::update_etag(pool, &book_id).await;
+        annotations::service::update_etag(&book_id).await;
     }
 
     // Handle shelfs

@@ -13,42 +13,42 @@ use crate::{
         state::service::unix_millis_to_string,
     },
     client::{ProsaAnnotation, ProsaAnnotationRequest, prosa::ClientError},
+    database::pool,
 };
 use base64::{Engine, prelude::BASE64_STANDARD};
 use log::warn;
 use rand::RngCore;
-use sqlx::SqlitePool;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-pub async fn get_etag(pool: &SqlitePool, book_id: &str) -> String {
-    match data::get_etag(pool, book_id).await {
+pub async fn get_etag(book_id: &str) -> String {
+    match data::get_etag(pool(), book_id).await {
         Some(tag) => return tag,
-        None => update_etag(pool, book_id).await,
+        None => update_etag(book_id).await,
     }
 
-    data::get_etag(pool, book_id)
+    data::get_etag(pool(), book_id)
         .await
         .expect("Etag should be present")
 }
 
-pub async fn update_etag(pool: &SqlitePool, book_id: &str) {
+pub async fn update_etag(book_id: &str) {
     let mut random = [0u8; 32];
     rand::rng().fill_bytes(&mut random);
     let etag = BASE64_STANDARD.encode(random);
 
-    data::update_etag(pool, book_id, &etag).await;
+    data::update_etag(pool(), book_id, &etag).await;
 }
 
-pub async fn delete_etag(pool: &SqlitePool, book_id: &str) {
-    data::delete_etag(pool, book_id).await;
+pub async fn delete_etag(book_id: &str) {
+    data::delete_etag(pool(), book_id).await;
 }
 
-pub async fn get_changed_annotations(pool: &SqlitePool, books: Vec<CheckContentRequest>) -> Vec<String> {
+pub async fn get_changed_annotations(books: Vec<CheckContentRequest>) -> Vec<String> {
     let mut changed: Vec<String> = Vec::new();
 
     for book in books {
-        let Some(etag) = data::get_etag(pool, &book.content_id).await else {
-            data::update_etag(pool, &book.content_id, &book.etag).await;
+        let Some(etag) = data::get_etag(pool(), &book.content_id).await else {
+            data::update_etag(pool(), &book.content_id, &book.etag).await;
             continue;
         };
 

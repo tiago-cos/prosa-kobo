@@ -5,15 +5,14 @@ use super::{
 use crate::{
     app::error::KoboError,
     client::prosa::{ClientError, ProsaApi},
+    database::pool,
 };
 use base64::{Engine, prelude::BASE64_URL_SAFE_NO_PAD};
 use rand::RngCore;
-use sqlx::SqlitePool;
 
 const LOOKUP_KEY_SIZE: usize = 32;
 
 pub async fn link_device(
-    pool: &SqlitePool,
     client: &dyn ProsaApi,
     user_id: &str,
     name: &str,
@@ -28,35 +27,35 @@ pub async fn link_device(
     let device_id = generate_secret(16);
     let lookup_key = generate_secret(LOOKUP_KEY_SIZE);
 
-    data::add_linked_device(pool, &device_id, &lookup_key, user_id, name, api_key).await?;
+    data::add_linked_device(pool(), &device_id, &lookup_key, user_id, name, api_key).await?;
 
     Ok((device_id, lookup_key))
 }
 
-pub async fn unlink_device(pool: &SqlitePool, device_id: &str) -> Result<(), KoboError> {
-    data::remove_linked_device(pool, device_id).await?;
+pub async fn unlink_device(device_id: &str) -> Result<(), KoboError> {
+    data::remove_linked_device(pool(), device_id).await?;
 
     Ok(())
 }
 
-pub async fn get_linked_device(pool: &SqlitePool, device_id: &str) -> Option<LinkedDevice> {
-    data::get_linked_device(pool, device_id).await
+pub async fn get_linked_device(device_id: &str) -> Option<LinkedDevice> {
+    data::get_linked_device(pool(), device_id).await
 }
 
-pub async fn get_device_by_lookup_key(pool: &SqlitePool, lookup_key: &str) -> Option<LinkedDevice> {
-    data::get_device_by_lookup_key(pool, lookup_key).await
+pub async fn get_device_by_lookup_key(lookup_key: &str) -> Option<LinkedDevice> {
+    data::get_device_by_lookup_key(pool(), lookup_key).await
 }
 
-pub async fn get_device_by_client_id(pool: &SqlitePool, client_device_id: &str) -> Option<LinkedDevice> {
-    data::get_device_by_client_id(pool, client_device_id).await
+pub async fn get_device_by_client_id(client_device_id: &str) -> Option<LinkedDevice> {
+    data::get_device_by_client_id(pool(), client_device_id).await
 }
 
-pub async fn claim_client_device_id(pool: &SqlitePool, device_id: &str, client_device_id: &str) {
-    data::claim_client_device_id(pool, device_id, client_device_id).await;
+pub async fn claim_client_device_id(device_id: &str, client_device_id: &str) {
+    data::claim_client_device_id(pool(), device_id, client_device_id).await;
 }
 
-pub async fn get_linked_devices(pool: &SqlitePool, user_id: Option<&str>) -> Vec<LinkedDevice> {
-    data::get_linked_devices(pool, user_id).await
+pub async fn get_linked_devices(user_id: Option<&str>) -> Vec<LinkedDevice> {
+    data::get_linked_devices(pool(), user_id).await
 }
 
 fn verify_api_key(client: &dyn ProsaApi, api_key: &str) -> Result<(), KoboError> {

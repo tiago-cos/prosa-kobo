@@ -1,6 +1,5 @@
-use crate::{app::covers::data, app::error::KoboError, client::prosa::ProsaApi};
+use crate::{app::covers::data, app::error::KoboError, client::prosa::ProsaApi, database::pool};
 use image::{ImageError, ImageFormat, ImageReader, imageops::FilterType};
-use sqlx::SqlitePool;
 use std::io::Cursor;
 
 pub fn download_cover(client: &dyn ProsaApi, book_id: &str, api_key: &str) -> Result<Vec<u8>, KoboError> {
@@ -23,12 +22,12 @@ pub fn resize_cover(cover: &Vec<u8>, width: u32, height: u32) -> Result<Vec<u8>,
 
 /// The Kobo refetches a cover only when its id changes, so the id carries a
 /// version that moves whenever the cover does.
-pub async fn get_version(pool: &SqlitePool, device_id: &str, book_id: &str) -> i64 {
-    data::get_version(pool, device_id, book_id)
+pub async fn get_version(device_id: &str, book_id: &str) -> i64 {
+    data::get_version(pool(), device_id, book_id)
         .await
         .unwrap_or_default()
 }
 
-pub async fn bump_version(pool: &SqlitePool, device_id: &str, book_id: &str) {
-    data::bump_version(pool, device_id, book_id).await;
+pub async fn bump_version(device_id: &str, book_id: &str) {
+    data::bump_version(pool(), device_id, book_id).await;
 }

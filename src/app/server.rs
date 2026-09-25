@@ -6,14 +6,8 @@ use crate::{
     app::{authentication::middleware::extract_device_middleware, shelves, tracing},
     client::prosa::{Client, ProsaApi},
 };
-use axum::{
-    Router,
-    http::StatusCode,
-    middleware::{from_fn, from_fn_with_state},
-    routing::get,
-};
+use axum::{Router, http::StatusCode, middleware::from_fn, routing::get};
 use log::{error, info, warn};
-use sqlx::SqlitePool;
 use std::{process::exit, sync::Arc, time::Duration};
 use tokio::{net::TcpListener, time::sleep};
 use tower::ServiceBuilder;
@@ -22,18 +16,16 @@ const EXPECTED_PROSA_VERSION: &str = "0.2.0";
 
 const PROSA_RETRY_INTERVAL: Duration = Duration::from_secs(5);
 
-pub type Pool = Arc<SqlitePool>;
 pub type ProsaClient = Arc<dyn ProsaApi>;
 pub type Kepubs = Arc<kepub::KepubCache>;
 
 #[derive(Clone)]
 pub struct AppState {
-    pub pool: Pool,
     pub prosa_client: ProsaClient,
     pub kepubs: Kepubs,
 }
 
-pub async fn run(pool: SqlitePool) {
+pub async fn run() {
     let prosa_url = format!(
         "{}://{}:{}",
         CONFIG.prosa.scheme, CONFIG.prosa.host, CONFIG.prosa.port
@@ -51,7 +43,6 @@ pub async fn run(pool: SqlitePool) {
 
     let state = AppState {
         prosa_client,
-        pool: Arc::new(pool),
         kepubs: Arc::new(kepub::KepubCache::new(CONFIG.kepub.cache_size_mb * 1024 * 1024)),
     };
 
@@ -79,7 +70,7 @@ pub fn router(state: &AppState) -> Router {
         .merge(proxy::routes::get_routes(state.clone()));
 
     let device = ServiceBuilder::new()
-        .layer(from_fn_with_state(state.clone(), extract_device_middleware))
+        .layer(from_fn(extract_device_middleware))
         .service(device);
 
     Router::new()

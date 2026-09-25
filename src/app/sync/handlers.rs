@@ -22,7 +22,6 @@ pub async fn device_sync_handler(
         .and_then(|s| s.parse::<i64>().ok());
 
     let (new_sync_token, response) = service::translate_sync(
-        &state.pool,
         &state.kepubs,
         &state.prosa_client,
         sync_token,

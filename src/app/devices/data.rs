@@ -1,8 +1,8 @@
 use super::models::{DeviceError, LinkedDevice};
-use sqlx::SqlitePool;
+use sqlx::{Acquire, Sqlite, SqliteExecutor};
 
-pub async fn add_linked_device(
-    pool: &SqlitePool,
+pub async fn add_linked_device<'e>(
+    db: impl SqliteExecutor<'e>,
     device_id: &str,
     lookup_key: &str,
     user_id: &str,
@@ -20,13 +20,16 @@ pub async fn add_linked_device(
     .bind(user_id)
     .bind(name)
     .bind(api_key)
-    .execute(pool)
+    .execute(db)
     .await?;
 
     Ok(())
 }
 
-pub async fn remove_linked_device(pool: &SqlitePool, device_id: &str) -> Result<(), DeviceError> {
+pub async fn remove_linked_device<'e>(
+    db: impl SqliteExecutor<'e>,
+    device_id: &str,
+) -> Result<(), DeviceError> {
     let result = sqlx::query(
         r"
         DELETE FROM linked_devices
@@ -34,7 +37,7 @@ pub async fn remove_linked_device(pool: &SqlitePool, device_id: &str) -> Result<
         ",
     )
     .bind(device_id)
-    .execute(pool)
+    .execute(db)
     .await
     .expect("Failed to delete linked device");
 
@@ -45,7 +48,7 @@ pub async fn remove_linked_device(pool: &SqlitePool, device_id: &str) -> Result<
     Ok(())
 }
 
-pub async fn get_linked_device(pool: &SqlitePool, device_id: &str) -> Option<LinkedDevice> {
+pub async fn get_linked_device<'e>(db: impl SqliteExecutor<'e>, device_id: &str) -> Option<LinkedDevice> {
     let device: Option<LinkedDevice> = sqlx::query_as(
         r"
         SELECT device_id, lookup_key, user_id, name, api_key, client_device_id
@@ -54,14 +57,17 @@ pub async fn get_linked_device(pool: &SqlitePool, device_id: &str) -> Option<Lin
         ",
     )
     .bind(device_id)
-    .fetch_optional(pool)
+    .fetch_optional(db)
     .await
     .expect("Failed to get linked device");
 
     device
 }
 
-pub async fn get_device_by_lookup_key(pool: &SqlitePool, lookup_key: &str) -> Option<LinkedDevice> {
+pub async fn get_device_by_lookup_key<'e>(
+    db: impl SqliteExecutor<'e>,
+    lookup_key: &str,
+) -> Option<LinkedDevice> {
     let device: Option<LinkedDevice> = sqlx::query_as(
         r"
         SELECT device_id, lookup_key, user_id, name, api_key, client_device_id
@@ -70,14 +76,14 @@ pub async fn get_device_by_lookup_key(pool: &SqlitePool, lookup_key: &str) -> Op
         ",
     )
     .bind(lookup_key)
-    .fetch_optional(pool)
+    .fetch_optional(db)
     .await
     .expect("Failed to get linked device");
 
     device
 }
 
-pub async fn get_linked_devices(pool: &SqlitePool, user_id: Option<&str>) -> Vec<LinkedDevice> {
+pub async fn get_linked_devices<'e>(db: impl SqliteExecutor<'e>, user_id: Option<&str>) -> Vec<LinkedDevice> {
     let devices: Vec<LinkedDevice> = sqlx::query_as(
         r"
         SELECT device_id, lookup_key, user_id, name, api_key, client_device_id
@@ -86,14 +92,17 @@ pub async fn get_linked_devices(pool: &SqlitePool, user_id: Option<&str>) -> Vec
         ",
     )
     .bind(user_id)
-    .fetch_all(pool)
+    .fetch_all(db)
     .await
     .expect("Failed to get linked devices");
 
     devices
 }
 
-pub async fn get_device_by_client_id(pool: &SqlitePool, client_device_id: &str) -> Option<LinkedDevice> {
+pub async fn get_device_by_client_id<'e>(
+    db: impl SqliteExecutor<'e>,
+    client_device_id: &str,
+) -> Option<LinkedDevice> {
     sqlx::query_as(
         r"
         SELECT device_id, lookup_key, user_id, name, api_key, client_device_id
@@ -102,13 +111,17 @@ pub async fn get_device_by_client_id(pool: &SqlitePool, client_device_id: &str) 
         ",
     )
     .bind(client_device_id)
-    .fetch_optional(pool)
+    .fetch_optional(db)
     .await
     .expect("Failed to get linked device")
 }
 
-pub async fn claim_client_device_id(pool: &SqlitePool, device_id: &str, client_device_id: &str) {
-    let mut transaction = pool.begin().await.expect("Failed to start transaction");
+pub async fn claim_client_device_id<'a>(
+    db: impl Acquire<'a, Database = Sqlite>,
+    device_id: &str,
+    client_device_id: &str,
+) {
+    let mut transaction = db.begin().await.expect("Failed to start transaction");
 
     sqlx::query(
         r"

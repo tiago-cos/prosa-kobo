@@ -29,13 +29,10 @@ use prosa_kobo::{
 };
 use serde_json::{Value, json};
 use std::{
-    path::PathBuf,
-    sync::{
-        Arc,
-        atomic::{AtomicU32, Ordering},
-    },
+    sync::Arc,
     time::{SystemTime, UNIX_EPOCH},
 };
+use tokio::sync::{Mutex, MutexGuard, OnceCell};
 use tower::ServiceExt;
 
 const CACHE_SIZE: u64 = 16 * 1024 * 1024;
@@ -51,18 +48,31 @@ pub const HOST: &str = "middleware.test:5001";
 pub struct Harness {
     pub client: Arc<MockProsaClient>,
     pub state: AppState,
-    database: PathBuf,
+    _database: MutexGuard<'static, ()>,
 }
 
 impl Harness {
     pub async fn new() -> Self {
-        static NEXT: AtomicU32 = AtomicU32::new(0);
+        static DATABASE: OnceCell<()> = OnceCell::const_new();
+        static IN_USE: Mutex<()> = Mutex::const_new(());
 
-        let database = std::env::temp_dir().join(format!(
-            "prosa-kobo-{}-{}.db",
-            std::process::id(),
-            NEXT.fetch_add(1, Ordering::Relaxed)
-        ));
+        let in_use = IN_USE.lock().await;
+
+        DATABASE
+            .get_or_init(|| async {
+                let file = format!(
+                    "{}/prosa-kobo-{}.db",
+                    env!("CARGO_TARGET_TMPDIR"),
+                    std::process::id()
+                );
+                let pool = database::init(&file)
+                    .await
+                    .expect("Failed to create the test database");
+                database::set_pool(pool).expect("Failed to install the test database");
+            })
+            .await;
+
+        empty_tables().await;
 
         let client = Arc::new(MockProsaClient::new());
 
@@ -72,18 +82,13 @@ impl Harness {
 
         let state = AppState {
             prosa_client: Arc::clone(&client) as ProsaClient,
-            pool: Arc::new(
-                database::init(&database.to_string_lossy())
-                    .await
-                    .expect("Failed to create the test database"),
-            ),
             kepubs: Arc::new(KepubCache::new(CACHE_SIZE)),
         };
 
         Self {
             client,
             state,
-            database,
+            _database: in_use,
         }
     }
 
@@ -103,7 +108,7 @@ impl Harness {
     }
 
     pub async fn unlink(&self, device_id: &str) {
-        devices::service::unlink_device(&self.state.pool, device_id)
+        devices::service::unlink_device(device_id)
             .await
             .expect("Failed to unlink the device");
     }
@@ -111,15 +116,10 @@ impl Harness {
     pub async fn link(&self, name: &str, api_key: &str) -> Device {
         self.recognize(api_key);
 
-        let (device_id, lookup_key) = devices::service::link_device(
-            &self.state.pool,
-            self.state.prosa_client.as_ref(),
-            USER,
-            name,
-            api_key,
-        )
-        .await
-        .expect("Failed to link the device");
+        let (device_id, lookup_key) =
+            devices::service::link_device(self.state.prosa_client.as_ref(), USER, name, api_key)
+                .await
+                .expect("Failed to link the device");
 
         Device {
             device_id,
@@ -237,9 +237,23 @@ pub async fn body_bytes(response: Response<Body>) -> Vec<u8> {
         .to_vec()
 }
 
-impl Drop for Harness {
-    fn drop(&mut self) {
-        let _ = std::fs::remove_file(&self.database);
+async fn empty_tables() {
+    let tables: Vec<String> = sqlx::query_scalar(
+        r"
+        SELECT name
+        FROM sqlite_master
+        WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name != '_sqlx_migrations'
+        ",
+    )
+    .fetch_all(database::pool())
+    .await
+    .expect("Failed to list the test tables");
+
+    for table in tables {
+        sqlx::query(&format!("DELETE FROM {table}"))
+            .execute(database::pool())
+            .await
+            .expect("Failed to empty a test table");
     }
 }
 
