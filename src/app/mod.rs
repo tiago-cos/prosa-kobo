@@ -16,3 +16,4 @@ mod sync;
 mod tracing;
 
 pub use server::*;
+pub use tracing::init_logging;

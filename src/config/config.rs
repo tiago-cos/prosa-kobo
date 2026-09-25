@@ -49,6 +49,7 @@ pub struct Kepub {
 #[serde(default)]
 pub struct Database {
     pub file_path: String,
+    pub backup_before_migration: bool,
 }
 
 impl Default for Bind {
@@ -80,6 +81,7 @@ impl Default for Database {
     fn default() -> Self {
         Self {
             file_path: "persistence/database.db".to_string(),
+            backup_before_migration: true,
         }
     }
 }

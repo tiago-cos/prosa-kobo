@@ -34,8 +34,6 @@ pub struct AppState {
 }
 
 pub async fn run(pool: SqlitePool) {
-    tracing::init_logging();
-
     let prosa_url = format!(
         "{}://{}:{}",
         CONFIG.prosa.scheme, CONFIG.prosa.host, CONFIG.prosa.port

@@ -11,6 +11,7 @@ port = 5001
 
 [database]
 file_path = "persistence/database.db"
+backup_before_migration = true
 
 [prosa]
 scheme = "http"

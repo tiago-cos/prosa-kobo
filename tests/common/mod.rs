@@ -72,7 +72,11 @@ impl Harness {
 
         let state = AppState {
             prosa_client: Arc::clone(&client) as ProsaClient,
-            pool: Arc::new(database::init(&database.to_string_lossy()).await),
+            pool: Arc::new(
+                database::init(&database.to_string_lossy())
+                    .await
+                    .expect("Failed to create the test database"),
+            ),
             kepubs: Arc::new(KepubCache::new(CACHE_SIZE)),
         };
 
