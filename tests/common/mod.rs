@@ -11,8 +11,10 @@ use prosa_kobo::{
         AppState, ProsaClient, authentication::service::load_prosa_keys, devices, kepub::KepubCache, router,
     },
     client::{
+        ProsaReadingStatus,
         identity::{ProsaAuthType, ProsaIdentity},
         mock::MockProsaClient,
+        state::{ProsaState, ProsaStatistics},
     },
     database,
 };
@@ -68,6 +70,21 @@ impl Harness {
             state,
             database,
         }
+    }
+
+    pub fn add_book(&self, book_id: &str) {
+        self.client
+            .seed_file(book_id, fixture("The_Great_Gatsby.epub"))
+            .seed_state(
+                book_id,
+                ProsaState {
+                    location: None,
+                    statistics: ProsaStatistics {
+                        rating: None,
+                        reading_status: ProsaReadingStatus::Unread,
+                    },
+                },
+            );
     }
 
     pub async fn unlink(&self, device_id: &str) {
