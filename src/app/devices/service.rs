@@ -22,7 +22,7 @@ pub async fn link_device(
         return Err(DeviceError::InvalidDeviceName.into());
     }
 
-    verify_api_key(client, api_key)?;
+    verify_api_key(client, api_key).await?;
 
     let device_id = generate_secret(16);
     let lookup_key = generate_secret(LOOKUP_KEY_SIZE);
@@ -60,12 +60,12 @@ pub async fn get_linked_devices(user_id: Option<&str>) -> Result<Vec<LinkedDevic
     Ok(data::get_linked_devices(pool(), user_id).await?)
 }
 
-fn verify_api_key(client: &dyn ProsaApi, api_key: &str) -> Result<(), KoboError> {
+async fn verify_api_key(client: &dyn ProsaApi, api_key: &str) -> Result<(), KoboError> {
     if !is_valid_api_key(api_key) {
         return Err(DeviceError::InvalidApiKey.into());
     }
 
-    match client.identity(api_key) {
+    match client.identity(api_key).await {
         Ok(_) => Ok(()),
         Err(ClientError::Unauthorized) => Err(DeviceError::InvalidApiKey.into()),
         Err(ClientError::Forbidden) => Err(DeviceError::InsufficientApiKey.into()),
@@ -118,36 +118,41 @@ mod tests {
             .to_owned()
     }
 
-    #[test]
-    fn accepts_a_key_prosa_recognises() {
+    #[tokio::test]
+    async fn accepts_a_key_prosa_recognises() {
         let client = MockProsaClient::new();
         client.seed_identity(KEY, identity());
 
-        verify_api_key(&client, KEY).expect("Expected the key to be accepted");
+        verify_api_key(&client, KEY)
+            .await
+            .expect("Expected the key to be accepted");
 
         assert_eq!(client.call_count(ProsaMethod::Identity), 1);
     }
 
-    #[test]
-    fn refuses_a_key_prosa_does_not_know() {
+    #[tokio::test]
+    async fn refuses_a_key_prosa_does_not_know() {
         let client = MockProsaClient::new();
 
-        assert_eq!(refusal(verify_api_key(&client, KEY)), "InvalidApiKey");
+        assert_eq!(refusal(verify_api_key(&client, KEY).await), "InvalidApiKey");
     }
 
-    #[test]
-    fn refuses_a_key_without_read_access() {
+    #[tokio::test]
+    async fn refuses_a_key_without_read_access() {
         let client = MockProsaClient::new();
         client.fail(ProsaMethod::Identity, ClientError::Forbidden);
 
-        assert_eq!(refusal(verify_api_key(&client, KEY)), "InsufficientApiKey");
+        assert_eq!(refusal(verify_api_key(&client, KEY).await), "InsufficientApiKey");
     }
 
-    #[test]
-    fn does_not_ask_prosa_about_a_malformed_key() {
+    #[tokio::test]
+    async fn does_not_ask_prosa_about_a_malformed_key() {
         let client = MockProsaClient::new();
 
-        assert_eq!(refusal(verify_api_key(&client, "not a key!")), "InvalidApiKey");
+        assert_eq!(
+            refusal(verify_api_key(&client, "not a key!").await),
+            "InvalidApiKey"
+        );
         assert_eq!(client.call_count(ProsaMethod::Identity), 0);
     }
 }

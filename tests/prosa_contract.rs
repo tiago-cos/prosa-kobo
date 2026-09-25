@@ -1,5 +1,6 @@
 mod common;
 
+use async_trait::async_trait;
 use common::fixture;
 use prosa_kobo::client::{
     ProsaAnnotationRequest, ProsaReadingStatus,
@@ -36,11 +37,12 @@ fn unique(prefix: &str) -> String {
     format!("{prefix}{:08x}", rand::random::<u32>())
 }
 
-trait Backend {
+#[async_trait]
+trait Backend: Sync {
     fn client(&self) -> &dyn ProsaApi;
     fn key(&self) -> &str;
     fn username(&self) -> &str;
-    fn add_book(&self) -> String;
+    async fn add_book(&self) -> String;
 }
 
 struct Mock {
@@ -73,6 +75,7 @@ impl Mock {
     }
 }
 
+#[async_trait]
 impl Backend for Mock {
     fn client(&self) -> &dyn ProsaApi {
         &self.client
@@ -86,7 +89,7 @@ impl Backend for Mock {
         MOCK_USERNAME
     }
 
-    fn add_book(&self) -> String {
+    async fn add_book(&self) -> String {
         let book_id = format!("book-{}", self.books.fetch_add(1, Ordering::Relaxed));
 
         self.client.seed_file(&book_id, fixture(GATSBY)).seed_state(
@@ -112,7 +115,7 @@ struct Live {
 }
 
 impl Live {
-    fn new() -> Self {
+    async fn new() -> Self {
         let url = std::env::var("PROSA_URL").unwrap_or_else(|_| "http://127.0.0.1:5000".to_owned());
         let (scheme, authority) = url.split_once("://").expect("PROSA_URL should name a scheme");
         let (host, port) = match authority.trim_end_matches('/').rsplit_once(':') {
@@ -121,25 +124,33 @@ impl Live {
         };
 
         let username = unique("contract-");
-        let mut register = ureq::post(format!("{url}/auth/register"));
+        let http = reqwest::Client::new();
+        let mut register = http.post(format!("{url}/auth/register"));
         if let Ok(admin_key) = std::env::var("PROSA_ADMIN_KEY") {
             register = register.header("admin-key", admin_key);
         }
         let registered: Value = register
-            .send_json(json!({ "username": username, "password": "a-contract-password" }))
+            .json(&json!({ "username": username, "password": "a-contract-password" }))
+            .send()
+            .await
+            .and_then(reqwest::Response::error_for_status)
             .expect("Failed to register a user on Prosa")
-            .body_mut()
-            .read_json()
+            .json()
+            .await
             .expect("Registration should answer JSON");
 
         let user_id = registered["user_id"].as_str().expect("A user id");
         let jwt = registered["jwt_token"].as_str().expect("A token");
-        let created: Value = ureq::post(format!("{url}/users/{user_id}/keys"))
+        let created: Value = http
+            .post(format!("{url}/users/{user_id}/keys"))
             .header("Authorization", format!("Bearer {jwt}"))
-            .send_json(json!({ "name": "contract", "capabilities": EVERY_CAPABILITY }))
+            .json(&json!({ "name": "contract", "capabilities": EVERY_CAPABILITY }))
+            .send()
+            .await
+            .and_then(reqwest::Response::error_for_status)
             .expect("Failed to create an API key")
-            .body_mut()
-            .read_json()
+            .json()
+            .await
             .expect("Key creation should answer JSON");
 
         Self {
@@ -151,6 +162,7 @@ impl Live {
     }
 }
 
+#[async_trait]
 impl Backend for Live {
     fn client(&self) -> &dyn ProsaApi {
         &self.client
@@ -164,7 +176,7 @@ impl Backend for Live {
         &self.username
     }
 
-    fn add_book(&self) -> String {
+    async fn add_book(&self) -> String {
         let boundary = "prosa-kobo-contract";
         let mut body = format!(
             "--{boundary}\r\nContent-Disposition: form-data; name=\"epub\"; filename=\"{GATSBY}\"\r\n\
@@ -174,16 +186,20 @@ impl Backend for Live {
         body.extend(fixture(GATSBY));
         body.extend(format!("\r\n--{boundary}--\r\n").into_bytes());
 
-        ureq::post(format!("{}/books", self.url))
+        reqwest::Client::new()
+            .post(format!("{}/books", self.url))
             .header("api-key", &self.key)
             .header(
                 "Content-Type",
                 format!("multipart/form-data; boundary={boundary}"),
             )
-            .send(&body[..])
+            .body(body)
+            .send()
+            .await
+            .and_then(reqwest::Response::error_for_status)
             .expect("Failed to upload a book to Prosa")
-            .body_mut()
-            .read_to_string()
+            .text()
+            .await
             .expect("The upload should answer the book's id")
     }
 }
@@ -197,10 +213,11 @@ fn annotation(start: &str, end: &str, annotation_id: Option<&str>) -> ProsaAnnot
     }
 }
 
-fn identifies_the_key_it_is_handed(backend: &dyn Backend) {
+async fn identifies_the_key_it_is_handed(backend: &dyn Backend) {
     let identity = backend
         .client()
         .identity(backend.key())
+        .await
         .expect("The key should be recognized");
 
     assert_eq!(identity.auth_type, ProsaAuthType::ApiKey);
@@ -212,128 +229,139 @@ fn identifies_the_key_it_is_handed(backend: &dyn Backend) {
     }
 
     assert_eq!(
-        backend.client().identity("bm90IGEga2V5").err(),
+        backend.client().identity("bm90IGEga2V5").await.err(),
         Some(ClientError::Unauthorized)
     );
 }
 
-fn serves_back_the_book_it_holds_until_it_is_deleted(backend: &dyn Backend) {
+async fn serves_back_the_book_it_holds_until_it_is_deleted(backend: &dyn Backend) {
     let client = backend.client();
     let key = backend.key();
-    let book = backend.add_book();
+    let book = backend.add_book().await;
     let epub = fixture(GATSBY);
 
-    assert_eq!(client.download_book(&book, key).ok(), Some(epub.clone()));
+    assert_eq!(client.download_book(&book, key).await.ok(), Some(epub.clone()));
     assert_eq!(
         client
             .fetch_book_file_metadata(&book, key)
+            .await
             .map(|file| file.file_size)
             .ok(),
         Some(epub.len() as u64)
     );
     assert_eq!(
-        client.download_book(MISSING, key).err(),
+        client.download_book(MISSING, key).await.err(),
         Some(ClientError::NotFound)
     );
 
-    assert_eq!(client.delete_book(&book, key), Ok(()));
+    assert_eq!(client.delete_book(&book, key).await, Ok(()));
     assert_eq!(
-        client.download_book(&book, key).err(),
+        client.download_book(&book, key).await.err(),
         Some(ClientError::NotFound)
     );
-    assert_eq!(client.delete_book(&book, key), Err(ClientError::NotFound));
+    assert_eq!(client.delete_book(&book, key).await, Err(ClientError::NotFound));
 }
 
-fn has_no_cover_for_a_book_without_one(backend: &dyn Backend) {
-    let book = backend.add_book();
+async fn has_no_cover_for_a_book_without_one(backend: &dyn Backend) {
+    let book = backend.add_book().await;
 
     assert_eq!(
-        backend.client().download_cover(&book, backend.key()).err(),
+        backend.client().download_cover(&book, backend.key()).await.err(),
         Some(ClientError::NotFound)
     );
 }
 
-fn keeps_a_reading_position_only_where_the_book_has_one(backend: &dyn Backend) {
+async fn keeps_a_reading_position_only_where_the_book_has_one(backend: &dyn Backend) {
     let client = backend.client();
     let key = backend.key();
-    let book = backend.add_book();
+    let book = backend.add_book().await;
 
     let fresh = client
         .fetch_state(&book, key)
+        .await
         .expect("A book should have a state");
     assert_eq!(fresh.statistics.reading_status, ProsaReadingStatus::Unread);
     assert_eq!(fresh.location, None);
 
     assert_eq!(
-        client.patch_state(&book, Some(&earlier()), ProsaReadingStatus::Reading, key),
+        client
+            .patch_state(&book, Some(&earlier()), ProsaReadingStatus::Reading, key)
+            .await,
         Ok(())
     );
     let moved = client
         .fetch_state(&book, key)
+        .await
         .expect("A book should have a state");
     assert_eq!(moved.location, Some(earlier()));
     assert_eq!(moved.statistics.reading_status, ProsaReadingStatus::Reading);
 
     assert_eq!(
-        client.patch_state(&book, Some(&at("0/99/t0:0")), ProsaReadingStatus::Reading, key),
+        client
+            .patch_state(&book, Some(&at("0/99/t0:0")), ProsaReadingStatus::Reading, key)
+            .await,
         Err(ClientError::BadRequest)
     );
 }
 
-fn keeps_a_rating_and_clears_it_at_zero(backend: &dyn Backend) {
+async fn keeps_a_rating_and_clears_it_at_zero(backend: &dyn Backend) {
     let client = backend.client();
     let key = backend.key();
-    let book = backend.add_book();
+    let book = backend.add_book().await;
 
-    assert_eq!(client.update_rating(&book, 4, key), Ok(()));
-    assert_eq!(client.fetch_rating(&book, key), Ok(Some(4)));
+    assert_eq!(client.update_rating(&book, 4, key).await, Ok(()));
+    assert_eq!(client.fetch_rating(&book, key).await, Ok(Some(4)));
 
-    assert_eq!(client.update_rating(&book, 0, key), Ok(()));
-    assert_eq!(client.fetch_rating(&book, key), Ok(None));
+    assert_eq!(client.update_rating(&book, 0, key).await, Ok(()));
+    assert_eq!(client.fetch_rating(&book, key).await, Ok(None));
 }
 
-fn keeps_an_annotation_over_text_until_it_is_deleted(backend: &dyn Backend) {
+async fn keeps_an_annotation_over_text_until_it_is_deleted(backend: &dyn Backend) {
     let client = backend.client();
     let key = backend.key();
-    let book = backend.add_book();
+    let book = backend.add_book().await;
     let id = uuid();
 
     assert_eq!(
-        client.add_annotation(&book, &annotation(&earlier(), &later(), Some(&id)), key),
+        client
+            .add_annotation(&book, &annotation(&earlier(), &later(), Some(&id)), key)
+            .await,
         Ok(id.clone())
     );
-    assert_eq!(client.list_annotations(&book, key), Ok(vec![id.clone()]));
+    assert_eq!(client.list_annotations(&book, key).await, Ok(vec![id.clone()]));
 
     let stored = client
         .get_annotation(&book, &id, key)
+        .await
         .expect("The annotation should be held");
     assert_eq!(stored.start_location, earlier());
     assert_eq!(stored.end_location, later());
 
-    assert_eq!(client.patch_annotation(&book, &id, "A note", key), Ok(()));
+    assert_eq!(client.patch_annotation(&book, &id, "A note", key).await, Ok(()));
     assert_eq!(
         client
             .get_annotation(&book, &id, key)
+            .await
             .ok()
             .and_then(|stored| stored.note),
         Some("A note".to_owned())
     );
 
-    assert_eq!(client.delete_annotation(&book, &id, key), Ok(()));
+    assert_eq!(client.delete_annotation(&book, &id, key).await, Ok(()));
     assert_eq!(
-        client.get_annotation(&book, &id, key).err(),
+        client.get_annotation(&book, &id, key).await.err(),
         Some(ClientError::NotFound)
     );
     assert_eq!(
-        client.delete_annotation(&book, &id, key),
+        client.delete_annotation(&book, &id, key).await,
         Err(ClientError::NotFound)
     );
 }
 
-fn refuses_an_annotation_that_is_not_a_stretch_of_text(backend: &dyn Backend) {
+async fn refuses_an_annotation_that_is_not_a_stretch_of_text(backend: &dyn Backend) {
     let client = backend.client();
     let key = backend.key();
-    let book = backend.add_book();
+    let book = backend.add_book().await;
 
     for (start, end) in [
         (earlier(), earlier()),
@@ -341,64 +369,76 @@ fn refuses_an_annotation_that_is_not_a_stretch_of_text(backend: &dyn Backend) {
         (later(), earlier()),
     ] {
         assert_eq!(
-            client.add_annotation(&book, &annotation(&start, &end, None), key),
+            client
+                .add_annotation(&book, &annotation(&start, &end, None), key)
+                .await,
             Err(ClientError::BadRequest),
             "{start} .. {end} should be refused"
         );
     }
 }
 
-fn refuses_to_annotate_a_span_or_reuse_an_id_twice(backend: &dyn Backend) {
+async fn refuses_to_annotate_a_span_or_reuse_an_id_twice(backend: &dyn Backend) {
     let client = backend.client();
     let key = backend.key();
-    let book = backend.add_book();
+    let book = backend.add_book().await;
     let id = uuid();
 
     client
         .add_annotation(&book, &annotation(&earlier(), &later(), Some(&id)), key)
+        .await
         .expect("The first annotation should be taken");
 
     assert_eq!(
-        client.add_annotation(&book, &annotation(&earlier(), &later(), Some(&uuid())), key),
+        client
+            .add_annotation(&book, &annotation(&earlier(), &later(), Some(&uuid())), key)
+            .await,
         Err(ClientError::Conflict)
     );
     assert_eq!(
-        client.add_annotation(&book, &annotation(&earlier(), &at("0/1/t0:3"), Some(&id)), key),
+        client
+            .add_annotation(&book, &annotation(&earlier(), &at("0/1/t0:3"), Some(&id)), key)
+            .await,
         Err(ClientError::Conflict)
     );
 }
 
-fn refuses_an_annotation_id_that_is_not_a_uuid(backend: &dyn Backend) {
-    let book = backend.add_book();
+async fn refuses_an_annotation_id_that_is_not_a_uuid(backend: &dyn Backend) {
+    let book = backend.add_book().await;
 
     assert_eq!(
-        backend.client().add_annotation(
-            &book,
-            &annotation(&earlier(), &later(), Some("not-a-uuid")),
-            backend.key()
-        ),
+        backend
+            .client()
+            .add_annotation(
+                &book,
+                &annotation(&earlier(), &later(), Some("not-a-uuid")),
+                backend.key()
+            )
+            .await,
         Err(ClientError::BadRequest)
     );
 }
 
-fn stores_an_annotation_id_in_its_canonical_form(backend: &dyn Backend) {
+async fn stores_an_annotation_id_in_its_canonical_form(backend: &dyn Backend) {
     let client = backend.client();
     let key = backend.key();
-    let book = backend.add_book();
+    let book = backend.add_book().await;
     let id = uuid();
 
     assert_eq!(
-        client.add_annotation(
-            &book,
-            &annotation(&earlier(), &later(), Some(&id.to_uppercase())),
-            key
-        ),
+        client
+            .add_annotation(
+                &book,
+                &annotation(&earlier(), &later(), Some(&id.to_uppercase())),
+                key
+            )
+            .await,
         Ok(id.clone())
     );
-    assert_eq!(client.list_annotations(&book, key), Ok(vec![id]));
+    assert_eq!(client.list_annotations(&book, key).await, Ok(vec![id]));
 }
 
-fn holds_a_shelf_name_once_per_user(backend: &dyn Backend) {
+async fn holds_a_shelf_name_once_per_user(backend: &dyn Backend) {
     let client = backend.client();
     let key = backend.key();
     let name = unique("Shelf ");
@@ -406,75 +446,90 @@ fn holds_a_shelf_name_once_per_user(backend: &dyn Backend) {
 
     let shelf = client
         .create_shelf(&name, None, None, key)
+        .await
         .expect("The shelf should be created");
     assert_eq!(
-        client.create_shelf(&name, None, None, key),
+        client.create_shelf(&name, None, None, key).await,
         Err(ClientError::Conflict)
     );
     assert_eq!(
-        client.get_shelf_metadata(&shelf, key).map(|shelf| shelf.name),
+        client
+            .get_shelf_metadata(&shelf, key)
+            .await
+            .map(|shelf| shelf.name),
         Ok(name)
     );
 
-    assert_eq!(client.update_shelf_name(&shelf, &renamed, key), Ok(()));
+    assert_eq!(client.update_shelf_name(&shelf, &renamed, key).await, Ok(()));
     assert_eq!(
-        client.get_shelf_metadata(&shelf, key).map(|shelf| shelf.name),
+        client
+            .get_shelf_metadata(&shelf, key)
+            .await
+            .map(|shelf| shelf.name),
         Ok(renamed)
     );
 
-    assert_eq!(client.delete_shelf(&shelf, key), Ok(()));
-    assert_eq!(client.delete_shelf(&shelf, key), Err(ClientError::NotFound));
+    assert_eq!(client.delete_shelf(&shelf, key).await, Ok(()));
+    assert_eq!(client.delete_shelf(&shelf, key).await, Err(ClientError::NotFound));
 }
 
-fn holds_each_book_on_a_shelf_once(backend: &dyn Backend) {
+async fn holds_each_book_on_a_shelf_once(backend: &dyn Backend) {
     let client = backend.client();
     let key = backend.key();
-    let book = backend.add_book();
+    let book = backend.add_book().await;
     let shelf = client
         .create_shelf(&unique("Shelf "), None, None, key)
+        .await
         .expect("The shelf should be created");
 
-    assert_eq!(client.add_book_to_shelf(&shelf, &book, key), Ok(()));
+    assert_eq!(client.add_book_to_shelf(&shelf, &book, key).await, Ok(()));
     assert_eq!(
-        client.add_book_to_shelf(&shelf, &book, key),
+        client.add_book_to_shelf(&shelf, &book, key).await,
         Err(ClientError::Conflict)
     );
-    assert_eq!(client.list_books_in_shelf(&shelf, key), Ok(vec![book.clone()]));
-
-    assert_eq!(client.delete_book_from_shelf(&shelf, &book, key), Ok(()));
     assert_eq!(
-        client.delete_book_from_shelf(&shelf, &book, key),
+        client.list_books_in_shelf(&shelf, key).await,
+        Ok(vec![book.clone()])
+    );
+
+    assert_eq!(client.delete_book_from_shelf(&shelf, &book, key).await, Ok(()));
+    assert_eq!(
+        client.delete_book_from_shelf(&shelf, &book, key).await,
         Err(ClientError::NotFound)
     );
 }
 
-fn refuses_to_shelve_a_book_it_does_not_hold(backend: &dyn Backend) {
+async fn refuses_to_shelve_a_book_it_does_not_hold(backend: &dyn Backend) {
     let client = backend.client();
     let key = backend.key();
     let shelf = client
         .create_shelf(&unique("Shelf "), None, None, key)
+        .await
         .expect("The shelf should be created");
 
     assert_eq!(
-        client.add_book_to_shelf(&shelf, MISSING, key),
+        client.add_book_to_shelf(&shelf, MISSING, key).await,
         Err(ClientError::NotFound)
     );
 }
 
-fn finds_its_own_shelves_by_any_part_of_the_name(backend: &dyn Backend) {
+async fn finds_its_own_shelves_by_any_part_of_the_name(backend: &dyn Backend) {
     let client = backend.client();
     let key = backend.key();
     let word = unique("word");
     let shelf = client
         .create_shelf(&format!("My {word} shelf"), None, None, key)
+        .await
         .expect("The shelf should be created");
 
     assert_eq!(
-        client.search_shelves(backend.username(), &word.to_uppercase(), key),
+        client
+            .search_shelves(backend.username(), &word.to_uppercase(), key)
+            .await,
         Ok(vec![shelf])
     );
     assert_eq!(
-        client.search_shelves(&unique("nobody-"), &word, key),
+        client.search_shelves(&unique("nobody-"), &word, key).await,
         Err(ClientError::Forbidden)
     );
 }
@@ -483,19 +538,19 @@ macro_rules! contract {
     ($($scenario:ident),* $(,)?) => {
         mod mock {
             $(
-                #[test]
-                fn $scenario() {
-                    super::$scenario(&super::Mock::new());
+                #[tokio::test]
+                async fn $scenario() {
+                    super::$scenario(&super::Mock::new()).await;
                 }
             )*
         }
 
         mod live {
             $(
-                #[test]
+                #[tokio::test]
                 #[ignore = "needs a running Prosa at PROSA_URL"]
-                fn $scenario() {
-                    super::$scenario(&super::Live::new());
+                async fn $scenario() {
+                    super::$scenario(&super::Live::new().await).await;
                 }
             )*
         }

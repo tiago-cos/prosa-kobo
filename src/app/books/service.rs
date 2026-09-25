@@ -12,8 +12,8 @@ pub async fn download_book(
     kepub::get_kepub(client, book_id, api_key).await
 }
 
-pub fn delete_book(client: &dyn ProsaApi, book_id: &str, api_key: &str) -> Result<(), KoboError> {
-    match client.delete_book(book_id, api_key) {
+pub async fn delete_book(client: &dyn ProsaApi, book_id: &str, api_key: &str) -> Result<(), KoboError> {
+    match client.delete_book(book_id, api_key).await {
         Err(ClientError::NotFound) | Ok(()) => (),
         e => e?,
     }

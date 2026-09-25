@@ -67,11 +67,11 @@ pub async fn get_annotations(
     book_id: &str,
     api_key: &str,
 ) -> Result<GetAnnotationsResponse, KoboError> {
-    let annotation_ids = client.list_annotations(book_id, api_key)?;
+    let annotation_ids = client.list_annotations(book_id, api_key).await?;
     let mut stored: Vec<ProsaAnnotation> = Vec::new();
 
     for id in annotation_ids {
-        stored.push(client.get_annotation(book_id, &id, api_key)?);
+        stored.push(client.get_annotation(book_id, &id, api_key).await?);
     }
 
     if stored.is_empty() {
@@ -104,11 +104,13 @@ pub async fn patch_annotations(
                 continue;
             };
 
-            let result = client.add_annotation(book_id, &request, api_key);
+            let result = client.add_annotation(book_id, &request, api_key).await;
             let note = &annotation.note_text.unwrap_or_default();
 
             if let Err(ClientError::Conflict) = result {
-                client.patch_annotation(book_id, &annotation.id, note, api_key)?;
+                client
+                    .patch_annotation(book_id, &annotation.id, note, api_key)
+                    .await?;
             } else {
                 result?;
             }
@@ -116,7 +118,7 @@ pub async fn patch_annotations(
     }
 
     for annotation_id in request.deleted_annotation_ids.unwrap_or_default() {
-        client.delete_annotation(book_id, &annotation_id, api_key)?;
+        client.delete_annotation(book_id, &annotation_id, api_key).await?;
     }
 
     Ok(())

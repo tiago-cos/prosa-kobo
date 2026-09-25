@@ -1,23 +1,28 @@
+use reqwest::{Client, Error};
 use serde::Deserialize;
-use ureq::{Agent, Error};
 
 pub struct SyncClient {
     pub url: String,
-    pub agent: Agent,
+    pub http: Client,
 }
 
 impl SyncClient {
-    pub fn sync_device(&self, sync_token: Option<i64>, api_key: &str) -> Result<ProsaSync, Error> {
+    pub async fn sync_device(&self, sync_token: Option<i64>, api_key: &str) -> Result<ProsaSync, Error> {
         let mut request = self
-            .agent
+            .http
             .get(format!("{}/sync", self.url))
             .header("api-key", api_key);
 
         if let Some(sync_token) = sync_token {
-            request = request.query("sync_token", sync_token.to_string());
+            request = request.query(&[("sync_token", sync_token.to_string())]);
         }
 
-        request.call()?.body_mut().read_json::<ProsaSync>()
+        request
+            .send()
+            .await?
+            .error_for_status()?
+            .json::<ProsaSync>()
+            .await
     }
 }
 

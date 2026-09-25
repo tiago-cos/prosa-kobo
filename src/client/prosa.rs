@@ -10,9 +10,10 @@ use super::{
     state::{ProsaReadingStatus, ProsaState, StateClient},
     sync::{ProsaSync, SyncClient},
 };
+use async_trait::async_trait;
 use jsonwebtoken::jwk::JwkSet;
+use reqwest::Error;
 use strum_macros::{EnumMessage, EnumProperty};
-use ureq::{Agent, Error};
 
 #[derive(EnumMessage, EnumProperty, Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ClientError {
@@ -42,32 +43,33 @@ pub enum ClientError {
     InternalError,
 }
 
+#[async_trait]
 pub trait ProsaApi: Send + Sync {
-    fn health(&self) -> Result<ProsaHealth, ClientError>;
+    async fn health(&self) -> Result<ProsaHealth, ClientError>;
 
-    fn jwks(&self) -> Result<JwkSet, ClientError>;
+    async fn jwks(&self) -> Result<JwkSet, ClientError>;
 
-    fn identity(&self, api_key: &str) -> Result<ProsaIdentity, ClientError>;
+    async fn identity(&self, api_key: &str) -> Result<ProsaIdentity, ClientError>;
 
-    fn sync_device(&self, sync_token: Option<i64>, api_key: &str) -> Result<ProsaSync, ClientError>;
+    async fn sync_device(&self, sync_token: Option<i64>, api_key: &str) -> Result<ProsaSync, ClientError>;
 
-    fn fetch_metadata(&self, book_id: &str, api_key: &str) -> Result<ProsaMetadata, ClientError>;
+    async fn fetch_metadata(&self, book_id: &str, api_key: &str) -> Result<ProsaMetadata, ClientError>;
 
-    fn fetch_book_file_metadata(
+    async fn fetch_book_file_metadata(
         &self,
         book_id: &str,
         api_key: &str,
     ) -> Result<ProsaBookFileMetadata, ClientError>;
 
-    fn download_book(&self, book_id: &str, api_key: &str) -> Result<Vec<u8>, ClientError>;
+    async fn download_book(&self, book_id: &str, api_key: &str) -> Result<Vec<u8>, ClientError>;
 
-    fn delete_book(&self, book_id: &str, api_key: &str) -> Result<(), ClientError>;
+    async fn delete_book(&self, book_id: &str, api_key: &str) -> Result<(), ClientError>;
 
-    fn download_cover(&self, book_id: &str, api_key: &str) -> Result<Vec<u8>, ClientError>;
+    async fn download_cover(&self, book_id: &str, api_key: &str) -> Result<Vec<u8>, ClientError>;
 
-    fn fetch_state(&self, book_id: &str, api_key: &str) -> Result<ProsaState, ClientError>;
+    async fn fetch_state(&self, book_id: &str, api_key: &str) -> Result<ProsaState, ClientError>;
 
-    fn patch_state(
+    async fn patch_state(
         &self,
         book_id: &str,
         location: Option<&str>,
@@ -75,27 +77,27 @@ pub trait ProsaApi: Send + Sync {
         api_key: &str,
     ) -> Result<(), ClientError>;
 
-    fn update_rating(&self, book_id: &str, rating: u8, api_key: &str) -> Result<(), ClientError>;
+    async fn update_rating(&self, book_id: &str, rating: u8, api_key: &str) -> Result<(), ClientError>;
 
-    fn fetch_rating(&self, book_id: &str, api_key: &str) -> Result<Option<u8>, ClientError>;
+    async fn fetch_rating(&self, book_id: &str, api_key: &str) -> Result<Option<u8>, ClientError>;
 
-    fn list_annotations(&self, book_id: &str, api_key: &str) -> Result<Vec<String>, ClientError>;
+    async fn list_annotations(&self, book_id: &str, api_key: &str) -> Result<Vec<String>, ClientError>;
 
-    fn get_annotation(
+    async fn get_annotation(
         &self,
         book_id: &str,
         annotation_id: &str,
         api_key: &str,
     ) -> Result<ProsaAnnotation, ClientError>;
 
-    fn add_annotation(
+    async fn add_annotation(
         &self,
         book_id: &str,
         annotation: &ProsaAnnotationRequest,
         api_key: &str,
     ) -> Result<String, ClientError>;
 
-    fn patch_annotation(
+    async fn patch_annotation(
         &self,
         book_id: &str,
         annotation_id: &str,
@@ -103,10 +105,14 @@ pub trait ProsaApi: Send + Sync {
         api_key: &str,
     ) -> Result<(), ClientError>;
 
-    fn delete_annotation(&self, book_id: &str, annotation_id: &str, api_key: &str)
-    -> Result<(), ClientError>;
+    async fn delete_annotation(
+        &self,
+        book_id: &str,
+        annotation_id: &str,
+        api_key: &str,
+    ) -> Result<(), ClientError>;
 
-    fn create_shelf(
+    async fn create_shelf(
         &self,
         shelf_name: &str,
         owner_id: Option<&str>,
@@ -114,20 +120,43 @@ pub trait ProsaApi: Send + Sync {
         api_key: &str,
     ) -> Result<String, ClientError>;
 
-    fn search_shelves(&self, username: &str, name: &str, api_key: &str) -> Result<Vec<String>, ClientError>;
+    async fn search_shelves(
+        &self,
+        username: &str,
+        name: &str,
+        api_key: &str,
+    ) -> Result<Vec<String>, ClientError>;
 
-    fn get_shelf_metadata(&self, shelf_id: &str, api_key: &str) -> Result<ProsaShelfMetadata, ClientError>;
+    async fn get_shelf_metadata(
+        &self,
+        shelf_id: &str,
+        api_key: &str,
+    ) -> Result<ProsaShelfMetadata, ClientError>;
 
-    fn update_shelf_name(&self, shelf_id: &str, shelf_name: &str, api_key: &str) -> Result<(), ClientError>;
+    async fn update_shelf_name(
+        &self,
+        shelf_id: &str,
+        shelf_name: &str,
+        api_key: &str,
+    ) -> Result<(), ClientError>;
 
-    fn delete_shelf(&self, shelf_id: &str, api_key: &str) -> Result<(), ClientError>;
+    async fn delete_shelf(&self, shelf_id: &str, api_key: &str) -> Result<(), ClientError>;
 
-    fn add_book_to_shelf(&self, shelf_id: &str, book_id: &str, api_key: &str) -> Result<(), ClientError>;
+    async fn add_book_to_shelf(
+        &self,
+        shelf_id: &str,
+        book_id: &str,
+        api_key: &str,
+    ) -> Result<(), ClientError>;
 
-    fn list_books_in_shelf(&self, shelf_id: &str, api_key: &str) -> Result<Vec<String>, ClientError>;
+    async fn list_books_in_shelf(&self, shelf_id: &str, api_key: &str) -> Result<Vec<String>, ClientError>;
 
-    fn delete_book_from_shelf(&self, shelf_id: &str, book_id: &str, api_key: &str)
-    -> Result<(), ClientError>;
+    async fn delete_book_from_shelf(
+        &self,
+        shelf_id: &str,
+        book_id: &str,
+        api_key: &str,
+    ) -> Result<(), ClientError>;
 }
 
 pub struct Client {
@@ -145,100 +174,104 @@ pub struct Client {
 
 impl Client {
     pub fn new(scheme: &str, url: &str, port: u16) -> Self {
-        let agent: Agent = Agent::config_builder().build().into();
+        let http = reqwest::Client::new();
         let url = format!("{scheme}://{url}:{port}");
 
         Client {
             health_client: HealthClient {
                 url: url.clone(),
-                agent: agent.clone(),
+                http: http.clone(),
             },
             identity_client: IdentityClient {
                 url: url.clone(),
-                agent: agent.clone(),
+                http: http.clone(),
             },
             keys_client: KeysClient {
                 url: url.clone(),
-                agent: agent.clone(),
+                http: http.clone(),
             },
             sync_client: SyncClient {
                 url: url.clone(),
-                agent: agent.clone(),
+                http: http.clone(),
             },
             metadata_client: MetadataClient {
                 url: url.clone(),
-                agent: agent.clone(),
+                http: http.clone(),
             },
             state_client: StateClient {
                 url: url.clone(),
-                agent: agent.clone(),
+                http: http.clone(),
             },
             book_client: BookClient {
                 url: url.clone(),
-                agent: agent.clone(),
+                http: http.clone(),
             },
             cover_client: CoverClient {
                 url: url.clone(),
-                agent: agent.clone(),
+                http: http.clone(),
             },
             annotations_client: AnnotationsClient {
                 url: url.clone(),
-                agent: agent.clone(),
+                http: http.clone(),
             },
             shelf_client: ShelfClient {
                 url: url.clone(),
-                agent: agent.clone(),
+                http: http.clone(),
             },
         }
     }
 }
 
+#[async_trait]
 impl ProsaApi for Client {
-    fn health(&self) -> Result<ProsaHealth, ClientError> {
-        Ok(self.health_client.health()?)
+    async fn health(&self) -> Result<ProsaHealth, ClientError> {
+        Ok(self.health_client.health().await?)
     }
 
-    fn jwks(&self) -> Result<JwkSet, ClientError> {
-        Ok(self.keys_client.jwks()?)
+    async fn jwks(&self) -> Result<JwkSet, ClientError> {
+        Ok(self.keys_client.jwks().await?)
     }
 
-    fn identity(&self, api_key: &str) -> Result<ProsaIdentity, ClientError> {
-        Ok(self.identity_client.identity(api_key)?)
+    async fn identity(&self, api_key: &str) -> Result<ProsaIdentity, ClientError> {
+        Ok(self.identity_client.identity(api_key).await?)
     }
 
-    fn sync_device(&self, sync_token: Option<i64>, api_key: &str) -> Result<ProsaSync, ClientError> {
-        Ok(self.sync_client.sync_device(sync_token, api_key)?)
+    async fn sync_device(&self, sync_token: Option<i64>, api_key: &str) -> Result<ProsaSync, ClientError> {
+        Ok(self.sync_client.sync_device(sync_token, api_key).await?)
     }
 
-    fn fetch_metadata(&self, book_id: &str, api_key: &str) -> Result<ProsaMetadata, ClientError> {
-        Ok(self.metadata_client.fetch_metadata(book_id, api_key)?)
+    async fn fetch_metadata(&self, book_id: &str, api_key: &str) -> Result<ProsaMetadata, ClientError> {
+        Ok(self.metadata_client.fetch_metadata(book_id, api_key).await?)
     }
 
-    fn fetch_book_file_metadata(
+    async fn fetch_book_file_metadata(
         &self,
         book_id: &str,
         api_key: &str,
     ) -> Result<ProsaBookFileMetadata, ClientError> {
-        Ok(self.book_client.fetch_book_file_metadata(book_id, api_key)?)
+        Ok(self
+            .book_client
+            .fetch_book_file_metadata(book_id, api_key)
+            .await?)
     }
 
-    fn download_book(&self, book_id: &str, api_key: &str) -> Result<Vec<u8>, ClientError> {
-        Ok(self.book_client.download_book(book_id, api_key)?)
+    async fn download_book(&self, book_id: &str, api_key: &str) -> Result<Vec<u8>, ClientError> {
+        Ok(self.book_client.download_book(book_id, api_key).await?)
     }
 
-    fn delete_book(&self, book_id: &str, api_key: &str) -> Result<(), ClientError> {
-        Ok(self.book_client.delete_book(book_id, api_key)?)
+    async fn delete_book(&self, book_id: &str, api_key: &str) -> Result<(), ClientError> {
+        Ok(self.book_client.delete_book(book_id, api_key).await?)
     }
 
-    fn download_cover(&self, book_id: &str, api_key: &str) -> Result<Vec<u8>, ClientError> {
-        Ok(self.cover_client.download_cover(book_id, api_key)?)
+    async fn download_cover(&self, book_id: &str, api_key: &str) -> Result<Vec<u8>, ClientError> {
+        Ok(self.cover_client.download_cover(book_id, api_key).await?)
     }
 
-    fn fetch_state(&self, book_id: &str, api_key: &str) -> Result<ProsaState, ClientError> {
-        Ok(self.state_client.fetch_state(book_id, api_key)?)
+    async fn fetch_state(&self, book_id: &str, api_key: &str) -> Result<ProsaState, ClientError> {
+        Ok(self.state_client.fetch_state(book_id, api_key).await?)
     }
 
-    fn patch_state(
+    async fn patch_state(
         &self,
         book_id: &str,
         location: Option<&str>,
@@ -246,35 +279,36 @@ impl ProsaApi for Client {
         api_key: &str,
     ) -> Result<(), ClientError> {
         self.state_client
-            .patch_state(book_id, location, reading_status, api_key)?;
+            .patch_state(book_id, location, reading_status, api_key)
+            .await?;
 
         Ok(())
     }
 
-    fn update_rating(&self, book_id: &str, rating: u8, api_key: &str) -> Result<(), ClientError> {
-        let mut state = self.state_client.fetch_state(book_id, api_key)?;
+    async fn update_rating(&self, book_id: &str, rating: u8, api_key: &str) -> Result<(), ClientError> {
+        let mut state = self.state_client.fetch_state(book_id, api_key).await?;
 
         state.statistics.rating = match rating {
             0 => None,
             rating => Some(rating.into()),
         };
 
-        self.state_client.replace_state(book_id, &state, api_key)?;
+        self.state_client.replace_state(book_id, &state, api_key).await?;
 
         Ok(())
     }
 
-    fn fetch_rating(&self, book_id: &str, api_key: &str) -> Result<Option<u8>, ClientError> {
-        let state = self.state_client.fetch_state(book_id, api_key)?;
+    async fn fetch_rating(&self, book_id: &str, api_key: &str) -> Result<Option<u8>, ClientError> {
+        let state = self.state_client.fetch_state(book_id, api_key).await?;
 
         Ok(state.statistics.rating.map(round_rating))
     }
 
-    fn list_annotations(&self, book_id: &str, api_key: &str) -> Result<Vec<String>, ClientError> {
-        Ok(self.annotations_client.list_annotations(book_id, api_key)?)
+    async fn list_annotations(&self, book_id: &str, api_key: &str) -> Result<Vec<String>, ClientError> {
+        Ok(self.annotations_client.list_annotations(book_id, api_key).await?)
     }
 
-    fn get_annotation(
+    async fn get_annotation(
         &self,
         book_id: &str,
         annotation_id: &str,
@@ -282,10 +316,11 @@ impl ProsaApi for Client {
     ) -> Result<ProsaAnnotation, ClientError> {
         Ok(self
             .annotations_client
-            .get_annotation(book_id, annotation_id, api_key)?)
+            .get_annotation(book_id, annotation_id, api_key)
+            .await?)
     }
 
-    fn add_annotation(
+    async fn add_annotation(
         &self,
         book_id: &str,
         annotation: &ProsaAnnotationRequest,
@@ -293,10 +328,11 @@ impl ProsaApi for Client {
     ) -> Result<String, ClientError> {
         Ok(self
             .annotations_client
-            .add_annotation(book_id, annotation, api_key)?)
+            .add_annotation(book_id, annotation, api_key)
+            .await?)
     }
 
-    fn patch_annotation(
+    async fn patch_annotation(
         &self,
         book_id: &str,
         annotation_id: &str,
@@ -304,24 +340,26 @@ impl ProsaApi for Client {
         api_key: &str,
     ) -> Result<(), ClientError> {
         self.annotations_client
-            .patch_annotation(book_id, annotation_id, note, api_key)?;
+            .patch_annotation(book_id, annotation_id, note, api_key)
+            .await?;
 
         Ok(())
     }
 
-    fn delete_annotation(
+    async fn delete_annotation(
         &self,
         book_id: &str,
         annotation_id: &str,
         api_key: &str,
     ) -> Result<(), ClientError> {
         self.annotations_client
-            .delete_annotation(book_id, annotation_id, api_key)?;
+            .delete_annotation(book_id, annotation_id, api_key)
+            .await?;
 
         Ok(())
     }
 
-    fn create_shelf(
+    async fn create_shelf(
         &self,
         shelf_name: &str,
         owner_id: Option<&str>,
@@ -330,15 +368,24 @@ impl ProsaApi for Client {
     ) -> Result<String, ClientError> {
         Ok(self
             .shelf_client
-            .create_shelf(shelf_name, owner_id, shelf_id, api_key)?)
+            .create_shelf(shelf_name, owner_id, shelf_id, api_key)
+            .await?)
     }
 
-    fn search_shelves(&self, username: &str, name: &str, api_key: &str) -> Result<Vec<String>, ClientError> {
+    async fn search_shelves(
+        &self,
+        username: &str,
+        name: &str,
+        api_key: &str,
+    ) -> Result<Vec<String>, ClientError> {
         let mut shelf_ids = Vec::new();
         let mut page = 1;
 
         loop {
-            let result = self.shelf_client.search_shelves(username, name, page, api_key)?;
+            let result = self
+                .shelf_client
+                .search_shelves(username, name, page, api_key)
+                .await?;
             shelf_ids.extend(result.shelf_ids);
 
             if result.current_page >= result.total_pages {
@@ -349,41 +396,59 @@ impl ProsaApi for Client {
         }
     }
 
-    fn get_shelf_metadata(&self, shelf_id: &str, api_key: &str) -> Result<ProsaShelfMetadata, ClientError> {
-        Ok(self.shelf_client.get_shelf_metadata(shelf_id, api_key)?)
+    async fn get_shelf_metadata(
+        &self,
+        shelf_id: &str,
+        api_key: &str,
+    ) -> Result<ProsaShelfMetadata, ClientError> {
+        Ok(self.shelf_client.get_shelf_metadata(shelf_id, api_key).await?)
     }
 
-    fn update_shelf_name(&self, shelf_id: &str, shelf_name: &str, api_key: &str) -> Result<(), ClientError> {
+    async fn update_shelf_name(
+        &self,
+        shelf_id: &str,
+        shelf_name: &str,
+        api_key: &str,
+    ) -> Result<(), ClientError> {
         self.shelf_client
-            .update_shelf_name(shelf_id, shelf_name, api_key)?;
+            .update_shelf_name(shelf_id, shelf_name, api_key)
+            .await?;
 
         Ok(())
     }
 
-    fn delete_shelf(&self, shelf_id: &str, api_key: &str) -> Result<(), ClientError> {
-        self.shelf_client.delete_shelf(shelf_id, api_key)?;
+    async fn delete_shelf(&self, shelf_id: &str, api_key: &str) -> Result<(), ClientError> {
+        self.shelf_client.delete_shelf(shelf_id, api_key).await?;
 
         Ok(())
     }
 
-    fn add_book_to_shelf(&self, shelf_id: &str, book_id: &str, api_key: &str) -> Result<(), ClientError> {
-        self.shelf_client.add_book_to_shelf(shelf_id, book_id, api_key)?;
-
-        Ok(())
-    }
-
-    fn list_books_in_shelf(&self, shelf_id: &str, api_key: &str) -> Result<Vec<String>, ClientError> {
-        Ok(self.shelf_client.list_books_in_shelf(shelf_id, api_key)?)
-    }
-
-    fn delete_book_from_shelf(
+    async fn add_book_to_shelf(
         &self,
         shelf_id: &str,
         book_id: &str,
         api_key: &str,
     ) -> Result<(), ClientError> {
         self.shelf_client
-            .delete_book_from_shelf(shelf_id, book_id, api_key)?;
+            .add_book_to_shelf(shelf_id, book_id, api_key)
+            .await?;
+
+        Ok(())
+    }
+
+    async fn list_books_in_shelf(&self, shelf_id: &str, api_key: &str) -> Result<Vec<String>, ClientError> {
+        Ok(self.shelf_client.list_books_in_shelf(shelf_id, api_key).await?)
+    }
+
+    async fn delete_book_from_shelf(
+        &self,
+        shelf_id: &str,
+        book_id: &str,
+        api_key: &str,
+    ) -> Result<(), ClientError> {
+        self.shelf_client
+            .delete_book_from_shelf(shelf_id, book_id, api_key)
+            .await?;
 
         Ok(())
     }
@@ -405,10 +470,9 @@ fn round_rating(rating: f32) -> u8 {
 
 impl From<Error> for ClientError {
     fn from(value: Error) -> Self {
-        match value {
-            Error::StatusCode(code) => ClientError::new(code),
-            _ => ClientError::InternalError,
-        }
+        value.status().map_or(ClientError::InternalError, |status| {
+            ClientError::new(status.as_u16())
+        })
     }
 }
 

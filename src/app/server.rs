@@ -27,7 +27,7 @@ pub async fn run() {
 
     await_prosa(prosa_client(), &prosa_url).await;
 
-    authentication::service::load_prosa_keys(prosa_client());
+    authentication::service::load_prosa_keys(prosa_client()).await;
 
     let host = format!("{}:{}", CONFIG.server.bind.host, CONFIG.server.bind.port);
 
@@ -77,7 +77,7 @@ fn server_url(host: &str) -> String {
 
 async fn await_prosa(client: &dyn ProsaApi, prosa_url: &str) {
     let health = loop {
-        match client.health() {
+        match client.health().await {
             Ok(health) => break health,
             Err(error) => {
                 warn!(

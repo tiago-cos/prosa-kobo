@@ -2,8 +2,12 @@ use crate::{app::covers::data, app::error::KoboError, client::prosa::ProsaApi, d
 use image::{ImageError, ImageFormat, ImageReader, imageops::FilterType};
 use std::io::Cursor;
 
-pub fn download_cover(client: &dyn ProsaApi, book_id: &str, api_key: &str) -> Result<Vec<u8>, KoboError> {
-    let cover = client.download_cover(book_id, api_key)?;
+pub async fn download_cover(
+    client: &dyn ProsaApi,
+    book_id: &str,
+    api_key: &str,
+) -> Result<Vec<u8>, KoboError> {
+    let cover = client.download_cover(book_id, api_key).await?;
 
     Ok(cover)
 }

@@ -1,49 +1,60 @@
+use reqwest::{Client, Error};
 use serde::{Deserialize, Serialize};
-use std::io::Read;
-use ureq::{Agent, Error};
 
 const MAX_BOOK_SIZE: u64 = 50 * 1024 * 1024;
 
 pub struct BookClient {
     pub url: String,
-    pub agent: Agent,
+    pub http: Client,
 }
 
 impl BookClient {
-    pub fn download_book(&self, book_id: &str, api_key: &str) -> Result<Vec<u8>, Error> {
-        let mut body: Vec<u8> = Vec::new();
-        self.agent
+    pub async fn download_book(&self, book_id: &str, api_key: &str) -> Result<Vec<u8>, Error> {
+        let mut response = self
+            .http
             .get(format!("{}/books/{book_id}", self.url))
             .header("api-key", api_key)
-            .call()?
-            .into_body()
-            .into_reader()
-            .take(MAX_BOOK_SIZE)
-            .read_to_end(&mut body)?;
+            .send()
+            .await?
+            .error_for_status()?;
+
+        let mut body: Vec<u8> = Vec::new();
+        while let Some(chunk) = response.chunk().await? {
+            body.extend_from_slice(&chunk);
+
+            if body.len() as u64 >= MAX_BOOK_SIZE {
+                body.truncate(usize::try_from(MAX_BOOK_SIZE).unwrap_or(usize::MAX));
+                break;
+            }
+        }
 
         Ok(body)
     }
 
-    pub fn delete_book(&self, book_id: &str, api_key: &str) -> Result<(), Error> {
-        self.agent
+    pub async fn delete_book(&self, book_id: &str, api_key: &str) -> Result<(), Error> {
+        self.http
             .delete(format!("{}/books/{book_id}", self.url))
             .header("api-key", api_key)
-            .call()?;
+            .send()
+            .await?
+            .error_for_status()?;
 
         Ok(())
     }
 
-    pub fn fetch_book_file_metadata(
+    pub async fn fetch_book_file_metadata(
         &self,
         book_id: &str,
         api_key: &str,
     ) -> Result<ProsaBookFileMetadata, Error> {
-        self.agent
+        self.http
             .get(format!("{}/books/{book_id}/file-metadata", self.url))
             .header("api-key", api_key)
-            .call()?
-            .body_mut()
-            .read_json::<ProsaBookFileMetadata>()
+            .send()
+            .await?
+            .error_for_status()?
+            .json::<ProsaBookFileMetadata>()
+            .await
     }
 }
 

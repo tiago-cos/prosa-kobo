@@ -80,7 +80,7 @@ impl Harness {
 
         // A suite that signs its own tokens seeds the matching key set instead.
         client.seed_jwks(signing_keys());
-        load_prosa_keys(client.as_ref());
+        load_prosa_keys(client.as_ref()).await;
 
         Self {
             client: Arc::clone(client),

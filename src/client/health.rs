@@ -1,18 +1,20 @@
+use reqwest::{Client, Error};
 use serde::{Deserialize, Serialize};
-use ureq::{Agent, Error};
 
 pub struct HealthClient {
     pub url: String,
-    pub agent: Agent,
+    pub http: Client,
 }
 
 impl HealthClient {
-    pub fn health(&self) -> Result<ProsaHealth, Error> {
-        self.agent
+    pub async fn health(&self) -> Result<ProsaHealth, Error> {
+        self.http
             .get(format!("{}/health", self.url))
-            .call()?
-            .body_mut()
-            .read_json::<ProsaHealth>()
+            .send()
+            .await?
+            .error_for_status()?
+            .json::<ProsaHealth>()
+            .await
     }
 }
 

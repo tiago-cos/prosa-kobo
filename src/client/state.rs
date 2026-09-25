@@ -1,23 +1,25 @@
+use reqwest::{Client, Error};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
-use ureq::{Agent, Error};
 
 pub struct StateClient {
     pub url: String,
-    pub agent: Agent,
+    pub http: Client,
 }
 
 impl StateClient {
-    pub fn fetch_state(&self, book_id: &str, api_key: &str) -> Result<ProsaState, Error> {
-        self.agent
+    pub async fn fetch_state(&self, book_id: &str, api_key: &str) -> Result<ProsaState, Error> {
+        self.http
             .get(format!("{}/books/{book_id}/state", self.url))
             .header("api-key", api_key)
-            .call()?
-            .body_mut()
-            .read_json::<ProsaState>()
+            .send()
+            .await?
+            .error_for_status()?
+            .json::<ProsaState>()
+            .await
     }
 
-    pub fn patch_state(
+    pub async fn patch_state(
         &self,
         book_id: &str,
         location: Option<&str>,
@@ -32,19 +34,25 @@ impl StateClient {
             },
         };
 
-        self.agent
+        self.http
             .patch(format!("{}/books/{book_id}/state", self.url))
             .header("api-key", api_key)
-            .send_json(request)?;
+            .json(&request)
+            .send()
+            .await?
+            .error_for_status()?;
 
         Ok(())
     }
 
-    pub fn replace_state(&self, book_id: &str, state: &ProsaState, api_key: &str) -> Result<(), Error> {
-        self.agent
+    pub async fn replace_state(&self, book_id: &str, state: &ProsaState, api_key: &str) -> Result<(), Error> {
+        self.http
             .put(format!("{}/books/{book_id}/state", self.url))
             .header("api-key", api_key)
-            .send_json(state)?;
+            .json(&state)
+            .send()
+            .await?
+            .error_for_status()?;
 
         Ok(())
     }

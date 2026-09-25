@@ -12,7 +12,7 @@ pub async fn get_kepub(client: &dyn ProsaApi, book_id: &str, api_key: &str) -> R
         return Ok(kepub);
     }
 
-    let epub = client.download_book(book_id, api_key)?;
+    let epub = client.download_book(book_id, api_key).await?;
 
     let kepub: Arc<[u8]> = tokio::task::spawn_blocking(move || convert(&epub))
         .await

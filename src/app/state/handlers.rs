@@ -41,7 +41,7 @@ pub async fn update_rating_handler(
     Extension(token): Extension<AuthToken>,
     Path((book_id, rating)): Path<(String, u8)>,
 ) -> Result<impl IntoResponse, KoboError> {
-    service::translate_update_rating(prosa_client(), &book_id, rating, &token.api_key)?;
+    service::translate_update_rating(prosa_client(), &book_id, rating, &token.api_key).await?;
 
     Ok(())
 }
@@ -54,7 +54,7 @@ pub async fn get_rating_handler(
         return Err(StateError::MissingProductId.into());
     };
 
-    let response = service::translate_get_rating(prosa_client(), book_id, &token.api_key)?;
+    let response = service::translate_get_rating(prosa_client(), book_id, &token.api_key).await?;
 
     Ok(Json(response))
 }

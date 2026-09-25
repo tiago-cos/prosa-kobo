@@ -21,7 +21,7 @@ pub async fn translate_sync(
     api_key: &str,
     device_id: &str,
 ) -> Result<(i64, Vec<SyncItem>), KoboError> {
-    let sync_response = client.sync_device(sync_token, api_key)?;
+    let sync_response = client.sync_device(sync_token, api_key).await?;
     let new_sync_token = sync_response.new_sync_token;
     let books = sync_response.unsynced_books;
     let shelves = sync_response.unsynced_shelves;
@@ -89,8 +89,8 @@ pub async fn translate_sync(
     shelfs_to_update.extend(shelves.contents);
 
     for shelf_id in shelfs_to_update {
-        let name = client.get_shelf_metadata(&shelf_id, api_key)?.name;
-        let books = client.list_books_in_shelf(&shelf_id, api_key)?;
+        let name = client.get_shelf_metadata(&shelf_id, api_key).await?.name;
+        let books = client.list_books_in_shelf(&shelf_id, api_key).await?;
         let response = SyncItem::NewShelf(NewShelfResponse::new(&shelf_id, &name, &books));
 
         translated_response.push(response);

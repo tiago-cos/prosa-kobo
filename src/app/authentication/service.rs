@@ -3,16 +3,19 @@ use crate::client::prosa::ProsaApi;
 use base64::{Engine, prelude::BASE64_STANDARD};
 use jsonwebtoken::{Algorithm, DecodingKey, Validation, jwk::JwkSet};
 use serde_json::Value;
-use std::{collections::HashMap, sync::OnceLock};
+use std::collections::HashMap;
+use tokio::sync::OnceCell;
 
-static PROSA_KEYS: OnceLock<HashMap<String, DecodingKey>> = OnceLock::new();
+static PROSA_KEYS: OnceCell<HashMap<String, DecodingKey>> = OnceCell::const_new();
 
-pub fn load_prosa_keys(client: &dyn ProsaApi) {
-    PROSA_KEYS.get_or_init(|| {
-        let jwks = client.jwks().expect("Failed to fetch Prosa signing keys");
+pub async fn load_prosa_keys(client: &dyn ProsaApi) {
+    PROSA_KEYS
+        .get_or_init(|| async {
+            let jwks = client.jwks().await.expect("Failed to fetch Prosa signing keys");
 
-        decoding_keys(&jwks)
-    });
+            decoding_keys(&jwks)
+        })
+        .await;
 }
 
 fn prosa_keys() -> &'static HashMap<String, DecodingKey> {

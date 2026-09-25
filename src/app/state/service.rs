@@ -15,7 +15,7 @@ pub async fn translate_get_state(
     book_id: &str,
     api_key: &str,
 ) -> Result<ReadingState, KoboError> {
-    let state_response = client.fetch_state(book_id, api_key)?;
+    let state_response = client.fetch_state(book_id, api_key).await?;
 
     let status = match state_response.statistics.reading_status {
         ProsaReadingStatus::Read => "Finished",
@@ -63,7 +63,9 @@ pub async fn translate_update_state(
         None => None,
     };
 
-    client.patch_state(book_id, location.as_deref(), status, api_key)?;
+    client
+        .patch_state(book_id, location.as_deref(), status, api_key)
+        .await?;
 
     let response = &UPDATE_STATE_RESPONSE.replace("{book_id}", book_id);
     let response = serde_json::from_str(response).expect("Failed to convert to JSON");
@@ -71,23 +73,23 @@ pub async fn translate_update_state(
     Ok(response)
 }
 
-pub fn translate_update_rating(
+pub async fn translate_update_rating(
     client: &dyn ProsaApi,
     book_id: &str,
     rating: u8,
     api_key: &str,
 ) -> Result<(), KoboError> {
-    client.update_rating(book_id, rating, api_key)?;
+    client.update_rating(book_id, rating, api_key).await?;
 
     Ok(())
 }
 
-pub fn translate_get_rating(
+pub async fn translate_get_rating(
     client: &dyn ProsaApi,
     book_id: &str,
     api_key: &str,
 ) -> Result<RatingResponse, KoboError> {
-    let rating = client.fetch_rating(book_id, api_key)?;
+    let rating = client.fetch_rating(book_id, api_key).await?;
 
     Ok(RatingResponse::new(book_id, rating))
 }

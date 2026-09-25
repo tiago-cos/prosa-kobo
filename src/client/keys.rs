@@ -1,17 +1,19 @@
 use jsonwebtoken::jwk::JwkSet;
-use ureq::{Agent, Error};
+use reqwest::{Client, Error};
 
 pub struct KeysClient {
     pub url: String,
-    pub agent: Agent,
+    pub http: Client,
 }
 
 impl KeysClient {
-    pub fn jwks(&self) -> Result<JwkSet, Error> {
-        self.agent
+    pub async fn jwks(&self) -> Result<JwkSet, Error> {
+        self.http
             .get(format!("{}/.well-known/jwks.json", self.url))
-            .call()?
-            .body_mut()
-            .read_json::<JwkSet>()
+            .send()
+            .await?
+            .error_for_status()?
+            .json::<JwkSet>()
+            .await
     }
 }

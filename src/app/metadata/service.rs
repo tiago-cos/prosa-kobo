@@ -15,7 +15,7 @@ pub async fn translate_metadata(
     device_id: &str,
 ) -> Result<BookMetadata, KoboError> {
     let kepub_size = kepub::get_kepub(client, book_id, api_key).await?.len() as u64;
-    let metadata_response = match client.fetch_metadata(book_id, api_key) {
+    let metadata_response = match client.fetch_metadata(book_id, api_key).await {
         Ok(response) => response,
         Err(ClientError::NotFound) => ProsaMetadata::default(),
         Err(e) => return Err(e.into()),

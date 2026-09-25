@@ -18,6 +18,7 @@ use super::{
     state::ProsaState,
     sync::ProsaSync,
 };
+use async_trait::async_trait;
 use jsonwebtoken::jwk::JwkSet;
 use kepub_rs::{KepubError, compare_locations, location_is_text, validate_epub_location};
 use std::{
@@ -323,20 +324,21 @@ impl MockProsaClient {
     }
 }
 
+#[async_trait]
 impl ProsaApi for MockProsaClient {
-    fn health(&self) -> Result<ProsaHealth, ClientError> {
+    async fn health(&self) -> Result<ProsaHealth, ClientError> {
         self.record(ProsaMethod::Health, &[], "")?;
 
         self.library().health.clone().ok_or(ClientError::InternalError)
     }
 
-    fn jwks(&self) -> Result<JwkSet, ClientError> {
+    async fn jwks(&self) -> Result<JwkSet, ClientError> {
         self.record(ProsaMethod::Jwks, &[], "")?;
 
         self.library().jwks.clone().ok_or(ClientError::InternalError)
     }
 
-    fn identity(&self, api_key: &str) -> Result<ProsaIdentity, ClientError> {
+    async fn identity(&self, api_key: &str) -> Result<ProsaIdentity, ClientError> {
         self.record(ProsaMethod::Identity, &[], api_key)?;
 
         self.library()
@@ -346,14 +348,14 @@ impl ProsaApi for MockProsaClient {
             .ok_or(ClientError::Unauthorized)
     }
 
-    fn sync_device(&self, sync_token: Option<i64>, api_key: &str) -> Result<ProsaSync, ClientError> {
+    async fn sync_device(&self, sync_token: Option<i64>, api_key: &str) -> Result<ProsaSync, ClientError> {
         let token = sync_token.map(|token| token.to_string()).unwrap_or_default();
         self.record(ProsaMethod::SyncDevice, &[&token], api_key)?;
 
         Ok(self.library().sync.clone())
     }
 
-    fn fetch_metadata(&self, book_id: &str, api_key: &str) -> Result<ProsaMetadata, ClientError> {
+    async fn fetch_metadata(&self, book_id: &str, api_key: &str) -> Result<ProsaMetadata, ClientError> {
         self.record(ProsaMethod::FetchMetadata, &[book_id], api_key)?;
 
         self.library()
@@ -363,7 +365,7 @@ impl ProsaApi for MockProsaClient {
             .ok_or(ClientError::NotFound)
     }
 
-    fn fetch_book_file_metadata(
+    async fn fetch_book_file_metadata(
         &self,
         book_id: &str,
         api_key: &str,
@@ -377,7 +379,7 @@ impl ProsaApi for MockProsaClient {
             .ok_or(ClientError::NotFound)
     }
 
-    fn download_book(&self, book_id: &str, api_key: &str) -> Result<Vec<u8>, ClientError> {
+    async fn download_book(&self, book_id: &str, api_key: &str) -> Result<Vec<u8>, ClientError> {
         self.record(ProsaMethod::DownloadBook, &[book_id], api_key)?;
 
         self.library()
@@ -387,7 +389,7 @@ impl ProsaApi for MockProsaClient {
             .ok_or(ClientError::NotFound)
     }
 
-    fn delete_book(&self, book_id: &str, api_key: &str) -> Result<(), ClientError> {
+    async fn delete_book(&self, book_id: &str, api_key: &str) -> Result<(), ClientError> {
         self.record(ProsaMethod::DeleteBook, &[book_id], api_key)?;
 
         self.library()
@@ -397,7 +399,7 @@ impl ProsaApi for MockProsaClient {
             .ok_or(ClientError::NotFound)
     }
 
-    fn download_cover(&self, book_id: &str, api_key: &str) -> Result<Vec<u8>, ClientError> {
+    async fn download_cover(&self, book_id: &str, api_key: &str) -> Result<Vec<u8>, ClientError> {
         self.record(ProsaMethod::DownloadCover, &[book_id], api_key)?;
 
         self.library()
@@ -407,7 +409,7 @@ impl ProsaApi for MockProsaClient {
             .ok_or(ClientError::NotFound)
     }
 
-    fn fetch_state(&self, book_id: &str, api_key: &str) -> Result<ProsaState, ClientError> {
+    async fn fetch_state(&self, book_id: &str, api_key: &str) -> Result<ProsaState, ClientError> {
         self.record(ProsaMethod::FetchState, &[book_id], api_key)?;
 
         self.library()
@@ -417,7 +419,7 @@ impl ProsaApi for MockProsaClient {
             .ok_or(ClientError::NotFound)
     }
 
-    fn patch_state(
+    async fn patch_state(
         &self,
         book_id: &str,
         location: Option<&str>,
@@ -448,7 +450,7 @@ impl ProsaApi for MockProsaClient {
         Ok(())
     }
 
-    fn update_rating(&self, book_id: &str, rating: u8, api_key: &str) -> Result<(), ClientError> {
+    async fn update_rating(&self, book_id: &str, rating: u8, api_key: &str) -> Result<(), ClientError> {
         self.record(
             ProsaMethod::UpdateRating,
             &[book_id, &rating.to_string()],
@@ -470,7 +472,7 @@ impl ProsaApi for MockProsaClient {
         Ok(())
     }
 
-    fn fetch_rating(&self, book_id: &str, api_key: &str) -> Result<Option<u8>, ClientError> {
+    async fn fetch_rating(&self, book_id: &str, api_key: &str) -> Result<Option<u8>, ClientError> {
         self.record(ProsaMethod::FetchRating, &[book_id], api_key)?;
 
         let mut library = self.library();
@@ -486,7 +488,7 @@ impl ProsaApi for MockProsaClient {
             .map(|rating| rating.round().clamp(0.0, 255.0) as u8))
     }
 
-    fn list_annotations(&self, book_id: &str, api_key: &str) -> Result<Vec<String>, ClientError> {
+    async fn list_annotations(&self, book_id: &str, api_key: &str) -> Result<Vec<String>, ClientError> {
         self.record(ProsaMethod::ListAnnotations, &[book_id], api_key)?;
 
         let annotations = self
@@ -500,7 +502,7 @@ impl ProsaApi for MockProsaClient {
         Ok(annotations)
     }
 
-    fn get_annotation(
+    async fn get_annotation(
         &self,
         book_id: &str,
         annotation_id: &str,
@@ -517,7 +519,7 @@ impl ProsaApi for MockProsaClient {
             .ok_or(ClientError::NotFound)
     }
 
-    fn add_annotation(
+    async fn add_annotation(
         &self,
         book_id: &str,
         annotation: &ProsaAnnotationRequest,
@@ -571,7 +573,7 @@ impl ProsaApi for MockProsaClient {
         Ok(annotation_id)
     }
 
-    fn patch_annotation(
+    async fn patch_annotation(
         &self,
         book_id: &str,
         annotation_id: &str,
@@ -596,7 +598,7 @@ impl ProsaApi for MockProsaClient {
         Ok(())
     }
 
-    fn delete_annotation(
+    async fn delete_annotation(
         &self,
         book_id: &str,
         annotation_id: &str,
@@ -617,7 +619,7 @@ impl ProsaApi for MockProsaClient {
         Ok(())
     }
 
-    fn create_shelf(
+    async fn create_shelf(
         &self,
         shelf_name: &str,
         owner_id: Option<&str>,
@@ -662,7 +664,12 @@ impl ProsaApi for MockProsaClient {
         Ok(shelf_id)
     }
 
-    fn search_shelves(&self, username: &str, name: &str, api_key: &str) -> Result<Vec<String>, ClientError> {
+    async fn search_shelves(
+        &self,
+        username: &str,
+        name: &str,
+        api_key: &str,
+    ) -> Result<Vec<String>, ClientError> {
         self.record(ProsaMethod::SearchShelves, &[username, name], api_key)?;
 
         let library = self.library();
@@ -691,7 +698,11 @@ impl ProsaApi for MockProsaClient {
         Ok(shelf_ids)
     }
 
-    fn get_shelf_metadata(&self, shelf_id: &str, api_key: &str) -> Result<ProsaShelfMetadata, ClientError> {
+    async fn get_shelf_metadata(
+        &self,
+        shelf_id: &str,
+        api_key: &str,
+    ) -> Result<ProsaShelfMetadata, ClientError> {
         self.record(ProsaMethod::GetShelfMetadata, &[shelf_id], api_key)?;
 
         let mut library = self.library();
@@ -704,7 +715,12 @@ impl ProsaApi for MockProsaClient {
         })
     }
 
-    fn update_shelf_name(&self, shelf_id: &str, shelf_name: &str, api_key: &str) -> Result<(), ClientError> {
+    async fn update_shelf_name(
+        &self,
+        shelf_id: &str,
+        shelf_name: &str,
+        api_key: &str,
+    ) -> Result<(), ClientError> {
         self.record(ProsaMethod::UpdateShelfName, &[shelf_id, shelf_name], api_key)?;
 
         shelf_name.clone_into(&mut self.library().shelf(shelf_id)?.name);
@@ -712,7 +728,7 @@ impl ProsaApi for MockProsaClient {
         Ok(())
     }
 
-    fn delete_shelf(&self, shelf_id: &str, api_key: &str) -> Result<(), ClientError> {
+    async fn delete_shelf(&self, shelf_id: &str, api_key: &str) -> Result<(), ClientError> {
         self.record(ProsaMethod::DeleteShelf, &[shelf_id], api_key)?;
 
         self.library()
@@ -722,7 +738,12 @@ impl ProsaApi for MockProsaClient {
             .ok_or(ClientError::NotFound)
     }
 
-    fn add_book_to_shelf(&self, shelf_id: &str, book_id: &str, api_key: &str) -> Result<(), ClientError> {
+    async fn add_book_to_shelf(
+        &self,
+        shelf_id: &str,
+        book_id: &str,
+        api_key: &str,
+    ) -> Result<(), ClientError> {
         self.record(ProsaMethod::AddBookToShelf, &[shelf_id, book_id], api_key)?;
 
         let mut library = self.library();
@@ -738,13 +759,13 @@ impl ProsaApi for MockProsaClient {
         Ok(())
     }
 
-    fn list_books_in_shelf(&self, shelf_id: &str, api_key: &str) -> Result<Vec<String>, ClientError> {
+    async fn list_books_in_shelf(&self, shelf_id: &str, api_key: &str) -> Result<Vec<String>, ClientError> {
         self.record(ProsaMethod::ListBooksInShelf, &[shelf_id], api_key)?;
 
         Ok(self.library().shelf(shelf_id)?.books.clone())
     }
 
-    fn delete_book_from_shelf(
+    async fn delete_book_from_shelf(
         &self,
         shelf_id: &str,
         book_id: &str,
@@ -829,17 +850,19 @@ mod tests {
         }
     }
 
-    #[test]
-    fn reads_back_what_was_written() {
+    #[tokio::test]
+    async fn reads_back_what_was_written() {
         let client = MockProsaClient::new();
         client.seed_book("book");
 
         client
             .add_annotation("book", &annotation(FIRST), "key")
+            .await
             .expect("Failed to add annotation");
 
         let listed = client
             .list_annotations("book", "key")
+            .await
             .expect("Failed to list annotations");
 
         assert_eq!(listed, vec![FIRST.to_owned()]);
@@ -854,8 +877,8 @@ mod tests {
         }
     }
 
-    #[test]
-    fn refuses_a_span_that_covers_no_text() {
+    #[tokio::test]
+    async fn refuses_a_span_that_covers_no_text() {
         let client = MockProsaClient::new();
         client.seed_book("book");
 
@@ -865,31 +888,32 @@ mod tests {
         );
 
         assert_eq!(
-            client.add_annotation("book", &collapsed, "key"),
+            client.add_annotation("book", &collapsed, "key").await,
             Err(ClientError::BadRequest)
         );
     }
 
-    #[test]
-    fn refuses_an_end_that_names_a_whole_element() {
+    #[tokio::test]
+    async fn refuses_an_end_that_names_a_whole_element() {
         let client = MockProsaClient::new();
         client.seed_book("book");
 
         let image = span("OEBPS/chapter-001.xhtml#0/2/t1:44", "OEBPS/chapter-030.xhtml#0/0");
 
         assert_eq!(
-            client.add_annotation("book", &image, "key"),
+            client.add_annotation("book", &image, "key").await,
             Err(ClientError::BadRequest)
         );
     }
 
-    #[test]
-    fn refuses_a_second_annotation_over_the_same_span() {
+    #[tokio::test]
+    async fn refuses_a_second_annotation_over_the_same_span() {
         let client = MockProsaClient::new();
         client.seed_book("book");
 
         client
             .add_annotation("book", &annotation(FIRST), "key")
+            .await
             .expect("Failed to add annotation");
 
         let mut second = annotation(SECOND);
@@ -897,7 +921,7 @@ mod tests {
         second.end_location = annotation(FIRST).end_location;
 
         assert_eq!(
-            client.add_annotation("book", &second, "key"),
+            client.add_annotation("book", &second, "key").await,
             Err(ClientError::Conflict)
         );
     }
@@ -916,40 +940,41 @@ mod tests {
         client
     }
 
-    #[test]
-    fn takes_a_span_the_book_holds() {
+    #[tokio::test]
+    async fn takes_a_span_the_book_holds() {
         let client = seeded_book();
 
         assert!(
             client
                 .add_annotation("book", &span(EARLIER, LATER), "key")
+                .await
                 .is_ok()
         );
     }
 
-    #[test]
-    fn refuses_a_span_the_book_does_not_hold() {
+    #[tokio::test]
+    async fn refuses_a_span_the_book_does_not_hold() {
         let client = seeded_book();
         let nowhere = span("OEBPS/nowhere.xhtml#0/2/t1:44", "OEBPS/nowhere.xhtml#0/2/t1:50");
 
         assert_eq!(
-            client.add_annotation("book", &nowhere, "key"),
+            client.add_annotation("book", &nowhere, "key").await,
             Err(ClientError::BadRequest)
         );
     }
 
-    #[test]
-    fn refuses_a_span_whose_ends_are_the_wrong_way_round() {
+    #[tokio::test]
+    async fn refuses_a_span_whose_ends_are_the_wrong_way_round() {
         let client = seeded_book();
 
         assert_eq!(
-            client.add_annotation("book", &span(LATER, EARLIER), "key"),
+            client.add_annotation("book", &span(LATER, EARLIER), "key").await,
             Err(ClientError::BadRequest)
         );
     }
 
-    #[test]
-    fn refuses_a_reading_position_the_book_does_not_hold() {
+    #[tokio::test]
+    async fn refuses_a_reading_position_the_book_does_not_hold() {
         let client = seeded_book();
         client.seed_state(
             "book",
@@ -963,46 +988,53 @@ mod tests {
         );
 
         assert_eq!(
-            client.patch_state(
-                "book",
-                Some("OEBPS/nowhere.xhtml#0/t0:1"),
-                ProsaReadingStatus::Reading,
-                "key"
-            ),
+            client
+                .patch_state(
+                    "book",
+                    Some("OEBPS/nowhere.xhtml#0/t0:1"),
+                    ProsaReadingStatus::Reading,
+                    "key"
+                )
+                .await,
             Err(ClientError::BadRequest)
         );
         assert!(
             client
                 .patch_state("book", Some(EARLIER), ProsaReadingStatus::Reading, "key")
+                .await
                 .is_ok()
         );
     }
 
-    #[test]
-    fn refuses_an_annotation_id_already_in_use() {
+    #[tokio::test]
+    async fn refuses_an_annotation_id_already_in_use() {
         let client = MockProsaClient::new();
         client.seed_book("book");
 
         client
             .add_annotation("book", &annotation(FIRST), "key")
+            .await
             .expect("Failed to add annotation");
 
-        let conflict = client.add_annotation("book", &annotation(FIRST), "key");
+        let conflict = client.add_annotation("book", &annotation(FIRST), "key").await;
 
         assert_eq!(conflict, Err(ClientError::Conflict));
     }
 
-    #[test]
-    fn answers_not_found_for_an_unknown_book() {
+    #[tokio::test]
+    async fn answers_not_found_for_an_unknown_book() {
         let client = MockProsaClient::new();
 
-        assert_eq!(client.fetch_state("book", "key"), Err(ClientError::NotFound));
+        assert_eq!(
+            client.fetch_state("book", "key").await,
+            Err(ClientError::NotFound)
+        );
     }
 
-    #[test]
-    fn records_every_call_with_its_key() {
+    #[tokio::test]
+    async fn records_every_call_with_its_key() {
         let client = MockProsaClient::new();
-        let _ = client.fetch_metadata("book", "key");
+        let _ = client.fetch_metadata("book", "key").await;
 
         assert_eq!(
             client.calls_to(ProsaMethod::FetchMetadata),
@@ -1014,8 +1046,8 @@ mod tests {
         );
     }
 
-    #[test]
-    fn serves_the_book_data_it_was_seeded_with() {
+    #[tokio::test]
+    async fn serves_the_book_data_it_was_seeded_with() {
         let client = MockProsaClient::new();
         client.seed_file("book", vec![1, 2, 3]);
         client.seed_cover("book", vec![4, 5]);
@@ -1027,24 +1059,26 @@ mod tests {
             },
         );
 
-        assert_eq!(client.download_book("book", "key"), Ok(vec![1, 2, 3]));
-        assert_eq!(client.download_cover("book", "key"), Ok(vec![4, 5]));
+        assert_eq!(client.download_book("book", "key").await, Ok(vec![1, 2, 3]));
+        assert_eq!(client.download_cover("book", "key").await, Ok(vec![4, 5]));
 
         let file_metadata = client
             .fetch_book_file_metadata("book", "key")
+            .await
             .expect("Failed to fetch file metadata");
 
         assert_eq!(file_metadata.file_size, 3);
 
         let metadata = client
             .fetch_metadata("book", "key")
+            .await
             .expect("Failed to fetch metadata");
 
         assert_eq!(metadata.title.as_deref(), Some("A Book"));
     }
 
-    #[test]
-    fn prefers_explicitly_seeded_file_metadata() {
+    #[tokio::test]
+    async fn prefers_explicitly_seeded_file_metadata() {
         let client = MockProsaClient::new();
         client.seed_file("book", vec![1, 2, 3]);
         client.seed_file_metadata(
@@ -1057,14 +1091,15 @@ mod tests {
 
         let file_metadata = client
             .fetch_book_file_metadata("book", "key")
+            .await
             .expect("Failed to fetch file metadata");
 
         assert_eq!(file_metadata.owner_id, "someone");
         assert_eq!(file_metadata.file_size, 99);
     }
 
-    #[test]
-    fn hands_back_the_seeded_signing_keys() {
+    #[tokio::test]
+    async fn hands_back_the_seeded_signing_keys() {
         let client = MockProsaClient::new();
         let jwks: JwkSet = serde_json::from_str(
             r#"{"keys":[{"kty":"RSA","alg":"RS256","use":"sig","kid":"prosa-key-1","n":"AQAB","e":"AQAB"}]}"#,
@@ -1073,15 +1108,15 @@ mod tests {
 
         client.seed_jwks(jwks);
 
-        let served = client.jwks().expect("Failed to fetch signing keys");
+        let served = client.jwks().await.expect("Failed to fetch signing keys");
 
         assert_eq!(served.keys.len(), 1);
         assert_eq!(served.keys[0].common.key_id.as_deref(), Some("prosa-key-1"));
         assert_eq!(client.call_count(ProsaMethod::Jwks), 1);
     }
 
-    #[test]
-    fn reports_the_health_it_was_seeded_with() {
+    #[tokio::test]
+    async fn reports_the_health_it_was_seeded_with() {
         let client = MockProsaClient::new();
         client.seed_health(ProsaHealth {
             status: "ok".to_owned(),
@@ -1089,14 +1124,14 @@ mod tests {
             version: "0.2.0".to_owned(),
         });
 
-        let health = client.health().expect("Failed to fetch health");
+        let health = client.health().await.expect("Failed to fetch health");
 
         assert_eq!(health.version, "0.2.0");
         assert_eq!(client.call_count(ProsaMethod::Health), 1);
     }
 
-    #[test]
-    fn keeps_the_reading_state_it_is_handed() {
+    #[tokio::test]
+    async fn keeps_the_reading_state_it_is_handed() {
         let client = MockProsaClient::new();
         client.seed_state(
             "book",
@@ -1116,10 +1151,12 @@ mod tests {
                 ProsaReadingStatus::Reading,
                 "key",
             )
+            .await
             .expect("Failed to patch state");
 
         client
             .update_rating("book", 4, "key")
+            .await
             .expect("Failed to update rating");
 
         let stored = client.stored_state("book").expect("Expected a stored state");
@@ -1129,11 +1166,11 @@ mod tests {
             Some("OEBPS/chapter-001.xhtml#0/2/t1:44")
         );
         assert_eq!(stored.statistics.reading_status, ProsaReadingStatus::Reading);
-        assert_eq!(client.fetch_rating("book", "key"), Ok(Some(4)));
+        assert_eq!(client.fetch_rating("book", "key").await, Ok(Some(4)));
     }
 
-    #[test]
-    fn hands_back_the_seeded_sync_response() {
+    #[tokio::test]
+    async fn hands_back_the_seeded_sync_response() {
         let client = MockProsaClient::new();
         client.seed_sync(ProsaSync {
             new_sync_token: 42,
@@ -1144,7 +1181,7 @@ mod tests {
             ..ProsaSync::default()
         });
 
-        let sync = client.sync_device(Some(7), "key").expect("Failed to sync");
+        let sync = client.sync_device(Some(7), "key").await.expect("Failed to sync");
 
         assert_eq!(sync.new_sync_token, 42);
         assert_eq!(sync.unsynced_books.file, vec!["book".to_owned()]);
@@ -1154,26 +1191,27 @@ mod tests {
         );
     }
 
-    #[test]
-    fn renames_a_shelf_in_place() {
+    #[tokio::test]
+    async fn renames_a_shelf_in_place() {
         let client = MockProsaClient::new();
         client.seed_shelf("shelf", "Favourites", &[]);
 
         client
             .update_shelf_name("shelf", "Sci-Fi", "key")
+            .await
             .expect("Failed to rename shelf");
 
         assert_eq!(client.stored_shelf_name("shelf").as_deref(), Some("Sci-Fi"));
     }
 
-    #[test]
-    fn fails_on_demand_until_cleared() {
+    #[tokio::test]
+    async fn fails_on_demand_until_cleared() {
         let client = MockProsaClient::new();
         client.seed_shelf("shelf", "Favourites", &[]);
         client.fail(ProsaMethod::GetShelfMetadata, ClientError::Forbidden);
 
         assert_eq!(
-            client.get_shelf_metadata("shelf", "key"),
+            client.get_shelf_metadata("shelf", "key").await,
             Err(ClientError::Forbidden)
         );
 
@@ -1181,6 +1219,7 @@ mod tests {
 
         let metadata = client
             .get_shelf_metadata("shelf", "key")
+            .await
             .expect("Failed to fetch shelf metadata");
 
         assert_eq!(metadata.name, "Favourites");

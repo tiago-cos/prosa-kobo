@@ -1,24 +1,31 @@
-use std::io::Read;
-use ureq::{Agent, Error};
+use reqwest::{Client, Error};
 
 const MAX_COVER_SIZE: u64 = 10 * 1024 * 1024;
 
 pub struct CoverClient {
     pub url: String,
-    pub agent: Agent,
+    pub http: Client,
 }
 
 impl CoverClient {
-    pub fn download_cover(&self, book_id: &str, api_key: &str) -> Result<Vec<u8>, Error> {
-        let mut body: Vec<u8> = Vec::new();
-        self.agent
+    pub async fn download_cover(&self, book_id: &str, api_key: &str) -> Result<Vec<u8>, Error> {
+        let mut response = self
+            .http
             .get(format!("{}/books/{book_id}/cover", self.url))
             .header("api-key", api_key)
-            .call()?
-            .into_body()
-            .into_reader()
-            .take(MAX_COVER_SIZE)
-            .read_to_end(&mut body)?;
+            .send()
+            .await?
+            .error_for_status()?;
+
+        let mut body: Vec<u8> = Vec::new();
+        while let Some(chunk) = response.chunk().await? {
+            body.extend_from_slice(&chunk);
+
+            if body.len() as u64 >= MAX_COVER_SIZE {
+                body.truncate(usize::try_from(MAX_COVER_SIZE).unwrap_or(usize::MAX));
+                break;
+            }
+        }
 
         Ok(body)
     }

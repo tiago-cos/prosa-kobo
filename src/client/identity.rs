@@ -1,19 +1,21 @@
+use reqwest::{Client, Error};
 use serde::{Deserialize, Serialize};
-use ureq::{Agent, Error};
 
 pub struct IdentityClient {
     pub url: String,
-    pub agent: Agent,
+    pub http: Client,
 }
 
 impl IdentityClient {
-    pub fn identity(&self, api_key: &str) -> Result<ProsaIdentity, Error> {
-        self.agent
+    pub async fn identity(&self, api_key: &str) -> Result<ProsaIdentity, Error> {
+        self.http
             .get(format!("{}/auth/me", self.url))
             .header("api-key", api_key)
-            .call()?
-            .body_mut()
-            .read_json::<ProsaIdentity>()
+            .send()
+            .await?
+            .error_for_status()?
+            .json::<ProsaIdentity>()
+            .await
     }
 }
 

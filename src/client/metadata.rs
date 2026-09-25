@@ -1,19 +1,21 @@
+use reqwest::{Client, Error};
 use serde::Deserialize;
-use ureq::{Agent, Error};
 
 pub struct MetadataClient {
     pub url: String,
-    pub agent: Agent,
+    pub http: Client,
 }
 
 impl MetadataClient {
-    pub fn fetch_metadata(&self, book_id: &str, api_key: &str) -> Result<ProsaMetadata, Error> {
-        self.agent
+    pub async fn fetch_metadata(&self, book_id: &str, api_key: &str) -> Result<ProsaMetadata, Error> {
+        self.http
             .get(format!("{}/books/{book_id}/metadata", self.url))
             .header("api-key", api_key)
-            .call()?
-            .body_mut()
-            .read_json::<ProsaMetadata>()
+            .send()
+            .await?
+            .error_for_status()?
+            .json::<ProsaMetadata>()
+            .await
     }
 }
 
