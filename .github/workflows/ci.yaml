@@ -23,6 +23,8 @@ jobs:
           filters: |
             src_or_tests:
               - 'src/**'
+              - 'migrations/**'
+              - 'build.rs'
               - 'tests/**'
               - 'Cargo.toml'
               - 'Cargo.lock'

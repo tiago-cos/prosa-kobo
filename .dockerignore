@@ -1,5 +1,7 @@
 *
 
 !src/
+!migrations/
+!build.rs
 !Cargo.lock
 !Cargo.toml
