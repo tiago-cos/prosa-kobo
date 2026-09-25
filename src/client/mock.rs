@@ -524,8 +524,11 @@ impl ProsaApi for MockProsaClient {
         )?;
 
         let mut library = self.library();
+        library.book(book_id)?;
         let annotation_id = match &annotation.annotation_id {
-            Some(annotation_id) => annotation_id.clone(),
+            Some(annotation_id) => uuid::Uuid::parse_str(annotation_id)
+                .map_err(|_| ClientError::BadRequest)?
+                .to_string(),
             None => library.generate_id("annotation"),
         };
 
@@ -717,6 +720,7 @@ impl ProsaApi for MockProsaClient {
         self.record(ProsaMethod::AddBookToShelf, &[shelf_id, book_id], api_key)?;
 
         let mut library = self.library();
+        library.book(book_id)?;
         let books = &mut library.shelf(shelf_id)?.books;
 
         if books.iter().any(|stored| stored == book_id) {
@@ -807,6 +811,9 @@ mod tests {
     use super::*;
     use crate::client::{state::ProsaStatistics, sync::ProsaBookSync};
 
+    const FIRST: &str = "0b7f8a4e-5c1d-4e2a-9f3b-6d8c1a2e4f50";
+    const SECOND: &str = "7e2d9c41-3a6b-4f8e-b1c5-2f9a0d7e6b13";
+
     fn annotation(annotation_id: &str) -> ProsaAnnotationRequest {
         ProsaAnnotationRequest {
             start_location: "OEBPS/chapter-001.xhtml#0/2/t1:44".to_owned(),
@@ -822,14 +829,14 @@ mod tests {
         client.seed_book("book");
 
         client
-            .add_annotation("book", &annotation("annotation"), "key")
+            .add_annotation("book", &annotation(FIRST), "key")
             .expect("Failed to add annotation");
 
         let listed = client
             .list_annotations("book", "key")
             .expect("Failed to list annotations");
 
-        assert_eq!(listed, vec!["annotation".to_owned()]);
+        assert_eq!(listed, vec![FIRST.to_owned()]);
     }
 
     fn span(start: &str, end: &str) -> ProsaAnnotationRequest {
@@ -876,12 +883,12 @@ mod tests {
         client.seed_book("book");
 
         client
-            .add_annotation("book", &annotation("first"), "key")
+            .add_annotation("book", &annotation(FIRST), "key")
             .expect("Failed to add annotation");
 
-        let mut second = annotation("second");
-        second.start_location = annotation("first").start_location;
-        second.end_location = annotation("first").end_location;
+        let mut second = annotation(SECOND);
+        second.start_location = annotation(FIRST).start_location;
+        second.end_location = annotation(FIRST).end_location;
 
         assert_eq!(
             client.add_annotation("book", &second, "key"),
@@ -968,10 +975,10 @@ mod tests {
         client.seed_book("book");
 
         client
-            .add_annotation("book", &annotation("annotation"), "key")
+            .add_annotation("book", &annotation(FIRST), "key")
             .expect("Failed to add annotation");
 
-        let conflict = client.add_annotation("book", &annotation("annotation"), "key");
+        let conflict = client.add_annotation("book", &annotation(FIRST), "key");
 
         assert_eq!(conflict, Err(ClientError::Conflict));
     }

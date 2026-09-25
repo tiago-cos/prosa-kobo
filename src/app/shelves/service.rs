@@ -80,7 +80,9 @@ mod tests {
     #[test]
     fn adding_a_book_the_shelf_already_holds_is_not_an_error() {
         let client = MockProsaClient::new();
-        client.seed_shelf("shelf", "Favourites", &["book"]);
+        client
+            .seed_book("book")
+            .seed_shelf("shelf", "Favourites", &["book"]);
 
         translate_add_book_to_shelf(&client, "shelf", "book", "key")
             .expect("Expected the conflict to be swallowed");

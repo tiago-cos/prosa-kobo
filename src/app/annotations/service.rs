@@ -186,6 +186,7 @@ mod tests {
     use std::{fs, io::Cursor, sync::Arc};
 
     const BOOK: &str = "book";
+    const ANNOTATION: &str = "0b7f8a4e-5c1d-4e2a-9f3b-6d8c1a2e4f50";
     const EPUB: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/books/The_Great_Gatsby.epub");
 
     struct Fixture {
@@ -228,7 +229,7 @@ mod tests {
         fn annotation(&self, note: Option<&str>) -> Annotation {
             Annotation {
                 client_last_modified_utc: "2026-01-01T00:00:00.0000000Z".to_owned(),
-                id: "annotation".to_owned(),
+                id: ANNOTATION.to_owned(),
                 location: AnnotationLocation {
                     span: AnnotationSpan {
                         chapter_filename: self.chapter.clone(),
@@ -299,7 +300,7 @@ mod tests {
         let stored = fixture.client.stored_annotations(BOOK);
         let annotation = stored.first().expect("Expected one annotation");
 
-        assert_eq!(annotation.annotation_id, "annotation");
+        assert_eq!(annotation.annotation_id, ANNOTATION);
         assert_eq!(annotation.note.as_deref(), Some("A note"));
         assert_eq!(fixture.client.call_count(ProsaMethod::PatchAnnotation), 0);
     }
@@ -436,7 +437,7 @@ mod tests {
         fixture
             .patch(PatchAnnotationsRequest {
                 updated_annotations: None,
-                deleted_annotation_ids: Some(vec!["annotation".to_owned()]),
+                deleted_annotation_ids: Some(vec![ANNOTATION.to_owned()]),
             })
             .await;
 
