@@ -2,7 +2,7 @@
 
 use axum::{
     body::{Body, to_bytes},
-    http::{Method, Request, Response},
+    http::{Method, Request, Response, StatusCode},
 };
 use base64::{Engine, prelude::BASE64_STANDARD};
 use jsonwebtoken::jwk::JwkSet;
@@ -74,7 +74,7 @@ impl Harness {
             })
             .await;
 
-        empty_tables().await;
+        reset_database().await;
         client.reset();
         KEPUBS.clear();
 
@@ -101,6 +101,18 @@ impl Harness {
                     },
                 },
             );
+    }
+
+    pub async fn fail_writes_to(&self, table: &str) {
+        for operation in ["INSERT", "UPDATE", "DELETE"] {
+            sqlx::query(&format!(
+                "CREATE TRIGGER fail_{operation}_{table} BEFORE {operation} ON {table} \
+                 BEGIN SELECT RAISE(ABORT, 'writes to {table} fail in this test'); END"
+            ))
+            .execute(database::pool())
+            .await
+            .expect("Failed to make writes fail");
+        }
     }
 
     pub async fn unlink(&self, device_id: &str) {
@@ -229,7 +241,19 @@ pub async fn body_bytes(response: Response<Body>) -> Vec<u8> {
         .to_vec()
 }
 
-async fn empty_tables() {
+async fn reset_database() {
+    let triggers: Vec<String> = sqlx::query_scalar("SELECT name FROM sqlite_master WHERE type = 'trigger'")
+        .fetch_all(database::pool())
+        .await
+        .expect("Failed to list the test triggers");
+
+    for trigger in triggers {
+        sqlx::query(&format!("DROP TRIGGER {trigger}"))
+            .execute(database::pool())
+            .await
+            .expect("Failed to drop a test trigger");
+    }
+
     let tables: Vec<String> = sqlx::query_scalar(
         r"
         SELECT name
@@ -247,6 +271,14 @@ async fn empty_tables() {
             .await
             .expect("Failed to empty a test table");
     }
+}
+
+pub async fn assert_internal_error(response: Response<Body>) {
+    assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+    assert_eq!(
+        body_json(response).await,
+        json!({ "error_code": "InternalError", "message": "Internal error" })
+    );
 }
 
 pub fn fixture(name: &str) -> Vec<u8> {

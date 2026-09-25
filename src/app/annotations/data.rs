@@ -1,7 +1,11 @@
+use super::models::AnnotationError;
 use sqlx::SqliteExecutor;
 
-pub async fn get_etag<'e>(db: impl SqliteExecutor<'e>, book_id: &str) -> Option<String> {
-    sqlx::query_scalar(
+pub async fn get_etag<'e>(
+    db: impl SqliteExecutor<'e>,
+    book_id: &str,
+) -> Result<Option<String>, AnnotationError> {
+    let etag = sqlx::query_scalar(
         r"
         SELECT etag
         FROM etags
@@ -10,11 +14,16 @@ pub async fn get_etag<'e>(db: impl SqliteExecutor<'e>, book_id: &str) -> Option<
     )
     .bind(book_id)
     .fetch_optional(db)
-    .await
-    .expect("Failed to get etag")
+    .await?;
+
+    Ok(etag)
 }
 
-pub async fn update_etag<'e>(db: impl SqliteExecutor<'e>, book_id: &str, etag: &str) -> () {
+pub async fn update_etag<'e>(
+    db: impl SqliteExecutor<'e>,
+    book_id: &str,
+    etag: &str,
+) -> Result<(), AnnotationError> {
     sqlx::query(
         r"
         INSERT OR REPLACE INTO etags (book_id, etag)
@@ -24,11 +33,12 @@ pub async fn update_etag<'e>(db: impl SqliteExecutor<'e>, book_id: &str, etag: &
     .bind(book_id)
     .bind(etag)
     .execute(db)
-    .await
-    .expect("Failed to replace etag");
+    .await?;
+
+    Ok(())
 }
 
-pub async fn delete_etag<'e>(db: impl SqliteExecutor<'e>, book_id: &str) -> () {
+pub async fn delete_etag<'e>(db: impl SqliteExecutor<'e>, book_id: &str) -> Result<(), AnnotationError> {
     sqlx::query(
         r"
         DELETE FROM etags
@@ -37,6 +47,7 @@ pub async fn delete_etag<'e>(db: impl SqliteExecutor<'e>, book_id: &str) -> () {
     )
     .bind(book_id)
     .execute(db)
-    .await
-    .expect("Failed to delete etag");
+    .await?;
+
+    Ok(())
 }

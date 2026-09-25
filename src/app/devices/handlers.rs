@@ -40,14 +40,16 @@ pub async fn link_device_handler(
     }))
 }
 
-pub async fn get_linked_devices_handler(Query(query): Query<ListLinkedDevicesQuery>) -> impl IntoResponse {
+pub async fn get_linked_devices_handler(
+    Query(query): Query<ListLinkedDevicesQuery>,
+) -> Result<impl IntoResponse, KoboError> {
     let devices: Vec<LinkedDeviceResponse> = service::get_linked_devices(query.user_id.as_deref())
-        .await
+        .await?
         .into_iter()
         .map(Into::into)
         .collect();
 
-    Json(devices)
+    Ok(Json(devices))
 }
 
 pub async fn unlink_device_handler(Path(device_id): Path<String>) -> Result<StatusCode, KoboError> {

@@ -1,7 +1,7 @@
 mod common;
 
 use axum::http::{Method, StatusCode};
-use common::{Device, Harness, body_json};
+use common::{Device, Harness, assert_internal_error, body_json};
 use prosa_kobo::client::{
     ProsaReadingStatus,
     mock::ProsaMethod,
@@ -309,4 +309,17 @@ async fn passes_on_prosa_failing_the_sync() {
     let response = harness.get(&device.at("/v1/library/sync")).await;
 
     assert_eq!(response.status(), StatusCode::FORBIDDEN);
+}
+
+#[tokio::test]
+async fn answers_an_internal_error_when_the_cover_version_cannot_be_moved() {
+    let harness = Harness::new().await;
+    let device = harness.linked().await;
+    harness.add_book("book");
+    harness
+        .client
+        .seed_sync(books(|books| books.cover = vec!["book".to_owned()]));
+    harness.fail_writes_to("cover_versions").await;
+
+    assert_internal_error(harness.get(&device.at("/v1/library/sync")).await).await;
 }

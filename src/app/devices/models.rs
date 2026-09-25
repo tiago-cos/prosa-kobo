@@ -1,3 +1,4 @@
+use crate::app::error::unmapped;
 use serde::{Deserialize, Serialize};
 use sqlx::{prelude::FromRow, sqlite::SqliteError};
 use strum_macros::{EnumMessage, EnumProperty};
@@ -22,7 +23,8 @@ pub enum DeviceError {
     #[strum(detailed_message = "The provided api key does not grant read access.")]
     #[strum(props(StatusCode = "400"))]
     InsufficientApiKey,
-    #[strum(message = "Internal error")]
+    #[strum(message = "InternalError")]
+    #[strum(detailed_message = "Internal error")]
     #[strum(props(StatusCode = "500"))]
     InternalError,
 }
@@ -74,16 +76,16 @@ pub struct ListLinkedDevicesQuery {
 
 impl From<SqlxError> for DeviceError {
     fn from(error: SqlxError) -> Self {
-        match error {
+        match &error {
             SqlxError::RowNotFound => DeviceError::DeviceNotFound,
-            SqlxError::Database(error) => error.downcast_ref::<SqliteError>().into(),
-            _ => DeviceError::InternalError,
+            SqlxError::Database(database) => database.downcast_ref::<SqliteError>().into(),
+            _ => unmapped(&error, DeviceError::InternalError),
         }
     }
 }
 
 impl From<&SqliteError> for DeviceError {
-    fn from(_: &SqliteError) -> Self {
-        DeviceError::InternalError
+    fn from(error: &SqliteError) -> Self {
+        unmapped(error, DeviceError::InternalError)
     }
 }

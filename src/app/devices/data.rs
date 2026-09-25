@@ -38,8 +38,7 @@ pub async fn remove_linked_device<'e>(
     )
     .bind(device_id)
     .execute(db)
-    .await
-    .expect("Failed to delete linked device");
+    .await?;
 
     if result.rows_affected() == 0 {
         return Err(DeviceError::DeviceNotFound);
@@ -48,7 +47,10 @@ pub async fn remove_linked_device<'e>(
     Ok(())
 }
 
-pub async fn get_linked_device<'e>(db: impl SqliteExecutor<'e>, device_id: &str) -> Option<LinkedDevice> {
+pub async fn get_linked_device<'e>(
+    db: impl SqliteExecutor<'e>,
+    device_id: &str,
+) -> Result<Option<LinkedDevice>, DeviceError> {
     let device: Option<LinkedDevice> = sqlx::query_as(
         r"
         SELECT device_id, lookup_key, user_id, name, api_key, client_device_id
@@ -58,16 +60,15 @@ pub async fn get_linked_device<'e>(db: impl SqliteExecutor<'e>, device_id: &str)
     )
     .bind(device_id)
     .fetch_optional(db)
-    .await
-    .expect("Failed to get linked device");
+    .await?;
 
-    device
+    Ok(device)
 }
 
 pub async fn get_device_by_lookup_key<'e>(
     db: impl SqliteExecutor<'e>,
     lookup_key: &str,
-) -> Option<LinkedDevice> {
+) -> Result<Option<LinkedDevice>, DeviceError> {
     let device: Option<LinkedDevice> = sqlx::query_as(
         r"
         SELECT device_id, lookup_key, user_id, name, api_key, client_device_id
@@ -77,13 +78,15 @@ pub async fn get_device_by_lookup_key<'e>(
     )
     .bind(lookup_key)
     .fetch_optional(db)
-    .await
-    .expect("Failed to get linked device");
+    .await?;
 
-    device
+    Ok(device)
 }
 
-pub async fn get_linked_devices<'e>(db: impl SqliteExecutor<'e>, user_id: Option<&str>) -> Vec<LinkedDevice> {
+pub async fn get_linked_devices<'e>(
+    db: impl SqliteExecutor<'e>,
+    user_id: Option<&str>,
+) -> Result<Vec<LinkedDevice>, DeviceError> {
     let devices: Vec<LinkedDevice> = sqlx::query_as(
         r"
         SELECT device_id, lookup_key, user_id, name, api_key, client_device_id
@@ -93,17 +96,16 @@ pub async fn get_linked_devices<'e>(db: impl SqliteExecutor<'e>, user_id: Option
     )
     .bind(user_id)
     .fetch_all(db)
-    .await
-    .expect("Failed to get linked devices");
+    .await?;
 
-    devices
+    Ok(devices)
 }
 
 pub async fn get_device_by_client_id<'e>(
     db: impl SqliteExecutor<'e>,
     client_device_id: &str,
-) -> Option<LinkedDevice> {
-    sqlx::query_as(
+) -> Result<Option<LinkedDevice>, DeviceError> {
+    let device = sqlx::query_as(
         r"
         SELECT device_id, lookup_key, user_id, name, api_key, client_device_id
         FROM linked_devices
@@ -112,16 +114,17 @@ pub async fn get_device_by_client_id<'e>(
     )
     .bind(client_device_id)
     .fetch_optional(db)
-    .await
-    .expect("Failed to get linked device")
+    .await?;
+
+    Ok(device)
 }
 
 pub async fn claim_client_device_id<'a>(
     db: impl Acquire<'a, Database = Sqlite>,
     device_id: &str,
     client_device_id: &str,
-) {
-    let mut transaction = db.begin().await.expect("Failed to start transaction");
+) -> Result<(), DeviceError> {
+    let mut transaction = db.begin().await?;
 
     sqlx::query(
         r"
@@ -133,8 +136,7 @@ pub async fn claim_client_device_id<'a>(
     .bind(client_device_id)
     .bind(device_id)
     .execute(&mut *transaction)
-    .await
-    .expect("Failed to release client device id");
+    .await?;
 
     sqlx::query(
         r"
@@ -146,8 +148,9 @@ pub async fn claim_client_device_id<'a>(
     .bind(client_device_id)
     .bind(device_id)
     .execute(&mut *transaction)
-    .await
-    .expect("Failed to claim client device id");
+    .await?;
 
-    transaction.commit().await.expect("Failed to commit transaction");
+    transaction.commit().await?;
+
+    Ok(())
 }

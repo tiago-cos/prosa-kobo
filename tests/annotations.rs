@@ -4,7 +4,7 @@ use axum::{
     body::Body,
     http::{Method, Response, StatusCode},
 };
-use common::{DEVICE_HARDWARE_ID, Harness, body_json};
+use common::{DEVICE_HARDWARE_ID, Harness, assert_internal_error, body_json};
 use prosa_kobo::client::{mock::ProsaMethod, prosa::ClientError};
 use serde_json::{Value, json};
 
@@ -277,4 +277,16 @@ async fn passes_on_prosa_refusing_the_key() {
     .await;
 
     assert_eq!(response.status(), StatusCode::FORBIDDEN);
+}
+
+#[tokio::test]
+async fn answers_an_internal_error_when_the_etag_cannot_be_stored() {
+    let harness = device_with_book().await;
+    harness.fail_writes_to("etags").await;
+
+    let response = harness
+        .request(Method::GET, "/api/v3/content/book/annotations", &DEVICE)
+        .await;
+
+    assert_internal_error(response).await;
 }

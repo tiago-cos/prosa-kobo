@@ -22,12 +22,14 @@ pub fn resize_cover(cover: &Vec<u8>, width: u32, height: u32) -> Result<Vec<u8>,
 
 /// The Kobo refetches a cover only when its id changes, so the id carries a
 /// version that moves whenever the cover does.
-pub async fn get_version(device_id: &str, book_id: &str) -> i64 {
-    data::get_version(pool(), device_id, book_id)
-        .await
-        .unwrap_or_default()
+pub async fn get_version(device_id: &str, book_id: &str) -> Result<i64, KoboError> {
+    let version = data::get_version(pool(), device_id, book_id).await?;
+
+    Ok(version.unwrap_or_default())
 }
 
-pub async fn bump_version(device_id: &str, book_id: &str) {
-    data::bump_version(pool(), device_id, book_id).await;
+pub async fn bump_version(device_id: &str, book_id: &str) -> Result<(), KoboError> {
+    data::bump_version(pool(), device_id, book_id).await?;
+
+    Ok(())
 }

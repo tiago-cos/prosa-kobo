@@ -31,7 +31,7 @@ pub async fn translate_sync(
     // Handle books
 
     for book_id in &books.cover {
-        covers::bump_version(device_id, book_id).await;
+        covers::bump_version(device_id, book_id).await?;
     }
 
     for book_id in &books.file {
@@ -80,7 +80,7 @@ pub async fn translate_sync(
     // Handle annotations
 
     for book_id in books.annotations {
-        annotations::service::update_etag(&book_id).await;
+        annotations::service::update_etag(&book_id).await?;
     }
 
     // Handle shelfs

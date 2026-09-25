@@ -16,7 +16,7 @@ use axum::{
 pub async fn check_for_changes_handler(
     Json(request): Json<Vec<CheckContentRequest>>,
 ) -> Result<impl IntoResponse, KoboError> {
-    let changed = service::get_changed_annotations(request).await;
+    let changed = service::get_changed_annotations(request).await?;
 
     Ok(Json(changed))
 }
@@ -26,7 +26,7 @@ pub async fn get_annotations_handler(
     Extension(token): Extension<AuthToken>,
 ) -> Result<impl IntoResponse, KoboError> {
     let annotations = service::get_annotations(prosa_client(), &book_id, &token.api_key).await?;
-    let etag = service::get_etag(&book_id).await;
+    let etag = service::get_etag(&book_id).await?;
 
     let mut headers = HeaderMap::new();
     headers.insert(

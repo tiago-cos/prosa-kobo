@@ -19,7 +19,7 @@ pub async fn delete_book_handler(
     Extension(token): Extension<AuthToken>,
 ) -> Result<impl IntoResponse, KoboError> {
     service::delete_book(prosa_client(), &book_id, &token.api_key)?;
-    annotations::service::delete_etag(&book_id).await;
+    annotations::service::delete_etag(&book_id).await?;
     kepub::evict(&book_id);
 
     Ok(StatusCode::NO_CONTENT)

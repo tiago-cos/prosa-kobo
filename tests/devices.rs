@@ -8,7 +8,10 @@ use base64::{
     Engine,
     prelude::{BASE64_STANDARD, BASE64_URL_SAFE_NO_PAD},
 };
-use common::{API_KEY, EVERY_CAPABILITY, HOST, Harness, USER, bearer, body_json, expired_jwt, jwt};
+use common::{
+    API_KEY, EVERY_CAPABILITY, HOST, Harness, USER, assert_internal_error, bearer, body_json, expired_jwt,
+    jwt,
+};
 use prosa_kobo::client::{mock::ProsaMethod, prosa::ClientError};
 use serde_json::{Value, json};
 
@@ -404,4 +407,13 @@ async fn turns_away_a_token_whose_claims_were_altered() {
     let response = list(&harness, &forged, "").await;
 
     assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn answers_an_internal_error_when_the_device_cannot_be_stored() {
+    let harness = Harness::new().await;
+    harness.recognize(API_KEY);
+    harness.fail_writes_to("linked_devices").await;
+
+    assert_internal_error(link(&harness, &user(), kobo("Kobo")).await).await;
 }

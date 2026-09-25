@@ -33,13 +33,13 @@ pub async fn extract_device_middleware(
     let remainder = segments.next().unwrap_or_default();
     let client_device_id = client_device_id(request.headers()).map(str::to_owned);
 
-    let device = if let Some(device) = devices::service::get_device_by_lookup_key(lookup_key).await {
+    let device = if let Some(device) = devices::service::get_device_by_lookup_key(lookup_key).await? {
         *request.uri_mut() = strip_lookup_key(request.uri(), remainder)?;
 
         if let Some(client_device_id) = &client_device_id
             && device.client_device_id.as_ref() != Some(client_device_id)
         {
-            devices::service::claim_client_device_id(&device.device_id, client_device_id).await;
+            devices::service::claim_client_device_id(&device.device_id, client_device_id).await?;
         }
 
         device
@@ -50,7 +50,7 @@ pub async fn extract_device_middleware(
         };
 
         devices::service::get_device_by_client_id(client_device_id)
-            .await
+            .await?
             .ok_or(AuthError::UnauthenticatedDevice)?
     };
 

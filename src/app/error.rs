@@ -3,13 +3,14 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
+use log::error;
 use serde::{Deserialize, Serialize};
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 use std::str::FromStr;
 use strum::{EnumMessage, EnumProperty};
 
-pub trait KoboErrorTrait: EnumMessage + EnumProperty + Debug {}
-impl<T> KoboErrorTrait for T where T: EnumMessage + EnumProperty + Debug {}
+pub trait KoboErrorTrait: EnumMessage + EnumProperty + Debug + Send + Sync {}
+impl<T> KoboErrorTrait for T where T: EnumMessage + EnumProperty + Debug + Send + Sync {}
 pub type KoboError = Box<dyn KoboErrorTrait>;
 
 impl<T> From<T> for KoboError
@@ -19,6 +20,11 @@ where
     fn from(value: T) -> Self {
         Box::new(value)
     }
+}
+
+pub fn unmapped<E>(error: &dyn Display, reported: E) -> E {
+    error!("Unhandled database error: {error}");
+    reported
 }
 
 impl IntoResponse for KoboError {

@@ -1,4 +1,20 @@
+use crate::app::error::unmapped;
 use serde::{Deserialize, Serialize};
+use strum_macros::{EnumMessage, EnumProperty};
+
+#[derive(EnumMessage, EnumProperty, Debug)]
+pub enum AnnotationError {
+    #[strum(message = "InternalError")]
+    #[strum(detailed_message = "Internal error")]
+    #[strum(props(StatusCode = "500"))]
+    InternalError,
+}
+
+impl From<sqlx::Error> for AnnotationError {
+    fn from(error: sqlx::Error) -> Self {
+        unmapped(&error, AnnotationError::InternalError)
+    }
+}
 
 #[derive(Deserialize, Debug)]
 pub struct CheckContentRequest {

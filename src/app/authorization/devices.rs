@@ -71,7 +71,7 @@ pub async fn can_unlink_device(
         return Err(AuthError::Forbidden.into());
     }
 
-    if let Some(device) = devices::service::get_linked_device(&device_id).await
+    if let Some(device) = devices::service::get_linked_device(&device_id).await?
         && !token.can_act_for(&device.user_id)
     {
         return Err(AuthError::Forbidden.into());

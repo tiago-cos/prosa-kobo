@@ -1,7 +1,7 @@
 mod common;
 
 use axum::http::{Method, StatusCode};
-use common::{API_KEY, DEVICE_HARDWARE_ID, Harness, body_json};
+use common::{API_KEY, DEVICE_HARDWARE_ID, Harness, assert_internal_error, body_json};
 
 const DEVICE_ID: &str = "x-kobo-deviceid";
 
@@ -217,4 +217,21 @@ async fn the_oauth_endpoints_answer_so_the_device_proceeds() {
 
         assert_eq!(response.status(), StatusCode::OK, "{path} should answer");
     }
+}
+
+#[tokio::test]
+async fn a_keyed_call_whose_hardware_id_cannot_be_recorded_answers_an_internal_error() {
+    let harness = Harness::new().await;
+    let device = harness.linked().await;
+    harness.fail_writes_to("linked_devices").await;
+
+    let response = harness
+        .request(
+            Method::GET,
+            &device.at("/v1/initialization"),
+            &[(DEVICE_ID, DEVICE_HARDWARE_ID)],
+        )
+        .await;
+
+    assert_internal_error(response).await;
 }
