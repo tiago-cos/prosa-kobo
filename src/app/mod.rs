@@ -3,7 +3,7 @@ pub mod authentication;
 mod authorization;
 mod books;
 mod covers;
-mod devices;
+pub mod devices;
 mod error;
 mod initialization;
 pub mod kepub;

@@ -2,15 +2,21 @@
 
 use axum::{
     Router,
-    body::Body,
-    http::{Request, Response},
+    body::{Body, to_bytes},
+    http::{Method, Request, Response},
 };
 use jsonwebtoken::jwk::JwkSet;
 use prosa_kobo::{
-    app::{AppState, ProsaClient, authentication::service::load_prosa_keys, kepub::KepubCache, router},
-    client::mock::MockProsaClient,
+    app::{
+        AppState, ProsaClient, authentication::service::load_prosa_keys, devices, kepub::KepubCache, router,
+    },
+    client::{
+        identity::{ProsaAuthType, ProsaIdentity},
+        mock::MockProsaClient,
+    },
     database,
 };
+use serde_json::Value;
 use std::{
     path::PathBuf,
     sync::{
@@ -21,6 +27,11 @@ use std::{
 use tower::ServiceExt;
 
 const CACHE_SIZE: u64 = 16 * 1024 * 1024;
+
+pub const API_KEY: &str = "anapikey";
+pub const USER: &str = "user";
+pub const DEVICE_HARDWARE_ID: &str = "N123456789012";
+pub const HOST: &str = "middleware.test:5001";
 
 /// A middleware wired to an in-memory Prosa and a database of its own, so a
 /// test can drive the real router without either running anywhere.
@@ -59,6 +70,44 @@ impl Harness {
         }
     }
 
+    pub async fn unlink(&self, device_id: &str) {
+        devices::service::unlink_device(&self.state.pool, device_id)
+            .await
+            .expect("Failed to unlink the device");
+    }
+
+    pub async fn link(&self, name: &str, api_key: &str) -> Device {
+        self.client.seed_identity(
+            api_key,
+            ProsaIdentity {
+                auth_type: ProsaAuthType::ApiKey,
+                user_id: USER.to_owned(),
+                is_admin: false,
+                capabilities: vec!["Read".to_owned(), "Create".to_owned(), "Update".to_owned()],
+                key_id: Some("key".to_owned()),
+            },
+        );
+
+        let (device_id, lookup_key) = devices::service::link_device(
+            &self.state.pool,
+            self.state.prosa_client.as_ref(),
+            USER,
+            name,
+            api_key,
+        )
+        .await
+        .expect("Failed to link the device");
+
+        Device {
+            device_id,
+            lookup_key,
+        }
+    }
+
+    pub async fn linked(&self) -> Device {
+        self.link("Kobo", API_KEY).await
+    }
+
     pub fn app(&self) -> Router {
         router(&self.state)
     }
@@ -68,13 +117,58 @@ impl Harness {
     }
 
     pub async fn get(&self, uri: &str) -> Response<Body> {
+        self.request(Method::GET, uri, &[]).await
+    }
+
+    pub async fn request(&self, method: Method, uri: &str, headers: &[(&str, &str)]) -> Response<Body> {
+        let mut request = Request::builder().method(method).uri(uri).header("Host", HOST);
+
+        for (name, value) in headers {
+            request = request.header(*name, *value);
+        }
+
+        let request = request.body(Body::empty()).expect("Failed to build the request");
+
+        self.send(request).await
+    }
+
+    pub async fn json(&self, method: Method, uri: &str, body: Value) -> Response<Body> {
         let request = Request::builder()
+            .method(method)
             .uri(uri)
-            .body(Body::empty())
+            .header("Host", HOST)
+            .header("Content-Type", "application/json")
+            .body(Body::from(body.to_string()))
             .expect("Failed to build the request");
 
         self.send(request).await
     }
+}
+
+pub struct Device {
+    pub device_id: String,
+    pub lookup_key: String,
+}
+
+impl Device {
+    pub fn at(&self, path: &str) -> String {
+        format!("/{}{path}", self.lookup_key)
+    }
+}
+
+pub async fn body_json(response: Response<Body>) -> Value {
+    let bytes = to_bytes(response.into_body(), usize::MAX)
+        .await
+        .expect("Failed to read the body");
+
+    serde_json::from_slice(&bytes).expect("The body was not JSON")
+}
+
+pub async fn body_bytes(response: Response<Body>) -> Vec<u8> {
+    to_bytes(response.into_body(), usize::MAX)
+        .await
+        .expect("Failed to read the body")
+        .to_vec()
 }
 
 impl Drop for Harness {
