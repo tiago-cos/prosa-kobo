@@ -1,6 +1,6 @@
 use super::service;
 use crate::{
-    app::{authentication::AuthToken, error::KoboError, server_url},
+    app::{authentication::AuthToken, device_url, error::KoboError},
     client::prosa_client,
 };
 use axum::{Extension, Json, extract::Path, response::IntoResponse};
@@ -11,7 +11,7 @@ pub async fn metadata_handler(
     Path(book_id): Path<String>,
     Extension(token): Extension<AuthToken>,
 ) -> Result<impl IntoResponse, KoboError> {
-    let endpoint = format!("{}/{}", server_url(&host), token.lookup_key);
+    let endpoint = device_url(&host, &token.lookup_key);
 
     let response = service::translate_metadata(
         prosa_client(),

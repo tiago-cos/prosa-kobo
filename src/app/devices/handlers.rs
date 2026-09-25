@@ -3,8 +3,7 @@ use super::{
     service,
 };
 use crate::{
-    CONFIG,
-    app::{authentication::ProsaToken, error::KoboError},
+    app::{authentication::ProsaToken, device_url, error::KoboError},
     client::prosa_client,
 };
 use axum::{
@@ -28,15 +27,9 @@ pub async fn link_device_handler(
     )
     .await?;
 
-    let server_url = match &CONFIG.server.public {
-        Some(s) => format!("{}://{}:{}", s.scheme, s.host, s.port),
-        None if host.contains(':') => format!("http://{host}"),
-        _ => format!("http://{host}:{}", CONFIG.server.bind.port),
-    };
-
     Ok(Json(LinkDeviceResponse {
         device_id,
-        api_endpoint: format!("{server_url}/{lookup_key}"),
+        api_endpoint: device_url(&host, &lookup_key),
     }))
 }
 

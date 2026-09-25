@@ -2,7 +2,7 @@ use super::{
     models::{AuthToken, DEVICE_AUTH_RESPONSE},
     service,
 };
-use crate::app::server_url;
+use crate::app::device_url;
 use axum::{Extension, Json, response::IntoResponse};
 use axum_extra::extract::Host;
 use serde_json::Value;
@@ -11,7 +11,7 @@ pub async fn oauth_configs_handler(
     Extension(token): Extension<AuthToken>,
     Host(host): Host,
 ) -> impl IntoResponse {
-    let endpoint = format!("{}/{}", server_url(&host), token.lookup_key);
+    let endpoint = device_url(&host, &token.lookup_key);
 
     Json(service::generate_oauth_config(&endpoint))
 }

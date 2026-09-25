@@ -63,7 +63,11 @@ pub fn router() -> Router {
         .layer(from_fn(tracing::log_layer))
 }
 
-pub fn server_url(host: &str) -> String {
+pub fn device_url(host: &str, lookup_key: &str) -> String {
+    format!("{}/{lookup_key}", server_url(host))
+}
+
+fn server_url(host: &str) -> String {
     match &CONFIG.server.public {
         Some(public) => format!("{}://{}:{}", public.scheme, public.host, public.port),
         None if host.contains(':') => format!("http://{host}"),
@@ -139,5 +143,21 @@ mod tests {
         assert!(!is_compatible(""));
         assert!(!is_compatible("0"));
         assert!(!is_compatible("unreleased"));
+    }
+
+    #[test]
+    fn keeps_the_port_the_device_reached_it_on() {
+        assert_eq!(
+            device_url("middleware.test:8080", "key"),
+            "http://middleware.test:8080/key"
+        );
+    }
+
+    #[test]
+    fn names_the_bound_port_when_the_host_carries_none() {
+        assert_eq!(
+            device_url("middleware.test", "key"),
+            format!("http://middleware.test:{}/key", CONFIG.server.bind.port)
+        );
     }
 }

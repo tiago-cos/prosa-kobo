@@ -1,6 +1,6 @@
 use super::service;
 use crate::{
-    app::{authentication::AuthToken, error::KoboError, server_url},
+    app::{authentication::AuthToken, device_url, error::KoboError},
     client::prosa_client,
 };
 use axum::{
@@ -15,7 +15,7 @@ pub async fn device_sync_handler(
     headers: HeaderMap,
     Extension(token): Extension<AuthToken>,
 ) -> Result<impl IntoResponse, KoboError> {
-    let endpoint = format!("{}/{}", server_url(&host), token.lookup_key);
+    let endpoint = device_url(&host, &token.lookup_key);
 
     let sync_token = headers
         .get("X-Kobo-Synctoken")

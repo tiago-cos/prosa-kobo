@@ -1,5 +1,5 @@
 use super::{models::TestRequest, service};
-use crate::app::{authentication::AuthToken, server_url};
+use crate::app::{authentication::AuthToken, device_url};
 use axum::{Extension, Json, response::IntoResponse};
 use axum_extra::extract::Host;
 
@@ -7,7 +7,7 @@ pub async fn device_initialization_handler(
     Extension(token): Extension<AuthToken>,
     Host(host): Host,
 ) -> impl IntoResponse {
-    let endpoint = format!("{}/{}", server_url(&host), token.lookup_key);
+    let endpoint = device_url(&host, &token.lookup_key);
 
     Json(service::generate_initialization_response(&endpoint))
 }
