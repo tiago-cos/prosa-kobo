@@ -4,6 +4,7 @@ mod authorization;
 mod books;
 mod covers;
 pub mod devices;
+mod endpoint;
 mod error;
 mod initialization;
 pub mod kepub;
@@ -15,5 +16,6 @@ mod state;
 mod sync;
 mod tracing;
 
+pub use endpoint::{Host, device_url};
 pub use server::*;
 pub use tracing::init_logging;
