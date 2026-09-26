@@ -1,7 +1,6 @@
-use super::service::unix_millis_to_string;
+use crate::app::kobo_time;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
-use std::time::{SystemTime, UNIX_EPOCH};
 use strum_macros::{EnumMessage, EnumProperty};
 
 #[derive(EnumMessage, EnumProperty, Debug)]
@@ -68,14 +67,7 @@ pub struct Location {
 
 impl ReadingState {
     pub fn new(book_id: &str, status: &str, tag: Option<String>, source: Option<String>) -> Self {
-        let now: i64 = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("Failed to get time since epoch")
-            .as_millis()
-            .try_into()
-            .expect("Failed to get current timestamp");
-
-        let now = unix_millis_to_string(now);
+        let now = kobo_time::now();
 
         let status_info = StatusInfo {
             last_modified: now.clone(),
@@ -165,6 +157,12 @@ impl UpdateStateResponse {
             }],
         }
     }
+}
+
+#[derive(Deserialize)]
+pub struct RatingQuery {
+    #[serde(rename = "ProductIds")]
+    pub product_ids: Option<String>,
 }
 
 #[skip_serializing_none]

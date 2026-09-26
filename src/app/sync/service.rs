@@ -11,7 +11,6 @@ use crate::{
     },
     client::prosa::ProsaApi,
 };
-use chrono::{DateTime, Utc};
 use std::collections::HashSet;
 
 pub async fn translate_sync(
@@ -103,17 +102,4 @@ pub async fn translate_sync(
     }
 
     Ok((new_sync_token, translated_response))
-}
-
-pub fn unix_millis_to_string(timestamp_millis: i64) -> String {
-    let datetime = DateTime::<Utc>::from_timestamp_millis(timestamp_millis)
-        .expect("Failed to convert timesstamp to string");
-
-    let formatted = format!(
-        "{}.{:07}Z",
-        datetime.format("%Y-%m-%dT%H:%M:%S"),
-        datetime.timestamp_subsec_nanos() / 100
-    );
-
-    formatted
 }

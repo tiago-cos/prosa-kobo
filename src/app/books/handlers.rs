@@ -1,6 +1,6 @@
 use super::service;
 use crate::{
-    app::{annotations, authentication::AuthToken, error::KoboError, kepub},
+    app::{authentication::AuthToken, error::KoboError},
     client::prosa_client,
 };
 use axum::{Extension, body::Bytes, extract::Path, http::StatusCode, response::IntoResponse};
@@ -19,8 +19,6 @@ pub async fn delete_book_handler(
     Extension(token): Extension<AuthToken>,
 ) -> Result<impl IntoResponse, KoboError> {
     service::delete_book(prosa_client(), &book_id, &token.api_key).await?;
-    annotations::service::delete_etag(&book_id).await?;
-    kepub::evict(&book_id);
 
     Ok(StatusCode::NO_CONTENT)
 }

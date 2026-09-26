@@ -1,4 +1,4 @@
-use crate::{app::state::service::unix_millis_to_string, client::ProsaMetadata};
+use crate::{app::kobo_time, client::ProsaMetadata};
 use isolang::Language;
 use serde::Serialize;
 
@@ -150,7 +150,7 @@ impl BookMetadata {
             cross_revision_id: book_id.to_string(),
             revision_id: book_id.to_string(),
             publisher,
-            publication_date: metadata.publication_date.map(unix_millis_to_string),
+            publication_date: metadata.publication_date.and_then(kobo_time::from_millis),
             language,
             isbn: metadata.isbn,
             subtitle: metadata.subtitle,

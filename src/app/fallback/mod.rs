@@ -1,2 +1,2 @@
-mod proxy;
+mod handlers;
 pub mod routes;

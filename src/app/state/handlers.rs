@@ -1,6 +1,7 @@
-use std::collections::HashMap;
-
-use super::{models::UpdateStateRequest, service};
+use super::{
+    models::{RatingQuery, UpdateStateRequest},
+    service,
+};
 use crate::{
     app::{
         authentication::AuthToken,
@@ -47,13 +48,11 @@ pub async fn update_rating_handler(
 
 pub async fn get_rating_handler(
     Extension(token): Extension<AuthToken>,
-    Query(params): Query<HashMap<String, String>>,
+    Query(query): Query<RatingQuery>,
 ) -> Result<impl IntoResponse, KoboError> {
-    let Some(book_id) = params.get("ProductIds") else {
-        return Err(StateError::MissingProductId.into());
-    };
+    let book_id = query.product_ids.ok_or(StateError::MissingProductId)?;
 
-    let response = service::translate_get_rating(prosa_client(), book_id, &token.api_key).await?;
+    let response = service::translate_get_rating(prosa_client(), &book_id, &token.api_key).await?;
 
     Ok(Json(response))
 }

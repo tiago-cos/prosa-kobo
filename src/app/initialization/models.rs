@@ -17,11 +17,6 @@ pub struct TestsResponse {
 
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "PascalCase")]
-#[allow(unused)]
 pub struct TestRequest {
-    pub affiliate_name: String,
-    pub application_version: String,
-    pub platform_id: String,
-    pub serial_number: String,
     pub test_key: String,
 }

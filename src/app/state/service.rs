@@ -7,7 +7,6 @@ use crate::{
     },
     client::{ProsaReadingStatus, prosa::ProsaApi},
 };
-use chrono::{DateTime, Utc};
 
 pub async fn translate_get_state(
     client: &dyn ProsaApi,
@@ -99,17 +98,4 @@ fn bookmark_position(location: &Location) -> KoboPosition {
     };
 
     KoboPosition::new(chapter, &location.value, 0)
-}
-
-pub fn unix_millis_to_string(timestamp_millis: i64) -> String {
-    let datetime = DateTime::<Utc>::from_timestamp_millis(timestamp_millis)
-        .expect("Failed to convert timesstamp to string");
-
-    let formatted = format!(
-        "{}.{:07}Z",
-        datetime.format("%Y-%m-%dT%H:%M:%S"),
-        datetime.timestamp_subsec_nanos() / 100
-    );
-
-    formatted
 }

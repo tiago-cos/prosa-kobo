@@ -1,7 +1,7 @@
 mod common;
 
 use axum::http::{Method, StatusCode};
-use common::{Harness, body_bytes, body_json, fixture};
+use common::{DEVICE_HARDWARE_ID, Harness, body_bytes, body_json, fixture};
 use prosa_kobo::client::{mock::ProsaMethod, prosa::ClientError};
 use std::io::{Cursor, Read};
 
@@ -155,4 +155,35 @@ async fn deleting_a_book_forgets_its_conversion() {
     harness.get(&device.at("/books/book")).await;
 
     assert_eq!(harness.client.call_count(ProsaMethod::DownloadBook), 2);
+}
+
+#[tokio::test]
+async fn deleting_a_book_forgets_its_annotation_etag() {
+    let harness = Harness::new().await;
+    let device = harness.introduced().await;
+    harness.client.seed_book(BOOK);
+    let hardware = [("x-kobo-deviceid", DEVICE_HARDWARE_ID)];
+    let etag = |response: axum::http::Response<axum::body::Body>| {
+        response.headers()["ETag"]
+            .to_str()
+            .expect("The ETag should be text")
+            .to_owned()
+    };
+
+    let before = etag(
+        harness
+            .request(Method::GET, "/api/v3/content/book/annotations", &hardware)
+            .await,
+    );
+    harness
+        .request(Method::DELETE, &device.at("/v1/library/book"), &[])
+        .await;
+    harness.client.seed_book(BOOK);
+    let after = etag(
+        harness
+            .request(Method::GET, "/api/v3/content/book/annotations", &hardware)
+            .await,
+    );
+
+    assert_ne!(before, after);
 }

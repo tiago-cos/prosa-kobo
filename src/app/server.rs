@@ -1,5 +1,6 @@
 use super::{
-    annotations, authentication, books, covers, devices, initialization, kepub, metadata, proxy, state, sync,
+    annotations, authentication, books, covers, devices, fallback, initialization, kepub, metadata, state,
+    sync,
 };
 use crate::{
     CONFIG,
@@ -50,7 +51,7 @@ pub fn router() -> Router {
         .merge(state::routes::get_routes())
         .merge(annotations::routes::get_routes())
         .merge(shelves::routes::get_routes())
-        .merge(proxy::routes::get_routes());
+        .merge(fallback::routes::get_routes());
 
     let device = ServiceBuilder::new()
         .layer(from_fn(extract_device_middleware))

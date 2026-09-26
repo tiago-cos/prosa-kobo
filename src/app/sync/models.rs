@@ -1,11 +1,10 @@
-use super::service::unix_millis_to_string;
 use crate::app::{
+    kobo_time,
     metadata::BookMetadata,
     shelves::models::{DeletedShelfResponse, NewShelfResponse},
     state::models::ReadingState,
 };
 use serde::Serialize;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Serialize, Debug)]
 #[serde(untagged)]
@@ -90,14 +89,7 @@ pub struct ActivePeriod {
 
 impl BookEntitlement {
     pub fn new(book_id: &str, is_removed: bool) -> Self {
-        let now: i64 = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("Failed to get time since epoch")
-            .as_millis()
-            .try_into()
-            .expect("Failed to get current timestamp");
-
-        let now = unix_millis_to_string(now);
+        let now = kobo_time::now();
 
         BookEntitlement {
             active_period: ActivePeriod { from: now.clone() },

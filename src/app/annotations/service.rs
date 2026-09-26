@@ -9,7 +9,7 @@ use crate::{
     app::{
         error::KoboError,
         kepub::{self, KoboPosition},
-        state::service::unix_millis_to_string,
+        kobo_time,
     },
     client::{
         ProsaAnnotation, ProsaAnnotationRequest,
@@ -20,7 +20,6 @@ use crate::{
 use base64::{Engine, prelude::BASE64_STANDARD};
 use log::warn;
 use rand::Rng;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 pub async fn get_etag(book_id: &str) -> Result<String, KoboError> {
     match data::get_etag(pool(), book_id).await? {
@@ -135,16 +134,8 @@ fn to_kobo_annotation(kepub: &[u8], annotation: ProsaAnnotation) -> Option<Annot
         start_char: start.offset,
         start_path: start.selector(),
     };
-
-    let now: i64 = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("Failed to get time since epoch")
-        .as_millis()
-        .try_into()
-        .expect("Failed to get current timestamp");
-
     Some(Annotation {
-        client_last_modified_utc: unix_millis_to_string(now),
+        client_last_modified_utc: kobo_time::now(),
         id: annotation.annotation_id,
         location: AnnotationLocation { span },
         r#type: match annotation.note {

@@ -1,7 +1,6 @@
-use crate::app::state::service::unix_millis_to_string;
+use crate::app::kobo_time;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Serialize, Debug)]
 #[serde(rename_all = "PascalCase")]
@@ -42,14 +41,7 @@ pub struct ShelfItem {
 
 impl NewShelfResponse {
     pub fn new(id: &str, name: &str, book_ids: &Vec<String>) -> Self {
-        let now: i64 = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("Failed to get time since epoch")
-            .as_millis()
-            .try_into()
-            .expect("Failed to get current timestamp");
-
-        let now = unix_millis_to_string(now);
+        let now = kobo_time::now();
 
         let mut items = Vec::new();
         for id in book_ids {
@@ -77,14 +69,7 @@ impl NewShelfResponse {
 
 impl DeletedShelfResponse {
     pub fn new(id: &str) -> Self {
-        let now: i64 = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("Failed to get time since epoch")
-            .as_millis()
-            .try_into()
-            .expect("Failed to get current timestamp");
-
-        let now = unix_millis_to_string(now);
+        let now = kobo_time::now();
 
         let tag = Tag {
             id: id.to_string(),

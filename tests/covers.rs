@@ -48,6 +48,24 @@ async fn resizes_the_cover_to_the_size_the_device_asks_for() {
 }
 
 #[tokio::test]
+async fn resizes_the_cover_named_as_the_device_builds_its_url() {
+    let harness = Harness::new().await;
+    let device = harness.linked().await;
+    harness.client.seed_cover(BOOK, cover(60, 90));
+
+    let response = harness
+        .get(&device.at("/images/book?v=3&width=20&height=30"))
+        .await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let resized =
+        image::load_from_memory(&body_bytes(response).await).expect("The resized cover should be an image");
+
+    assert_eq!(resized.dimensions(), (20, 30));
+}
+
+#[tokio::test]
 async fn leaves_the_cover_alone_when_only_one_dimension_is_given() {
     let harness = Harness::new().await;
     let device = harness.linked().await;

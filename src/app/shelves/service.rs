@@ -1,9 +1,47 @@
+use super::models::{CreateShelfRequest, ShelfItem};
 use crate::{
     app::error::KoboError,
     client::prosa::{ClientError, ProsaApi},
 };
 
-pub async fn translate_add_shelf(
+pub async fn translate_create_shelf(
+    client: &dyn ProsaApi,
+    request: &CreateShelfRequest,
+    api_key: &str,
+) -> Result<String, KoboError> {
+    let shelf_id = translate_add_shelf(client, &request.name, api_key).await?;
+    translate_add_books_to_shelf(client, &shelf_id, &request.items, api_key).await?;
+
+    Ok(shelf_id)
+}
+
+pub async fn translate_add_books_to_shelf(
+    client: &dyn ProsaApi,
+    shelf_id: &str,
+    items: &[ShelfItem],
+    api_key: &str,
+) -> Result<Vec<String>, KoboError> {
+    for item in items {
+        translate_add_book_to_shelf(client, shelf_id, &item.revision_id, api_key).await?;
+    }
+
+    Ok(items.iter().map(|item| item.revision_id.clone()).collect())
+}
+
+pub async fn translate_delete_books_from_shelf(
+    client: &dyn ProsaApi,
+    shelf_id: &str,
+    items: &[ShelfItem],
+    api_key: &str,
+) -> Result<(), KoboError> {
+    for item in items {
+        translate_delete_book_from_shelf(client, shelf_id, &item.revision_id, api_key).await?;
+    }
+
+    Ok(())
+}
+
+async fn translate_add_shelf(
     client: &dyn ProsaApi,
     shelf_name: &str,
     api_key: &str,
@@ -32,7 +70,7 @@ async fn find_shelf(
     Ok(None)
 }
 
-pub async fn translate_add_book_to_shelf(
+async fn translate_add_book_to_shelf(
     client: &dyn ProsaApi,
     shelf_id: &str,
     book_id: &str,
@@ -67,7 +105,7 @@ pub async fn translate_rename_shelf(
     Ok(())
 }
 
-pub async fn translate_delete_book_from_shelf(
+async fn translate_delete_book_from_shelf(
     client: &dyn ProsaApi,
     shelf_id: &str,
     book_id: &str,
