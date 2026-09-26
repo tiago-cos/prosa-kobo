@@ -1,10 +1,9 @@
 use super::{
-    models::{AuthToken, DEVICE_AUTH_RESPONSE},
+    models::{AuthToken, DEVICE_AUTH_RESPONSE, OAUTH_TOKEN},
     service,
 };
 use crate::app::{Host, device_url};
 use axum::{Extension, Json, response::IntoResponse};
-use serde_json::Value;
 
 pub async fn oauth_configs_handler(
     Extension(token): Extension<AuthToken>,
@@ -16,11 +15,9 @@ pub async fn oauth_configs_handler(
 }
 
 pub async fn device_auth_handler() -> impl IntoResponse {
-    let response: Value = serde_json::from_str(DEVICE_AUTH_RESPONSE).expect("Failed to parse JSON");
-
-    Json(response)
+    Json(DEVICE_AUTH_RESPONSE)
 }
 
 pub async fn oauth_token_handler() -> impl IntoResponse {
-    Json(service::generate_oauth_token())
+    Json(OAUTH_TOKEN)
 }

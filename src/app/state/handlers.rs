@@ -5,7 +5,7 @@ use crate::{
     app::{
         authentication::AuthToken,
         error::KoboError,
-        state::models::{REVIEWS_MOCK_RESPONSE, StateError},
+        state::models::{REVIEWS_RESPONSE, StateError},
     },
     client::prosa_client,
 };
@@ -14,7 +14,6 @@ use axum::{
     extract::{Path, Query},
     response::IntoResponse,
 };
-use serde_json::Value;
 
 pub async fn get_state_handler(
     Path(book_id): Path<String>,
@@ -59,8 +58,6 @@ pub async fn get_rating_handler(
     Ok(Json(response))
 }
 
-pub async fn get_reviews_mock_handler() -> Result<impl IntoResponse, KoboError> {
-    let response: Value = serde_json::from_str(REVIEWS_MOCK_RESPONSE).expect("Failed to convert to JSON");
-
-    Ok(Json(response))
+pub async fn get_reviews_mock_handler() -> impl IntoResponse {
+    Json(REVIEWS_RESPONSE)
 }

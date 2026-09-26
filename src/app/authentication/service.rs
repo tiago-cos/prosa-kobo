@@ -1,8 +1,7 @@
-use super::models::{AuthError, OAUTH_CONFIGS, OAUTH_TOKEN, PROSA_ISSUER, ProsaJWTClaims, ProsaToken};
+use super::models::{AuthError, OAuthConfig, PROSA_ISSUER, ProsaJWTClaims, ProsaToken};
 use crate::client::prosa::ProsaApi;
 use base64::{Engine, prelude::BASE64_STANDARD};
 use jsonwebtoken::{Algorithm, DecodingKey, Validation, jwk::JwkSet};
-use serde_json::Value;
 use std::collections::HashMap;
 use tokio::sync::OnceCell;
 
@@ -58,14 +57,10 @@ fn decoding_keys(jwks: &JwkSet) -> HashMap<String, DecodingKey> {
         .collect()
 }
 
-pub fn generate_oauth_config(host: &str) -> Value {
-    let json_string = OAUTH_CONFIGS.replace("{host}", host);
-
-    serde_json::from_str(&json_string).expect("Failed to parse JSON")
-}
-
-pub fn generate_oauth_token() -> Value {
-    serde_json::from_str(OAUTH_TOKEN).expect("Failed to parse JSON")
+pub fn generate_oauth_config(host: &str) -> OAuthConfig {
+    OAuthConfig {
+        token_endpoint: format!("{host}/oauth/connect/token"),
+    }
 }
 
 #[cfg(test)]

@@ -119,7 +119,9 @@ async fn stores_the_bookmark_the_device_reports_as_a_prosa_location() {
         .await;
 
     assert_eq!(response.status(), StatusCode::OK);
-    assert_eq!(body_json(response).await["RequestResult"], "Success");
+    let reply = body_json(response).await;
+    assert_eq!(reply["RequestResult"], "Success");
+    assert_eq!(reply["UpdateResults"][0]["EntitlementId"], BOOK);
 
     let stored = harness
         .client

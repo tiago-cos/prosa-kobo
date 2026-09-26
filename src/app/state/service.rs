@@ -1,4 +1,4 @@
-use super::models::{Location, ReadingState, UPDATE_STATE_RESPONSE};
+use super::models::{Location, ReadingState, UpdateStateResponse};
 use crate::{
     app::{
         error::KoboError,
@@ -8,7 +8,6 @@ use crate::{
     client::{ProsaReadingStatus, prosa::ProsaApi},
 };
 use chrono::{DateTime, Utc};
-use serde_json::Value;
 
 pub async fn translate_get_state(
     client: &dyn ProsaApi,
@@ -48,7 +47,7 @@ pub async fn translate_update_state(
     book_id: &str,
     state: &ReadingState,
     api_key: &str,
-) -> Result<Value, KoboError> {
+) -> Result<UpdateStateResponse, KoboError> {
     let status = match state.status_info.status.as_str() {
         "Finished" => ProsaReadingStatus::Read,
         "ReadyToRead" => ProsaReadingStatus::Unread,
@@ -67,10 +66,7 @@ pub async fn translate_update_state(
         .patch_state(book_id, location.as_deref(), status, api_key)
         .await?;
 
-    let response = &UPDATE_STATE_RESPONSE.replace("{book_id}", book_id);
-    let response = serde_json::from_str(response).expect("Failed to convert to JSON");
-
-    Ok(response)
+    Ok(UpdateStateResponse::success(book_id))
 }
 
 pub async fn translate_update_rating(

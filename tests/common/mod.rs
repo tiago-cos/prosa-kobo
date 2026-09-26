@@ -175,7 +175,10 @@ impl Harness {
     }
 
     pub async fn request(&self, method: Method, uri: &str, headers: &[(&str, &str)]) -> Response<Body> {
-        let mut request = Request::builder().method(method).uri(uri).header("Host", HOST);
+        let mut request = Request::builder().method(method).uri(uri);
+        if !names_host(headers) {
+            request = request.header("Host", HOST);
+        }
 
         for (name, value) in headers {
             request = request.header(*name, *value);
@@ -200,8 +203,10 @@ impl Harness {
         let mut request = Request::builder()
             .method(method)
             .uri(uri)
-            .header("Host", HOST)
             .header("Content-Type", "application/json");
+        if !names_host(headers) {
+            request = request.header("Host", HOST);
+        }
 
         for (name, value) in headers {
             request = request.header(*name, *value);
@@ -271,6 +276,10 @@ async fn reset_database() {
             .await
             .expect("Failed to empty a test table");
     }
+}
+
+fn names_host(headers: &[(&str, &str)]) -> bool {
+    headers.iter().any(|(name, _)| name.eq_ignore_ascii_case("host"))
 }
 
 pub async fn assert_internal_error(response: Response<Body>) {

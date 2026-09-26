@@ -131,25 +131,41 @@ pub struct UpdateStateRequest {
     pub reading_states: Vec<ReadingState>,
 }
 
-pub const UPDATE_STATE_RESPONSE: &str = r#"
-{
-  "RequestResult": "Success",
-  "UpdateResults": [
-    {
-      "EntitlementId": "{book_id}",
-      "StatusInfoResult": {
-        "Result": "Success"
-      },
-      "StatisticsResult": {
-        "Result": "Success"
-      },
-      "CurrentBookmarkResult": {
-        "Result": "Success"
-      }
-    }
-  ]
+#[derive(Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct UpdateStateResponse {
+    pub request_result: &'static str,
+    pub update_results: Vec<UpdateResult>,
 }
-"#;
+
+#[derive(Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct UpdateResult {
+    pub entitlement_id: String,
+    pub status_info_result: UpdateOutcome,
+    pub statistics_result: UpdateOutcome,
+    pub current_bookmark_result: UpdateOutcome,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct UpdateOutcome {
+    pub result: &'static str,
+}
+
+impl UpdateStateResponse {
+    pub fn success(book_id: &str) -> Self {
+        Self {
+            request_result: "Success",
+            update_results: vec![UpdateResult {
+                entitlement_id: book_id.to_owned(),
+                status_info_result: UpdateOutcome { result: "Success" },
+                statistics_result: UpdateOutcome { result: "Success" },
+                current_bookmark_result: UpdateOutcome { result: "Success" },
+            }],
+        }
+    }
+}
 
 #[skip_serializing_none]
 #[derive(Serialize, Debug)]
@@ -212,12 +228,23 @@ impl Rating {
     }
 }
 
-pub const REVIEWS_MOCK_RESPONSE: &str = r#"
-{
-    "ReviewSummary": {},
-    "Cursor": "1",
-    "Items": [],
-    "TotalPageCount": 10,
-    "CurrentPageIndex": 1
+#[derive(Serialize)]
+pub struct EmptyObject {}
+
+#[derive(Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct ReviewsResponse {
+    pub review_summary: EmptyObject,
+    pub cursor: &'static str,
+    pub items: &'static [EmptyObject],
+    pub total_page_count: u8,
+    pub current_page_index: u8,
 }
-"#;
+
+pub const REVIEWS_RESPONSE: ReviewsResponse = ReviewsResponse {
+    review_summary: EmptyObject {},
+    cursor: "1",
+    items: &[],
+    total_page_count: 10,
+    current_page_index: 1,
+};

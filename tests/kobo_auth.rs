@@ -4,6 +4,7 @@ use axum::http::{Method, StatusCode};
 use common::{API_KEY, DEVICE_HARDWARE_ID, Harness, assert_internal_error, body_json};
 
 const DEVICE_ID: &str = "x-kobo-deviceid";
+const AWKWARD_HOST: &str = r#"kobo"local\:5001"#;
 
 #[tokio::test]
 async fn a_request_under_the_lookup_key_reaches_the_route_it_names() {
@@ -72,6 +73,35 @@ async fn the_resources_it_is_given_carry_its_key() {
             "{name} should carry the lookup key, got {url}"
         );
     }
+}
+
+#[tokio::test]
+async fn hands_back_urls_naming_a_host_that_json_has_to_escape() {
+    let harness = Harness::new().await;
+    let device = harness.linked().await;
+    let host = [("host", AWKWARD_HOST)];
+
+    let initialization = harness
+        .request(Method::GET, &device.at("/v1/initialization"), &host)
+        .await;
+    assert_eq!(initialization.status(), StatusCode::OK);
+    assert_eq!(
+        body_json(initialization).await["Resources"]["library_sync"],
+        format!("http://{AWKWARD_HOST}/{}/v1/library/sync", device.lookup_key)
+    );
+
+    let configs = harness
+        .request(
+            Method::GET,
+            &device.at("/oauth/.well-known/openid-configuration"),
+            &host,
+        )
+        .await;
+    assert_eq!(configs.status(), StatusCode::OK);
+    assert_eq!(
+        body_json(configs).await["token_endpoint"],
+        format!("http://{AWKWARD_HOST}/{}/oauth/connect/token", device.lookup_key)
+    );
 }
 
 #[tokio::test]

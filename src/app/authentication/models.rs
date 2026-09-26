@@ -53,15 +53,23 @@ pub struct AuthToken {
     pub api_key: String,
 }
 
-pub const DEVICE_AUTH_RESPONSE: &str = r#"
-{
-  "AccessToken": "unused",
-  "TokenType": "Bearer",
-  "RefreshToken": "unused",
-  "UserKey": "unused",
-  "TrackingId": "unused"
+#[derive(Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct DeviceAuthResponse {
+    pub access_token: &'static str,
+    pub token_type: &'static str,
+    pub refresh_token: &'static str,
+    pub user_key: &'static str,
+    pub tracking_id: &'static str,
 }
-"#;
+
+pub const DEVICE_AUTH_RESPONSE: DeviceAuthResponse = DeviceAuthResponse {
+    access_token: "unused",
+    token_type: "Bearer",
+    refresh_token: "unused",
+    user_key: "unused",
+    tracking_id: "unused",
+};
 
 pub const PROSA_ISSUER: &str = "prosa";
 
@@ -122,15 +130,26 @@ impl From<ProsaJWTClaims> for ProsaToken {
     }
 }
 
-pub const OAUTH_CONFIGS: &str = r#"{ "token_endpoint": "{host}/oauth/connect/token" }"#;
-
-pub const OAUTH_TOKEN: &str = r#"
-{
-  "id_token": "unused",
-  "access_token": "unused",
-  "expires_in": 31536000,
-  "token_type": "Bearer",
-  "refresh_token": "unused",
-  "scope": "openid profile kobo_profile public_api_authenticated public_api_anonymous offline_access"
+#[derive(Serialize)]
+pub struct OAuthConfig {
+    pub token_endpoint: String,
 }
-"#;
+
+#[derive(Serialize)]
+pub struct OAuthToken {
+    pub id_token: &'static str,
+    pub access_token: &'static str,
+    pub expires_in: u64,
+    pub token_type: &'static str,
+    pub refresh_token: &'static str,
+    pub scope: &'static str,
+}
+
+pub const OAUTH_TOKEN: OAuthToken = OAuthToken {
+    id_token: "unused",
+    access_token: "unused",
+    expires_in: 31_536_000,
+    token_type: "Bearer",
+    refresh_token: "unused",
+    scope: "openid profile kobo_profile public_api_authenticated public_api_anonymous offline_access",
+};
