@@ -68,6 +68,18 @@ async fn device_with_book() -> Harness {
 }
 
 #[tokio::test]
+async fn accepts_an_annotation_of_a_type_it_does_not_know() {
+    let harness = device_with_book().await;
+    let mut unknown = annotation(HIGHLIGHT, (FIRST, 0), (SECOND, 3), None);
+    unknown["type"] = json!("dogear");
+
+    let response = patch(&harness, vec![unknown], vec![]).await;
+
+    assert_eq!(response.status(), StatusCode::NO_CONTENT);
+    assert_eq!(harness.client.stored_annotations(BOOK).len(), 1);
+}
+
+#[tokio::test]
 async fn stores_a_highlight_as_prosa_locations() {
     let harness = device_with_book().await;
 

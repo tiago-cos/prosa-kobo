@@ -1,8 +1,8 @@
 use super::{
     data,
     models::{
-        Annotation, AnnotationLocation, AnnotationSpan, CheckContentRequest, GetAnnotationsResponse,
-        PatchAnnotationsRequest,
+        Annotation, AnnotationLocation, AnnotationSpan, AnnotationType, CheckContentRequest,
+        GetAnnotationsResponse, PatchAnnotationsRequest,
     },
 };
 use crate::{
@@ -134,14 +134,12 @@ fn to_kobo_annotation(kepub: &[u8], annotation: ProsaAnnotation) -> Option<Annot
         start_char: start.offset,
         start_path: start.selector(),
     };
+
     Some(Annotation {
         client_last_modified_utc: kobo_time::now(),
         id: annotation.annotation_id,
         location: AnnotationLocation { span },
-        r#type: match annotation.note {
-            Some(_) => "note".to_owned(),
-            None => "highlight".to_owned(),
-        },
+        r#type: AnnotationType::for_note(annotation.note.as_deref()),
         note_text: annotation.note,
     })
 }
@@ -224,7 +222,7 @@ mod tests {
                     },
                 },
                 note_text: note.map(str::to_owned),
-                r#type: "note".to_owned(),
+                r#type: AnnotationType::Note,
             }
         }
 
@@ -377,7 +375,7 @@ mod tests {
         let returned = returned.annotations.first().expect("Expected one annotation");
 
         assert_eq!(returned.id, "stored");
-        assert_eq!(returned.r#type, "highlight");
+        assert_eq!(returned.r#type, AnnotationType::Highlight);
         assert_eq!(returned.location.span.chapter_filename, fixture.chapter);
         assert_eq!(returned.location.span.start_path, selector(&fixture.start));
         assert_eq!(returned.location.span.start_char, 0);

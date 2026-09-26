@@ -68,8 +68,8 @@ pub async fn translate_sync(
 
     for book_id in books.deleted {
         let entitlement = BookEntitlement::new(&book_id, true);
-        let reading_state = ReadingState::default();
-        let metadata = BookMetadata::default();
+        let reading_state = ReadingState::for_removed_book();
+        let metadata = BookMetadata::for_removed_book();
         let response =
             SyncItem::Entitlement(NewEntitlementResponse::new(entitlement, reading_state, metadata));
 

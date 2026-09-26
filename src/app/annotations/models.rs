@@ -53,7 +53,25 @@ pub struct Annotation {
     pub id: String,
     pub location: AnnotationLocation,
     pub note_text: Option<String>,
-    pub r#type: String,
+    pub r#type: AnnotationType,
+}
+
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum AnnotationType {
+    Highlight,
+    Note,
+    #[serde(other)]
+    Other,
+}
+
+impl AnnotationType {
+    pub fn for_note(note: Option<&str>) -> Self {
+        match note {
+            Some(_) => AnnotationType::Note,
+            None => AnnotationType::Highlight,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -70,4 +88,36 @@ pub struct AnnotationSpan {
     pub end_path: String,
     pub start_char: u32,
     pub start_path: String,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn names_a_highlight_and_a_note_as_the_device_does() {
+        assert_eq!(
+            serde_json::to_value(AnnotationType::Highlight).ok(),
+            Some(json!("highlight"))
+        );
+        assert_eq!(
+            serde_json::to_value(AnnotationType::Note).ok(),
+            Some(json!("note"))
+        );
+    }
+
+    #[test]
+    fn accepts_a_type_it_does_not_know() {
+        assert_eq!(
+            serde_json::from_value::<AnnotationType>(json!("dogear")).ok(),
+            Some(AnnotationType::Other)
+        );
+    }
+
+    #[test]
+    fn calls_an_annotation_with_a_note_a_note() {
+        assert_eq!(AnnotationType::for_note(Some("A thought")), AnnotationType::Note);
+        assert_eq!(AnnotationType::for_note(None), AnnotationType::Highlight);
+    }
 }

@@ -1,4 +1,7 @@
-use crate::app::kobo_time;
+use crate::{
+    app::{kepub::KoboPosition, kobo_time},
+    client::ProsaReadingStatus,
+};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use strum_macros::{EnumMessage, EnumProperty};
@@ -28,12 +31,40 @@ pub struct ReadingState {
     pub priority_timestamp: Option<String>,
 }
 
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ReadingStatus {
+    ReadyToRead,
+    Finished,
+    #[serde(other)]
+    Reading,
+}
+
+impl From<ProsaReadingStatus> for ReadingStatus {
+    fn from(status: ProsaReadingStatus) -> Self {
+        match status {
+            ProsaReadingStatus::Unread => ReadingStatus::ReadyToRead,
+            ProsaReadingStatus::Reading => ReadingStatus::Reading,
+            ProsaReadingStatus::Read => ReadingStatus::Finished,
+        }
+    }
+}
+
+impl From<ReadingStatus> for ProsaReadingStatus {
+    fn from(status: ReadingStatus) -> Self {
+        match status {
+            ReadingStatus::ReadyToRead => ProsaReadingStatus::Unread,
+            ReadingStatus::Reading => ProsaReadingStatus::Reading,
+            ReadingStatus::Finished => ProsaReadingStatus::Read,
+        }
+    }
+}
+
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "PascalCase")]
 pub struct StatusInfo {
     pub last_modified: String,
-    pub status: String,
+    pub status: ReadingStatus,
     pub times_started_reading: Option<u64>,
     pub last_time_started_reading: Option<String>,
     pub last_time_finished: Option<String>,
@@ -66,12 +97,12 @@ pub struct Location {
 }
 
 impl ReadingState {
-    pub fn new(book_id: &str, status: &str, tag: Option<String>, source: Option<String>) -> Self {
+    pub fn new(book_id: &str, status: ReadingStatus, position: Option<KoboPosition>) -> Self {
         let now = kobo_time::now();
 
         let status_info = StatusInfo {
             last_modified: now.clone(),
-            status: status.to_string(),
+            status,
             times_started_reading: None,
             last_time_started_reading: None,
             last_time_finished: None,
@@ -83,14 +114,11 @@ impl ReadingState {
             remaining_time_minutes: 0,
         };
 
-        let location = match (tag, source) {
-            (Some(tag), Some(source)) => Some(Location {
-                value: tag,
-                r#type: "KoboSpan".to_string(),
-                source,
-            }),
-            _ => None,
-        };
+        let location = position.map(|position| Location {
+            value: position.span,
+            r#type: "KoboSpan".to_string(),
+            source: position.chapter,
+        });
 
         let current_bookmark = CurrentBookmark {
             last_modified: now.clone(),
@@ -102,18 +130,29 @@ impl ReadingState {
         ReadingState {
             entitlement_id: book_id.to_string(),
             created: Some(now.clone()),
-            last_modified: now.clone(),
+            last_modified: now,
             status_info,
             statistics,
             current_bookmark,
             priority_timestamp: None,
         }
     }
+
+    pub fn for_removed_book() -> Self {
+        ReadingState::new("placeholder", ReadingStatus::Reading, None)
+    }
 }
 
-impl Default for ReadingState {
-    fn default() -> Self {
-        ReadingState::new("placeholder", "Reading", None, None)
+impl Location {
+    // The device names the chapter relative to the book file it downloaded, as
+    // `<book>.kepub.epub!!OEBPS/chapter.xhtml`; only the tail names a document.
+    pub fn position(&self) -> KoboPosition {
+        let chapter = match self.source.split_once("!!") {
+            Some((_, source)) => source,
+            None => self.source.as_str(),
+        };
+
+        KoboPosition::new(chapter, &self.value, 0)
     }
 }
 
@@ -246,3 +285,43 @@ pub const REVIEWS_RESPONSE: ReviewsResponse = ReviewsResponse {
     total_page_count: 10,
     current_page_index: 1,
 };
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn names_each_status_as_the_device_does() {
+        for (status, name) in [
+            (ReadingStatus::ReadyToRead, "ReadyToRead"),
+            (ReadingStatus::Reading, "Reading"),
+            (ReadingStatus::Finished, "Finished"),
+        ] {
+            assert_eq!(serde_json::to_value(status).ok(), Some(json!(name)));
+            assert_eq!(
+                serde_json::from_value::<ReadingStatus>(json!(name)).ok(),
+                Some(status)
+            );
+        }
+    }
+
+    #[test]
+    fn reads_a_status_it_does_not_know_as_reading() {
+        assert_eq!(
+            serde_json::from_value::<ReadingStatus>(json!("Paused")).ok(),
+            Some(ReadingStatus::Reading)
+        );
+    }
+
+    #[test]
+    fn maps_to_prosa_and_back_unchanged() {
+        for status in [
+            ProsaReadingStatus::Unread,
+            ProsaReadingStatus::Reading,
+            ProsaReadingStatus::Read,
+        ] {
+            assert_eq!(ProsaReadingStatus::from(ReadingStatus::from(status)), status);
+        }
+    }
+}

@@ -184,9 +184,8 @@ impl BookMetadata {
     }
 }
 
-impl Default for BookMetadata {
-    fn default() -> Self {
-        let metadata_response = ProsaMetadata::default();
-        BookMetadata::new("placeholder", metadata_response)
+impl BookMetadata {
+    pub fn for_removed_book() -> Self {
+        BookMetadata::new("placeholder", ProsaMetadata::default())
     }
 }
