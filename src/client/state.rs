@@ -1,62 +1,5 @@
-use reqwest::{Client, Error};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
-
-pub struct StateClient {
-    pub url: String,
-    pub http: Client,
-}
-
-impl StateClient {
-    pub async fn fetch_state(&self, book_id: &str, api_key: &str) -> Result<ProsaState, Error> {
-        self.http
-            .get(format!("{}/books/{book_id}/state", self.url))
-            .header("api-key", api_key)
-            .send()
-            .await?
-            .error_for_status()?
-            .json::<ProsaState>()
-            .await
-    }
-
-    pub async fn patch_state(
-        &self,
-        book_id: &str,
-        location: Option<&str>,
-        reading_status: ProsaReadingStatus,
-        api_key: &str,
-    ) -> Result<(), Error> {
-        let request = ProsaStatePatch {
-            location,
-            statistics: ProsaStatisticsPatch {
-                rating: None,
-                reading_status: Some(reading_status),
-            },
-        };
-
-        self.http
-            .patch(format!("{}/books/{book_id}/state", self.url))
-            .header("api-key", api_key)
-            .json(&request)
-            .send()
-            .await?
-            .error_for_status()?;
-
-        Ok(())
-    }
-
-    pub async fn replace_state(&self, book_id: &str, state: &ProsaState, api_key: &str) -> Result<(), Error> {
-        self.http
-            .put(format!("{}/books/{book_id}/state", self.url))
-            .header("api-key", api_key)
-            .json(&state)
-            .send()
-            .await?
-            .error_for_status()?;
-
-        Ok(())
-    }
-}
 
 #[derive(Deserialize, Serialize, Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ProsaReadingStatus {
@@ -83,14 +26,14 @@ pub struct ProsaStatistics {
 /// an absent one must not reach the wire as `null`.
 #[skip_serializing_none]
 #[derive(Serialize, Debug)]
-struct ProsaStatePatch<'a> {
-    location: Option<&'a str>,
-    statistics: ProsaStatisticsPatch,
+pub(super) struct ProsaStatePatch<'a> {
+    pub(super) location: Option<&'a str>,
+    pub(super) statistics: ProsaStatisticsPatch,
 }
 
 #[skip_serializing_none]
 #[derive(Serialize, Debug)]
-struct ProsaStatisticsPatch {
-    rating: Option<f32>,
-    reading_status: Option<ProsaReadingStatus>,
+pub(super) struct ProsaStatisticsPatch {
+    pub(super) rating: Option<f32>,
+    pub(super) reading_status: Option<ProsaReadingStatus>,
 }

@@ -1,9 +1,7 @@
 pub mod annotations;
 pub mod book;
-pub mod cover;
 pub mod health;
 pub mod identity;
-pub mod keys;
 pub mod metadata;
 pub mod prosa;
 pub mod shelf;

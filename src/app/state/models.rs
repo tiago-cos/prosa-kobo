@@ -214,10 +214,10 @@ pub struct RatingResponse {
 }
 
 impl RatingResponse {
-    pub fn new(book_id: &str, rating: Option<u8>) -> Self {
+    pub fn new(book_id: &str, rating: Option<f32>) -> Self {
         let items = match rating {
             None => vec![],
-            Some(r) => vec![Rating::new(book_id, r)],
+            Some(rating) => vec![Rating::new(book_id, kobo_rating(rating))],
         };
 
         RatingResponse {
@@ -226,6 +226,17 @@ impl RatingResponse {
             current_page_index: 1,
         }
     }
+}
+
+pub fn prosa_rating(rating: u8) -> Option<f32> {
+    match rating {
+        0 => None,
+        rating => Some(rating.into()),
+    }
+}
+
+fn kobo_rating(rating: f32) -> u8 {
+    rating.round().clamp(0.0, f32::from(u8::MAX)) as u8
 }
 
 #[skip_serializing_none]

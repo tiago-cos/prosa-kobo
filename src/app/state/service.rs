@@ -1,4 +1,4 @@
-use super::models::{Location, RatingResponse, ReadingState, UpdateStateResponse};
+use super::models::{Location, RatingResponse, ReadingState, UpdateStateResponse, prosa_rating};
 use crate::{
     app::{error::KoboError, kepub},
     client::prosa::ProsaApi,
@@ -60,7 +60,9 @@ pub async fn translate_update_rating(
     rating: u8,
     api_key: &str,
 ) -> Result<(), KoboError> {
-    client.update_rating(book_id, rating, api_key).await?;
+    let mut state = client.fetch_state(book_id, api_key).await?;
+    state.statistics.rating = prosa_rating(rating);
+    client.replace_state(book_id, &state, api_key).await?;
 
     Ok(())
 }
@@ -70,7 +72,7 @@ pub async fn translate_get_rating(
     book_id: &str,
     api_key: &str,
 ) -> Result<RatingResponse, KoboError> {
-    let rating = client.fetch_rating(book_id, api_key).await?;
+    let state = client.fetch_state(book_id, api_key).await?;
 
-    Ok(RatingResponse::new(book_id, rating))
+    Ok(RatingResponse::new(book_id, state.statistics.rating))
 }

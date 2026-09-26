@@ -304,16 +304,37 @@ async fn keeps_a_reading_position_only_where_the_book_has_one(backend: &dyn Back
     );
 }
 
-async fn keeps_a_rating_and_clears_it_at_zero(backend: &dyn Backend) {
+async fn replaces_a_state_as_long_as_it_is_valid(backend: &dyn Backend) {
     let client = backend.client();
     let key = backend.key();
     let book = backend.add_book().await;
+    let rating = |state: Result<ProsaState, ClientError>| state.map(|state| state.statistics.rating);
 
-    assert_eq!(client.update_rating(&book, 4, key).await, Ok(()));
-    assert_eq!(client.fetch_rating(&book, key).await, Ok(Some(4)));
+    let mut state = client
+        .fetch_state(&book, key)
+        .await
+        .expect("A book should have a state");
 
-    assert_eq!(client.update_rating(&book, 0, key).await, Ok(()));
-    assert_eq!(client.fetch_rating(&book, key).await, Ok(None));
+    state.statistics.rating = Some(4.0);
+    assert_eq!(client.replace_state(&book, &state, key).await, Ok(()));
+    assert_eq!(rating(client.fetch_state(&book, key).await), Ok(Some(4.0)));
+
+    state.statistics.rating = None;
+    assert_eq!(client.replace_state(&book, &state, key).await, Ok(()));
+    assert_eq!(rating(client.fetch_state(&book, key).await), Ok(None));
+
+    state.statistics.rating = Some(6.0);
+    assert_eq!(
+        client.replace_state(&book, &state, key).await,
+        Err(ClientError::BadRequest)
+    );
+
+    state.statistics.rating = Some(4.0);
+    state.location = Some(at("0/99/t0:0"));
+    assert_eq!(
+        client.replace_state(&book, &state, key).await,
+        Err(ClientError::BadRequest)
+    );
 }
 
 async fn keeps_an_annotation_over_text_until_it_is_deleted(backend: &dyn Backend) {
@@ -562,7 +583,7 @@ contract!(
     serves_back_the_book_it_holds_until_it_is_deleted,
     has_no_cover_for_a_book_without_one,
     keeps_a_reading_position_only_where_the_book_has_one,
-    keeps_a_rating_and_clears_it_at_zero,
+    replaces_a_state_as_long_as_it_is_valid,
     keeps_an_annotation_over_text_until_it_is_deleted,
     refuses_an_annotation_that_is_not_a_stretch_of_text,
     refuses_to_annotate_a_span_or_reuse_an_id_twice,

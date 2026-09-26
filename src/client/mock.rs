@@ -43,8 +43,7 @@ pub enum ProsaMethod {
     DownloadCover,
     FetchState,
     PatchState,
-    UpdateRating,
-    FetchRating,
+    ReplaceState,
     ListAnnotations,
     GetAnnotation,
     AddAnnotation,
@@ -450,42 +449,32 @@ impl ProsaApi for MockProsaClient {
         Ok(())
     }
 
-    async fn update_rating(&self, book_id: &str, rating: u8, api_key: &str) -> Result<(), ClientError> {
-        self.record(
-            ProsaMethod::UpdateRating,
-            &[book_id, &rating.to_string()],
-            api_key,
-        )?;
+    async fn replace_state(
+        &self,
+        book_id: &str,
+        state: &ProsaState,
+        api_key: &str,
+    ) -> Result<(), ClientError> {
+        self.record(ProsaMethod::ReplaceState, &[book_id], api_key)?;
 
-        let mut library = self.library();
-        let state = library
-            .book(book_id)?
-            .state
-            .as_mut()
-            .ok_or(ClientError::NotFound)?;
-
-        state.statistics.rating = match rating {
-            0 => None,
-            rating => Some(rating.into()),
-        };
-
-        Ok(())
-    }
-
-    async fn fetch_rating(&self, book_id: &str, api_key: &str) -> Result<Option<u8>, ClientError> {
-        self.record(ProsaMethod::FetchRating, &[book_id], api_key)?;
-
-        let mut library = self.library();
-        let state = library
-            .book(book_id)?
-            .state
-            .as_ref()
-            .ok_or(ClientError::NotFound)?;
-
-        Ok(state
+        if state
             .statistics
             .rating
-            .map(|rating| rating.round().clamp(0.0, 255.0) as u8))
+            .is_some_and(|rating| !(0.0..=5.0).contains(&rating))
+        {
+            return Err(ClientError::BadRequest);
+        }
+
+        let mut library = self.library();
+        let book = library.book(book_id)?;
+
+        if let Some(location) = &state.location {
+            validate_location(book.file.as_deref(), location)?;
+        }
+
+        book.state = Some(state.clone());
+
+        Ok(())
     }
 
     async fn list_annotations(&self, book_id: &str, api_key: &str) -> Result<Vec<String>, ClientError> {
@@ -1154,10 +1143,15 @@ mod tests {
             .await
             .expect("Failed to patch state");
 
-        client
-            .update_rating("book", 4, "key")
+        let mut state = client
+            .fetch_state("book", "key")
             .await
-            .expect("Failed to update rating");
+            .expect("Failed to fetch state");
+        state.statistics.rating = Some(4.0);
+        client
+            .replace_state("book", &state, "key")
+            .await
+            .expect("Failed to replace state");
 
         let stored = client.stored_state("book").expect("Expected a stored state");
 
@@ -1166,7 +1160,7 @@ mod tests {
             Some("OEBPS/chapter-001.xhtml#0/2/t1:44")
         );
         assert_eq!(stored.statistics.reading_status, ProsaReadingStatus::Reading);
-        assert_eq!(client.fetch_rating("book", "key").await, Ok(Some(4)));
+        assert_eq!(stored.statistics.rating, Some(4.0));
     }
 
     #[tokio::test]
