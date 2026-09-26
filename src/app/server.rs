@@ -6,7 +6,13 @@ use crate::{
     app::{authentication::middleware::extract_device_middleware, shelves, tracing},
     client::{prosa::ProsaApi, prosa_client},
 };
-use axum::{Router, http::StatusCode, middleware::from_fn, routing::get};
+use axum::{
+    Router,
+    extract::FromRequestParts,
+    http::{HeaderMap, StatusCode, header, request::Parts},
+    middleware::from_fn,
+    routing::get,
+};
 use log::{error, info, warn};
 use std::{process::exit, sync::LazyLock, time::Duration};
 use tokio::{net::TcpListener, time::sleep};
@@ -61,6 +67,43 @@ pub fn router() -> Router {
         .merge(devices::routes::get_routes())
         .fallback_service(device)
         .layer(from_fn(tracing::log_layer))
+}
+
+pub struct Host(pub String);
+
+impl<S: Send + Sync> FromRequestParts<S> for Host {
+    type Rejection = (StatusCode, &'static str);
+
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        forwarded_host(&parts.headers)
+            .or_else(|| header_value(&parts.headers, "x-forwarded-host"))
+            .or_else(|| header_value(&parts.headers, header::HOST.as_str()))
+            .or_else(|| {
+                parts
+                    .uri
+                    .authority()
+                    .and_then(|authority| authority.as_str().rsplit('@').next())
+            })
+            .map(|host| Host(host.to_owned()))
+            .ok_or((StatusCode::BAD_REQUEST, "No host found in request"))
+    }
+}
+
+fn forwarded_host(headers: &HeaderMap) -> Option<&str> {
+    header_value(headers, header::FORWARDED.as_str())?
+        .split(',')
+        .next()?
+        .split(';')
+        .find_map(|pair| {
+            let (key, value) = pair.split_once('=')?;
+            key.trim()
+                .eq_ignore_ascii_case("host")
+                .then(|| value.trim().trim_matches('"'))
+        })
+}
+
+fn header_value<'a>(headers: &'a HeaderMap, name: &str) -> Option<&'a str> {
+    headers.get(name)?.to_str().ok()
 }
 
 pub fn device_url(host: &str, lookup_key: &str) -> String {
@@ -143,6 +186,54 @@ mod tests {
         assert!(!is_compatible(""));
         assert!(!is_compatible("0"));
         assert!(!is_compatible("unreleased"));
+    }
+
+    async fn host(request: axum::http::request::Builder) -> Result<String, StatusCode> {
+        let (mut parts, ()) = request.body(()).expect("Failed to build a request").into_parts();
+
+        Host::from_request_parts(&mut parts, &())
+            .await
+            .map(|Host(host)| host)
+            .map_err(|(status, _)| status)
+    }
+
+    #[tokio::test]
+    async fn prefers_the_forwarded_host_over_every_other_source() {
+        let request = axum::http::Request::builder()
+            .uri("http://authority.test/")
+            .header("host", "host.test")
+            .header("x-forwarded-host", "x-forwarded.test")
+            .header(
+                "forwarded",
+                r#"for=192.0.2.60;Host="forwarded.test:8443";proto=https, host=second.test"#,
+            );
+
+        assert_eq!(host(request).await, Ok("forwarded.test:8443".to_owned()));
+    }
+
+    #[tokio::test]
+    async fn falls_back_to_x_forwarded_host_then_host() {
+        let forwarded = axum::http::Request::builder()
+            .header("host", "host.test")
+            .header("x-forwarded-host", "x-forwarded.test");
+        let plain = axum::http::Request::builder().header("host", "host.test:5001");
+
+        assert_eq!(host(forwarded).await, Ok("x-forwarded.test".to_owned()));
+        assert_eq!(host(plain).await, Ok("host.test:5001".to_owned()));
+    }
+
+    #[tokio::test]
+    async fn takes_the_authority_without_its_credentials_when_no_header_names_a_host() {
+        let request = axum::http::Request::builder().uri("http://user:secret@authority.test:5001/");
+
+        assert_eq!(host(request).await, Ok("authority.test:5001".to_owned()));
+    }
+
+    #[tokio::test]
+    async fn refuses_a_request_that_names_no_host() {
+        let request = axum::http::Request::builder().uri("/v1/initialization");
+
+        assert_eq!(host(request).await, Err(StatusCode::BAD_REQUEST));
     }
 
     #[test]

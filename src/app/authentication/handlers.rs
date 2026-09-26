@@ -2,9 +2,8 @@ use super::{
     models::{AuthToken, DEVICE_AUTH_RESPONSE},
     service,
 };
-use crate::app::device_url;
+use crate::app::{Host, device_url};
 use axum::{Extension, Json, response::IntoResponse};
-use axum_extra::extract::Host;
 use serde_json::Value;
 
 pub async fn oauth_configs_handler(

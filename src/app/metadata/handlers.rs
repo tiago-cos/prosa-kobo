@@ -1,10 +1,9 @@
 use super::service;
 use crate::{
-    app::{authentication::AuthToken, device_url, error::KoboError},
+    app::{Host, authentication::AuthToken, device_url, error::KoboError},
     client::prosa_client,
 };
 use axum::{Extension, Json, extract::Path, response::IntoResponse};
-use axum_extra::extract::Host;
 
 pub async fn metadata_handler(
     Host(host): Host,

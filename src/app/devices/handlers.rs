@@ -3,7 +3,7 @@ use super::{
     service,
 };
 use crate::{
-    app::{authentication::ProsaToken, device_url, error::KoboError},
+    app::{Host, authentication::ProsaToken, device_url, error::KoboError},
     client::prosa_client,
 };
 use axum::{
@@ -12,7 +12,6 @@ use axum::{
     http::StatusCode,
     response::IntoResponse,
 };
-use axum_extra::extract::Host;
 
 pub async fn link_device_handler(
     Extension(token): Extension<ProsaToken>,

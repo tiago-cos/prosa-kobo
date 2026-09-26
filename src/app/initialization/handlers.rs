@@ -1,7 +1,6 @@
 use super::{models::TestRequest, service};
-use crate::app::{authentication::AuthToken, device_url};
+use crate::app::{Host, authentication::AuthToken, device_url};
 use axum::{Extension, Json, response::IntoResponse};
-use axum_extra::extract::Host;
 
 pub async fn device_initialization_handler(
     Extension(token): Extension<AuthToken>,

@@ -5,7 +5,7 @@ async fn pragma<T>(pool: &SqlitePool, name: &str) -> T
 where
     T: for<'r> sqlx::Decode<'r, sqlx::Sqlite> + sqlx::Type<sqlx::Sqlite> + Send + Unpin,
 {
-    sqlx::query_scalar(&format!("PRAGMA {name}"))
+    sqlx::query_scalar(sqlx::AssertSqlSafe(format!("PRAGMA {name}")))
         .fetch_one(pool)
         .await
         .expect("Failed to read a pragma")

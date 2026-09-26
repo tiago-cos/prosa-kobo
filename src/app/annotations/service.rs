@@ -19,7 +19,7 @@ use crate::{
 };
 use base64::{Engine, prelude::BASE64_STANDARD};
 use log::warn;
-use rand::RngCore;
+use rand::Rng;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 pub async fn get_etag(book_id: &str) -> Result<String, KoboError> {

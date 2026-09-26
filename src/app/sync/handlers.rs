@@ -1,6 +1,6 @@
 use super::service;
 use crate::{
-    app::{authentication::AuthToken, device_url, error::KoboError},
+    app::{Host, authentication::AuthToken, device_url, error::KoboError},
     client::prosa_client,
 };
 use axum::{
@@ -8,7 +8,6 @@ use axum::{
     http::{HeaderMap, HeaderValue},
     response::IntoResponse,
 };
-use axum_extra::extract::Host;
 
 pub async fn device_sync_handler(
     Host(host): Host,

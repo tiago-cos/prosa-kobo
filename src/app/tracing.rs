@@ -21,6 +21,7 @@ pub fn init_logging() {
         .with_thread_names(false)
         .with_file(false)
         .with_line_number(false)
+        .with_ansi_sanitization(false)
         .with_timer(ChronoUtc::rfc_3339())
         .compact();
 

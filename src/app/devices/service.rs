@@ -8,7 +8,7 @@ use crate::{
     database::pool,
 };
 use base64::{Engine, prelude::BASE64_URL_SAFE_NO_PAD};
-use rand::RngCore;
+use rand::Rng;
 
 const LOOKUP_KEY_SIZE: usize = 32;
 

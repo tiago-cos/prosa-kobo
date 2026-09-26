@@ -105,10 +105,10 @@ impl Harness {
 
     pub async fn fail_writes_to(&self, table: &str) {
         for operation in ["INSERT", "UPDATE", "DELETE"] {
-            sqlx::query(&format!(
+            sqlx::query(sqlx::AssertSqlSafe(format!(
                 "CREATE TRIGGER fail_{operation}_{table} BEFORE {operation} ON {table} \
                  BEGIN SELECT RAISE(ABORT, 'writes to {table} fail in this test'); END"
-            ))
+            )))
             .execute(database::pool())
             .await
             .expect("Failed to make writes fail");
@@ -248,7 +248,7 @@ async fn reset_database() {
         .expect("Failed to list the test triggers");
 
     for trigger in triggers {
-        sqlx::query(&format!("DROP TRIGGER {trigger}"))
+        sqlx::query(sqlx::AssertSqlSafe(format!("DROP TRIGGER {trigger}")))
             .execute(database::pool())
             .await
             .expect("Failed to drop a test trigger");
@@ -266,7 +266,7 @@ async fn reset_database() {
     .expect("Failed to list the test tables");
 
     for table in tables {
-        sqlx::query(&format!("DELETE FROM {table}"))
+        sqlx::query(sqlx::AssertSqlSafe(format!("DELETE FROM {table}")))
             .execute(database::pool())
             .await
             .expect("Failed to empty a test table");
