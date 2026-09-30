@@ -2,6 +2,8 @@ use crate::{app::kobo_time, client::ProsaMetadata};
 use isolang::Language;
 use serde::Serialize;
 
+const UNTITLED: &str = "Untitled";
+
 #[derive(Serialize, Debug)]
 #[serde(rename_all = "PascalCase")]
 pub struct BookMetadata {
@@ -168,7 +170,12 @@ impl BookMetadata {
             is_annotation_export_disabled: false,
             is_ai_summary_disabled: false,
             entitlement_id: book_id.to_string(),
-            title: metadata.title,
+            title: Some(
+                metadata
+                    .title
+                    .filter(|title| !title.trim().is_empty())
+                    .unwrap_or_else(|| UNTITLED.to_owned()),
+            ),
             description: metadata.description,
             categories: Vec::new(),
             download_urls: vec![],

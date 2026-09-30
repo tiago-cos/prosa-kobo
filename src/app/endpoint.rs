@@ -9,19 +9,24 @@ pub struct Host(pub String);
 impl<S: Send + Sync> FromRequestParts<S> for Host {
     type Rejection = (StatusCode, &'static str);
 
-    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-        parts
-            .headers
-            .get(header::HOST)
-            .and_then(|host| host.to_str().ok())
-            .or_else(|| {
-                parts
-                    .uri
-                    .authority()
-                    .and_then(|authority| authority.as_str().rsplit('@').next())
-            })
-            .map(|host| Host(host.to_owned()))
-            .ok_or((StatusCode::BAD_REQUEST, "No host found in request"))
+    fn from_request_parts(
+        parts: &mut Parts,
+        _state: &S,
+    ) -> impl Future<Output = Result<Self, Self::Rejection>> {
+        std::future::ready(
+            parts
+                .headers
+                .get(header::HOST)
+                .and_then(|host| host.to_str().ok())
+                .or_else(|| {
+                    parts
+                        .uri
+                        .authority()
+                        .and_then(|authority| authority.as_str().rsplit('@').next())
+                })
+                .map(|host| Host(host.to_owned()))
+                .ok_or((StatusCode::BAD_REQUEST, "No host found in request")),
+        )
     }
 }
 

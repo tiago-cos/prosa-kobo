@@ -95,7 +95,26 @@ async fn answers_for_a_book_prosa_holds_no_metadata_for() {
     let metadata = metadata(&harness, &device.at("/v1/library/book/metadata")).await;
 
     assert_eq!(metadata["EntitlementId"], BOOK);
-    assert!(metadata["Title"].is_null());
+    assert_eq!(metadata["Title"], "Untitled");
+}
+
+#[tokio::test]
+async fn names_a_book_whose_title_is_blank_untitled() {
+    let harness = Harness::new().await;
+    let device = harness.linked().await;
+    harness.add_book(BOOK);
+    harness.client.seed_metadata(
+        BOOK,
+        ProsaMetadata {
+            title: Some("  ".to_owned()),
+            ..gatsby()
+        },
+    );
+
+    let metadata = metadata(&harness, &device.at("/v1/library/book/metadata")).await;
+
+    assert_eq!(metadata["Title"], "Untitled");
+    assert_eq!(metadata["Subtitle"], "A novel");
 }
 
 #[tokio::test]
