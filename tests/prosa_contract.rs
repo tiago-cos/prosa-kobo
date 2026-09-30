@@ -337,6 +337,53 @@ async fn replaces_a_state_as_long_as_it_is_valid(backend: &dyn Backend) {
     );
 }
 
+async fn holds_a_location_only_while_a_book_is_being_read(backend: &dyn Backend) {
+    let client = backend.client();
+    let key = backend.key();
+    let book = backend.add_book().await;
+    let fetch = || async {
+        client
+            .fetch_state(&book, key)
+            .await
+            .expect("A book should have a state")
+    };
+
+    assert_eq!(
+        client
+            .patch_state(&book, Some(&earlier()), ProsaReadingStatus::Unread, key)
+            .await,
+        Err(ClientError::BadRequest)
+    );
+    assert_eq!(
+        client
+            .patch_state(&book, Some(&earlier()), ProsaReadingStatus::Reading, key)
+            .await,
+        Ok(())
+    );
+
+    for status in [ProsaReadingStatus::Read, ProsaReadingStatus::Unread] {
+        assert_eq!(
+            client.patch_state(&book, None, status, key).await,
+            Err(ClientError::BadRequest)
+        );
+
+        let mut state = fetch().await;
+        state.statistics.reading_status = status;
+        assert_eq!(
+            client.replace_state(&book, &state, key).await,
+            Err(ClientError::BadRequest)
+        );
+
+        state.location = None;
+        assert_eq!(client.replace_state(&book, &state, key).await, Ok(()));
+        assert_eq!(fetch().await, state);
+
+        state.location = Some(earlier());
+        state.statistics.reading_status = ProsaReadingStatus::Reading;
+        assert_eq!(client.replace_state(&book, &state, key).await, Ok(()));
+    }
+}
+
 async fn keeps_an_annotation_over_text_until_it_is_deleted(backend: &dyn Backend) {
     let client = backend.client();
     let key = backend.key();
@@ -584,6 +631,7 @@ contract!(
     has_no_cover_for_a_book_without_one,
     keeps_a_reading_position_only_where_the_book_has_one,
     replaces_a_state_as_long_as_it_is_valid,
+    holds_a_location_only_while_a_book_is_being_read,
     keeps_an_annotation_over_text_until_it_is_deleted,
     refuses_an_annotation_that_is_not_a_stretch_of_text,
     refuses_to_annotate_a_span_or_reuse_an_id_twice,

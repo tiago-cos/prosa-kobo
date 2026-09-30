@@ -1,14 +1,14 @@
-use super::models::{Location, RatingResponse, ReadingState, UpdateStateResponse, prosa_rating};
+use super::{
+    data,
+    models::{DeviceState, Location, RatingResponse, ReadingState, UpdateStateResponse, prosa_rating},
+};
 use crate::{
-    app::{error::KoboError, kepub},
-    client::prosa::ProsaApi,
+    app::{error::KoboError, kepub, kobo_time},
+    client::{ProsaReadingStatus, prosa::ProsaApi},
+    database::pool,
 };
 
-pub async fn translate_get_state(
-    client: &dyn ProsaApi,
-    book_id: &str,
-    api_key: &str,
-) -> Result<ReadingState, KoboError> {
+async fn prosa_state(client: &dyn ProsaApi, book_id: &str, api_key: &str) -> Result<ReadingState, KoboError> {
     let state_response = client.fetch_state(book_id, api_key).await?;
 
     // A bookmark we cannot translate is no bookmark: the device gets the book
@@ -28,28 +28,88 @@ pub async fn translate_get_state(
     ))
 }
 
+pub async fn translate_get_state(
+    client: &dyn ProsaApi,
+    book_id: &str,
+    api_key: &str,
+    device_id: &str,
+) -> Result<ReadingState, KoboError> {
+    let state = prosa_state(client, book_id, api_key).await?;
+    let held = data::get_device_state(pool(), device_id, book_id).await?;
+
+    if held == Some(DeviceState::of(&state)) {
+        return Ok(state.dated(&kobo_time::epoch()));
+    }
+
+    Ok(state)
+}
+
+pub async fn translate_book_state(
+    client: &dyn ProsaApi,
+    book_id: &str,
+    api_key: &str,
+    device_id: &str,
+) -> Result<ReadingState, KoboError> {
+    let state = prosa_state(client, book_id, api_key).await?;
+    data::set_device_state(pool(), device_id, book_id, &DeviceState::of(&state)).await?;
+
+    Ok(state)
+}
+
+pub async fn translate_changed_state(
+    client: &dyn ProsaApi,
+    book_id: &str,
+    api_key: &str,
+    device_id: &str,
+) -> Result<Option<ReadingState>, KoboError> {
+    let state = prosa_state(client, book_id, api_key).await?;
+    let sent = DeviceState::of(&state);
+    let held = data::get_device_state(pool(), device_id, book_id).await?;
+
+    if !sent.is_news_to(held.as_ref()) {
+        return Ok(None);
+    }
+
+    data::set_device_state(pool(), device_id, book_id, &sent).await?;
+
+    Ok(Some(state))
+}
+
+pub async fn forget_book(device_id: &str, book_id: &str) -> Result<(), KoboError> {
+    data::remove_device_state(pool(), device_id, book_id).await?;
+
+    Ok(())
+}
+
 pub async fn translate_update_state(
     client: &dyn ProsaApi,
     book_id: &str,
     state: &ReadingState,
     api_key: &str,
+    device_id: &str,
 ) -> Result<UpdateStateResponse, KoboError> {
-    let location = match state.current_bookmark.location.as_ref().map(Location::position) {
-        Some(position) => {
-            let kepub = kepub::get_kepub(client, book_id, api_key).await?;
-            kepub::to_prosa_location(&kepub, &position)
-        }
-        None => None,
-    };
+    let status: ProsaReadingStatus = state.status_info.status.into();
 
-    client
-        .patch_state(
-            book_id,
-            location.as_deref(),
-            state.status_info.status.into(),
-            api_key,
-        )
-        .await?;
+    if status == ProsaReadingStatus::Reading {
+        let location = match state.current_bookmark.location.as_ref().map(Location::position) {
+            Some(position) => {
+                let kepub = kepub::get_kepub(client, book_id, api_key).await?;
+                kepub::to_prosa_location(&kepub, &position)
+            }
+            None => None,
+        };
+
+        client
+            .patch_state(book_id, location.as_deref(), status, api_key)
+            .await?;
+    } else {
+        let mut stored = client.fetch_state(book_id, api_key).await?;
+        stored.location = None;
+        stored.statistics.reading_status = status;
+        client.replace_state(book_id, &stored, api_key).await?;
+    }
+
+    data::set_device_state(pool(), device_id, book_id, &DeviceState::of(state)).await?;
 
     Ok(UpdateStateResponse::success(book_id))
 }

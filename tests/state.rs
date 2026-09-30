@@ -1,7 +1,7 @@
 mod common;
 
 use axum::http::{Method, StatusCode};
-use common::{Device, Harness, body_json};
+use common::{Device, EPOCH, Harness, body_json, reported_state};
 use prosa_kobo::client::{
     ProsaReadingStatus,
     mock::ProsaMethod,
@@ -24,23 +24,7 @@ fn state(location: Option<&str>, reading_status: ProsaReadingStatus) -> ProsaSta
 }
 
 fn update(status: &str, span: Option<&str>) -> Value {
-    let stamp = "2026-09-20T16:03:39Z";
-    let location = span.map(
-        |span| json!({ "Value": span, "Type": "KoboSpan", "Source": format!("book.kepub.epub!!{CHAPTER}") }),
-    );
-
-    json!({ "ReadingStates": [{
-        "EntitlementId": BOOK,
-        "LastModified": stamp,
-        "StatusInfo": { "LastModified": stamp, "Status": status },
-        "Statistics": { "LastModified": stamp, "SpentReadingMinutes": 5, "RemainingTimeMinutes": 60 },
-        "CurrentBookmark": {
-            "LastModified": stamp,
-            "ProgressPercent": 10,
-            "ContentSourceProgressPercent": 10,
-            "Location": location,
-        },
-    }]})
+    reported_state(BOOK, CHAPTER, status, span)
 }
 
 async fn fetch(harness: &Harness, device: &Device) -> Value {
@@ -159,7 +143,42 @@ async fn stores_each_reading_status_the_way_prosa_does() {
 }
 
 #[tokio::test]
-async fn keeps_the_status_but_not_a_bookmark_the_book_cannot_place() {
+async fn drops_the_position_when_the_device_puts_a_book_aside() {
+    let (harness, device) = with_book().await;
+
+    for status in ["Finished", "ReadyToRead"] {
+        harness.client.seed_state(
+            BOOK,
+            ProsaState {
+                statistics: ProsaStatistics {
+                    rating: Some(4.0),
+                    reading_status: ProsaReadingStatus::Reading,
+                },
+                ..state(Some(&format!("{CHAPTER}#0/1/t0:0")), ProsaReadingStatus::Reading)
+            },
+        );
+
+        let response = harness
+            .json(
+                Method::PUT,
+                &device.at("/v1/library/book/state"),
+                update(status, Some("kobo.1.1")),
+            )
+            .await;
+        let stored = harness
+            .client
+            .stored_state(BOOK)
+            .expect("A state should be stored");
+
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(stored.location, None);
+        assert_eq!(stored.statistics.rating, Some(4.0));
+    }
+    assert_eq!(harness.client.call_count(ProsaMethod::PatchState), 0);
+}
+
+#[tokio::test]
+async fn keeps_the_position_prosa_holds_over_a_bookmark_the_book_cannot_place() {
     let (harness, device) = with_book().await;
     harness.client.seed_state(
         BOOK,
@@ -170,7 +189,7 @@ async fn keeps_the_status_but_not_a_bookmark_the_book_cannot_place() {
         .json(
             Method::PUT,
             &device.at("/v1/library/book/state"),
-            update("Finished", Some("kobo.99999.1")),
+            update("Reading", Some("kobo.99999.1")),
         )
         .await;
 
@@ -180,8 +199,68 @@ async fn keeps_the_status_but_not_a_bookmark_the_book_cannot_place() {
         .expect("A state should be stored");
 
     assert_eq!(response.status(), StatusCode::OK);
-    assert_eq!(stored.statistics.reading_status, ProsaReadingStatus::Read);
+    assert_eq!(stored.statistics.reading_status, ProsaReadingStatus::Reading);
     assert_eq!(stored.location, Some(format!("{CHAPTER}#0/1/t0:0")));
+}
+
+#[tokio::test]
+async fn dates_a_state_the_device_already_holds_before_its_own() {
+    let (harness, device) = with_book().await;
+    harness
+        .report_state(&device, BOOK, update("Reading", Some("kobo.2.1")))
+        .await;
+
+    let state = fetch(&harness, &device).await;
+
+    assert_eq!(state["CurrentBookmark"]["Location"]["Value"], "kobo.2.1");
+    for part in ["StatusInfo", "Statistics", "CurrentBookmark"] {
+        assert_eq!(state[part]["LastModified"], EPOCH, "{part}");
+    }
+    assert_eq!(state["LastModified"], EPOCH);
+}
+
+#[tokio::test]
+async fn dates_a_position_changed_elsewhere_now() {
+    let (harness, device) = with_book().await;
+    harness
+        .report_state(&device, BOOK, update("Reading", Some("kobo.2.1")))
+        .await;
+    harness.client.seed_state(
+        BOOK,
+        state(
+            Some(&format!("{CHAPTER}#0/0/0/t0:0")),
+            ProsaReadingStatus::Reading,
+        ),
+    );
+
+    let bookmark = &fetch(&harness, &device).await["CurrentBookmark"];
+
+    assert_eq!(bookmark["Location"]["Value"], "kobo.1.1");
+    assert_ne!(bookmark["LastModified"], EPOCH);
+}
+
+#[tokio::test]
+async fn does_not_offer_back_a_book_the_device_put_aside() {
+    let (harness, device) = with_book().await;
+    harness
+        .report_state(&device, BOOK, update("ReadyToRead", Some("kobo.2.1")))
+        .await;
+
+    let state = fetch(&harness, &device).await;
+
+    assert_eq!(state["StatusInfo"]["Status"], "ReadyToRead");
+    assert_eq!(state["CurrentBookmark"]["LastModified"], EPOCH);
+}
+
+#[tokio::test]
+async fn dates_a_state_now_for_a_device_that_never_reported_it() {
+    let (harness, device) = with_book().await;
+    let other = harness.link("Other Kobo", common::API_KEY).await;
+    harness
+        .report_state(&other, BOOK, update("Reading", Some("kobo.2.1")))
+        .await;
+
+    assert_ne!(fetch(&harness, &device).await["LastModified"], EPOCH);
 }
 
 #[tokio::test]

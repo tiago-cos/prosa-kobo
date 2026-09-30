@@ -99,6 +99,7 @@ async fn linked_devices(pool: &SqlitePool) -> Vec<String> {
 fn schema() -> Vec<String> {
     vec![
         "cover_versions".to_owned(),
+        "device_states".to_owned(),
         "etags".to_owned(),
         "linked_devices".to_owned(),
     ]
@@ -186,6 +187,20 @@ async fn reverting_to_zero_backs_up_and_drops_the_schema_which_the_next_start_re
 
     let pool = init(&scratch.database).await.expect("Failed to initialize again");
     assert_eq!(tables(&pool).await, schema());
+}
+
+#[tokio::test]
+async fn reverting_to_the_first_version_forgets_what_devices_hold_but_keeps_the_devices() {
+    let scratch = Scratch::new();
+    let pool = init(&scratch.database).await.expect("Failed to initialize");
+    link_device(&pool).await;
+
+    revert_to(&pool, 1, &scratch.database)
+        .await
+        .expect("Failed to revert");
+
+    assert!(!tables(&pool).await.contains(&"device_states".to_owned()));
+    assert_eq!(linked_devices(&pool).await, vec!["device".to_owned()]);
 }
 
 #[tokio::test]

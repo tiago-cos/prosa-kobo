@@ -4,6 +4,10 @@ pub fn now() -> String {
     format(Utc::now().trunc_subsecs(3))
 }
 
+pub fn epoch() -> String {
+    format(DateTime::UNIX_EPOCH)
+}
+
 pub fn from_millis(millis: i64) -> Option<String> {
     DateTime::from_timestamp_millis(millis).map(format)
 }

@@ -38,6 +38,7 @@ pub const API_KEY: &str = "anapikey";
 pub const USER: &str = "user";
 pub const USERNAME: &str = "reader";
 pub const DEVICE_HARDWARE_ID: &str = "N123456789012";
+pub const EPOCH: &str = "1970-01-01T00:00:00.0000000Z";
 pub const HOST: &str = "middleware.test:5001";
 
 /// A middleware wired to an in-memory Prosa and a database of its own, so a
@@ -189,6 +190,25 @@ impl Harness {
         self.send(request).await
     }
 
+    pub async fn report_state(&self, device: &Device, book_id: &str, state: Value) {
+        let response = self
+            .json(
+                Method::PUT,
+                &device.at(&format!("/v1/library/{book_id}/state")),
+                state,
+            )
+            .await;
+
+        assert_eq!(response.status(), StatusCode::OK);
+    }
+
+    pub async fn held_states(&self) -> i64 {
+        sqlx::query_scalar("SELECT COUNT(*) FROM device_states")
+            .fetch_one(database::pool())
+            .await
+            .expect("Failed to count the device states")
+    }
+
     pub async fn json(&self, method: Method, uri: &str, body: Value) -> Response<Body> {
         self.json_with(method, uri, &[], body).await
     }
@@ -229,6 +249,26 @@ impl Device {
     pub fn at(&self, path: &str) -> String {
         format!("/{}{path}", self.lookup_key)
     }
+}
+
+pub fn reported_state(book_id: &str, chapter: &str, status: &str, span: Option<&str>) -> Value {
+    let stamp = "2026-09-20T16:03:39Z";
+    let location = span.map(
+        |span| json!({ "Value": span, "Type": "KoboSpan", "Source": format!("book.kepub.epub!!{chapter}") }),
+    );
+
+    json!({ "ReadingStates": [{
+        "EntitlementId": book_id,
+        "LastModified": stamp,
+        "StatusInfo": { "LastModified": stamp, "Status": status },
+        "Statistics": { "LastModified": stamp, "SpentReadingMinutes": 5, "RemainingTimeMinutes": 60 },
+        "CurrentBookmark": {
+            "LastModified": stamp,
+            "ProgressPercent": 10,
+            "ContentSourceProgressPercent": 10,
+            "Location": location,
+        },
+    }]})
 }
 
 pub async fn body_json(response: Response<Body>) -> Value {

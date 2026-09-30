@@ -1,5 +1,5 @@
 use crate::{
-    app::{kepub::KoboPosition, kobo_time},
+    app::{error::unmapped, kepub::KoboPosition, kobo_time},
     client::ProsaReadingStatus,
 };
 use serde::{Deserialize, Serialize};
@@ -16,6 +16,16 @@ pub enum StateError {
     #[strum(detailed_message = "A state must be provided.")]
     #[strum(props(StatusCode = "400"))]
     MissingState,
+    #[strum(message = "InternalError")]
+    #[strum(detailed_message = "Internal error")]
+    #[strum(props(StatusCode = "500"))]
+    InternalError,
+}
+
+impl From<sqlx::Error> for StateError {
+    fn from(error: sqlx::Error) -> Self {
+        unmapped(&error, StateError::InternalError)
+    }
 }
 
 #[skip_serializing_none]
@@ -31,7 +41,7 @@ pub struct ReadingState {
     pub priority_timestamp: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, sqlx::Type, Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ReadingStatus {
     ReadyToRead,
     Finished,
@@ -138,8 +148,54 @@ impl ReadingState {
         }
     }
 
+    #[must_use]
+    pub fn dated(mut self, time: &str) -> Self {
+        self.created = Some(time.to_owned());
+        for stamp in [
+            &mut self.last_modified,
+            &mut self.status_info.last_modified,
+            &mut self.statistics.last_modified,
+            &mut self.current_bookmark.last_modified,
+        ] {
+            time.clone_into(stamp);
+        }
+
+        self
+    }
+
     pub fn for_removed_book() -> Self {
         ReadingState::new("placeholder", ReadingStatus::Reading, None)
+    }
+}
+
+#[derive(sqlx::FromRow, Debug, Clone, PartialEq, Eq)]
+pub struct DeviceState {
+    pub status: ReadingStatus,
+    pub chapter: Option<String>,
+    pub span: Option<String>,
+}
+
+impl DeviceState {
+    pub fn of(state: &ReadingState) -> Self {
+        let status = state.status_info.status;
+        let position = match status {
+            ReadingStatus::Reading => state.current_bookmark.location.as_ref().map(Location::position),
+            ReadingStatus::ReadyToRead | ReadingStatus::Finished => None,
+        };
+
+        Self {
+            status,
+            chapter: position.as_ref().map(|position| position.chapter.clone()),
+            span: position.map(|position| position.span),
+        }
+    }
+
+    pub fn is_news_to(&self, held: Option<&DeviceState>) -> bool {
+        match (self.status, held) {
+            (ReadingStatus::Reading, Some(held)) => held.status != ReadingStatus::Reading,
+            (ReadingStatus::Reading, None) => true,
+            (_, held) => held != Some(self),
+        }
     }
 }
 
@@ -334,5 +390,61 @@ mod tests {
         ] {
             assert_eq!(ProsaReadingStatus::from(ReadingStatus::from(status)), status);
         }
+    }
+
+    fn held(status: ReadingStatus, span: Option<&str>) -> DeviceState {
+        let position = span.map(|span| KoboPosition::new("OEBPS/chapter.xhtml", span, 0));
+
+        DeviceState::of(&ReadingState::new("book", status, position))
+    }
+
+    #[test]
+    fn holds_a_position_only_while_a_book_is_being_read() {
+        assert_eq!(
+            held(ReadingStatus::Reading, Some("kobo.1.1")).span.as_deref(),
+            Some("kobo.1.1")
+        );
+        assert_eq!(held(ReadingStatus::Finished, Some("kobo.1.1")).span, None);
+        assert_eq!(held(ReadingStatus::ReadyToRead, Some("kobo.1.1")).span, None);
+    }
+
+    #[test]
+    fn reads_the_chapter_a_device_names_through_its_book_file() {
+        let reported = Location {
+            value: "kobo.1.1".to_owned(),
+            r#type: "KoboSpan".to_owned(),
+            source: "book.kepub.epub!!OEBPS/chapter.xhtml".to_owned(),
+        };
+        let mut state = ReadingState::new("book", ReadingStatus::Reading, None);
+        state.current_bookmark.location = Some(reported);
+
+        assert_eq!(
+            DeviceState::of(&state),
+            held(ReadingStatus::Reading, Some("kobo.1.1"))
+        );
+    }
+
+    #[test]
+    fn leaves_a_new_position_to_a_device_already_reading() {
+        let moved = held(ReadingStatus::Reading, Some("kobo.9.1"));
+
+        assert!(!moved.is_news_to(Some(&held(ReadingStatus::Reading, Some("kobo.1.1")))));
+        assert!(moved.is_news_to(Some(&held(ReadingStatus::ReadyToRead, None))));
+        assert!(moved.is_news_to(Some(&held(ReadingStatus::Finished, None))));
+        assert!(moved.is_news_to(None));
+    }
+
+    #[test]
+    fn sends_a_book_put_aside_only_to_a_device_that_does_not_hold_it_so() {
+        for status in [ReadingStatus::ReadyToRead, ReadingStatus::Finished] {
+            let put_aside = held(status, None);
+
+            assert!(!put_aside.is_news_to(Some(&held(status, None))));
+            assert!(put_aside.is_news_to(Some(&held(ReadingStatus::Reading, Some("kobo.1.1")))));
+            assert!(put_aside.is_news_to(None));
+        }
+        assert!(
+            held(ReadingStatus::Finished, None).is_news_to(Some(&held(ReadingStatus::ReadyToRead, None)))
+        );
     }
 }

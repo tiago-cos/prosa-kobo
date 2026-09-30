@@ -10,7 +10,7 @@ use base64::{
 };
 use common::{
     API_KEY, EVERY_CAPABILITY, HOST, Harness, USER, assert_internal_error, bearer, body_json, expired_jwt,
-    jwt,
+    jwt, reported_state,
 };
 use prosa_kobo::client::{mock::ProsaMethod, prosa::ClientError};
 use serde_json::{Value, json};
@@ -291,6 +291,21 @@ async fn unlinking_a_device_retires_its_endpoint() {
             .status(),
         StatusCode::UNAUTHORIZED
     );
+}
+
+#[tokio::test]
+async fn unlinking_a_device_forgets_the_reading_states_it_held() {
+    let harness = Harness::new().await;
+    let device = harness.linked().await;
+    harness.add_book("book");
+    harness
+        .report_state(&device, "book", reported_state("book", "", "ReadyToRead", None))
+        .await;
+
+    let response = unlink(&harness, &user(), &device.device_id).await;
+
+    assert_eq!(response.status(), StatusCode::NO_CONTENT);
+    assert_eq!(harness.held_states().await, 0);
 }
 
 #[tokio::test]

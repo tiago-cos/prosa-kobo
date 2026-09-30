@@ -20,7 +20,8 @@ pub async fn get_state_handler(
     Path(book_id): Path<String>,
     Extension(token): Extension<AuthToken>,
 ) -> Result<impl IntoResponse, KoboError> {
-    let response = service::translate_get_state(prosa_client(), &book_id, &token.api_key).await?;
+    let response =
+        service::translate_get_state(prosa_client(), &book_id, &token.api_key, &token.device_id).await?;
 
     Ok(Json(vec![response]))
 }
@@ -32,7 +33,9 @@ pub async fn update_state_handler(
 ) -> Result<impl IntoResponse, KoboError> {
     let state = request.reading_states.first().ok_or(StateError::MissingState)?;
 
-    let response = service::translate_update_state(prosa_client(), &book_id, state, &token.api_key).await?;
+    let response =
+        service::translate_update_state(prosa_client(), &book_id, state, &token.api_key, &token.device_id)
+            .await?;
 
     Ok(Json(response))
 }

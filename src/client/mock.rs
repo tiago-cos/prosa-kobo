@@ -438,13 +438,15 @@ impl ProsaApi for MockProsaClient {
             validate_location(book.file.as_deref(), location)?;
         }
 
-        let state = book.state.as_mut().ok_or(ClientError::NotFound)?;
+        let mut state = book.state.clone().ok_or(ClientError::NotFound)?;
 
         if let Some(location) = location {
             state.location = Some(location.to_owned());
         }
 
         state.statistics.reading_status = reading_status;
+        located_only_while_reading(&state)?;
+        book.state = Some(state);
 
         Ok(())
     }
@@ -472,6 +474,7 @@ impl ProsaApi for MockProsaClient {
             validate_location(book.file.as_deref(), location)?;
         }
 
+        located_only_while_reading(state)?;
         book.state = Some(state.clone());
 
         Ok(())
@@ -774,6 +777,14 @@ impl ProsaApi for MockProsaClient {
 
         Ok(())
     }
+}
+
+fn located_only_while_reading(state: &ProsaState) -> Result<(), ClientError> {
+    if state.location.is_some() && state.statistics.reading_status != ProsaReadingStatus::Reading {
+        return Err(ClientError::BadRequest);
+    }
+
+    Ok(())
 }
 
 fn readable(error: &KepubError) -> bool {

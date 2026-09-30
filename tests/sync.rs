@@ -1,7 +1,7 @@
 mod common;
 
 use axum::http::{Method, StatusCode};
-use common::{Device, Harness, assert_internal_error, body_json};
+use common::{Device, EPOCH, Harness, assert_internal_error, body_json, reported_state};
 use prosa_kobo::client::{
     ProsaReadingStatus,
     mock::ProsaMethod,
@@ -12,6 +12,7 @@ use prosa_kobo::client::{
 use serde_json::{Value, json};
 
 const TOKEN: &str = "X-Kobo-Synctoken";
+const CHAPTER: &str = "OEBPS/7860148755851063127_64317-h-2.htm.xhtml";
 
 fn books(change: impl FnOnce(&mut ProsaBookSync)) -> ProsaSync {
     let mut sync = ProsaSync {
@@ -121,6 +122,112 @@ async fn sends_a_reading_state_changed_elsewhere_on_its_own() {
     assert!(items[0]["NewEntitlement"].is_null());
     assert_eq!(state["EntitlementId"], "book");
     assert_eq!(state["StatusInfo"]["Status"], "Reading");
+}
+
+fn finished() -> ProsaState {
+    ProsaState {
+        location: None,
+        statistics: ProsaStatistics {
+            rating: None,
+            reading_status: ProsaReadingStatus::Read,
+        },
+    }
+}
+
+async fn holding(harness: &Harness, device: &Device, status: &str, span: Option<&str>) {
+    harness
+        .report_state(device, "book", reported_state("book", CHAPTER, status, span))
+        .await;
+}
+
+fn state_changed(harness: &Harness) {
+    harness
+        .client
+        .seed_sync(books(|books| books.state = vec!["book".to_owned()]));
+}
+
+#[tokio::test]
+async fn leaves_a_position_moved_elsewhere_for_the_device_to_offer_on_opening() {
+    let harness = Harness::new().await;
+    let device = harness.linked().await;
+    harness.add_book("book");
+    holding(&harness, &device, "Reading", Some("kobo.2.1")).await;
+    harness
+        .client
+        .seed_state("book", reading(Some(&format!("{CHAPTER}#0/0/0/t0:0"))));
+    state_changed(&harness);
+
+    assert!(sync(&harness, &device).await.is_empty());
+}
+
+#[tokio::test]
+async fn sends_a_position_to_a_device_holding_the_book_unread_once() {
+    let harness = Harness::new().await;
+    let device = harness.linked().await;
+    harness.add_book("book");
+    holding(&harness, &device, "ReadyToRead", None).await;
+    harness
+        .client
+        .seed_state("book", reading(Some(&format!("{CHAPTER}#0/0/0/t0:0"))));
+    state_changed(&harness);
+
+    let items = sync(&harness, &device).await;
+    let state = &items[0]["ChangedReadingState"]["ReadingState"];
+
+    assert_eq!(state["StatusInfo"]["Status"], "Reading");
+    assert_eq!(state["CurrentBookmark"]["Location"]["Value"], "kobo.1.1");
+    assert!(sync(&harness, &device).await.is_empty());
+}
+
+#[tokio::test]
+async fn sends_a_book_finished_elsewhere_once() {
+    let harness = Harness::new().await;
+    let device = harness.linked().await;
+    harness.add_book("book");
+    holding(&harness, &device, "Reading", Some("kobo.2.1")).await;
+    harness.client.seed_state("book", finished());
+    state_changed(&harness);
+
+    let items = sync(&harness, &device).await;
+
+    assert_eq!(
+        items[0]["ChangedReadingState"]["ReadingState"]["StatusInfo"]["Status"],
+        "Finished"
+    );
+    assert!(sync(&harness, &device).await.is_empty());
+}
+
+#[tokio::test]
+async fn takes_the_state_sent_with_a_whole_book_as_the_one_the_device_holds() {
+    let harness = Harness::new().await;
+    let device = harness.linked().await;
+    harness.add_book("book");
+    harness
+        .client
+        .seed_state("book", reading(Some(&format!("{CHAPTER}#0/0/0/t0:0"))));
+    harness
+        .client
+        .seed_sync(books(|books| books.file = vec!["book".to_owned()]));
+    sync(&harness, &device).await;
+
+    let response = harness.get(&device.at("/v1/library/book/state")).await;
+
+    assert_eq!(body_json(response).await[0]["LastModified"], EPOCH);
+}
+
+#[tokio::test]
+async fn forgets_the_state_the_device_held_of_a_deleted_book() {
+    let harness = Harness::new().await;
+    let device = harness.linked().await;
+    harness.add_book("book");
+    holding(&harness, &device, "Reading", Some("kobo.2.1")).await;
+    harness
+        .client
+        .seed_sync(books(|books| books.deleted = vec!["book".to_owned()]));
+
+    sync(&harness, &device).await;
+
+    assert_eq!(harness.held_states().await, 0);
 }
 
 #[tokio::test]
