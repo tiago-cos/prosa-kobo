@@ -38,3 +38,7 @@ regex = "1.13.1"
 tower = { version = "0.5.3", features = ["util"] }
 uuid = { version = "1.26.1", features = ["v4"] }
 zip = "8.6.0"
+
+[[example]]
+name = "device_test"
+test = true
