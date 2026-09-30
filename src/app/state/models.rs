@@ -190,11 +190,11 @@ impl DeviceState {
         }
     }
 
-    pub fn is_news_to(&self, held: Option<&DeviceState>) -> bool {
-        match (self.status, held) {
-            (ReadingStatus::Reading, Some(held)) => held.status != ReadingStatus::Reading,
+    pub fn needs_sync(&self, stored: Option<&DeviceState>) -> bool {
+        match (self.status, stored) {
+            (ReadingStatus::Reading, Some(stored)) => stored.status != ReadingStatus::Reading,
             (ReadingStatus::Reading, None) => true,
-            (_, held) => held != Some(self),
+            (_, stored) => stored != Some(self),
         }
     }
 }
@@ -392,7 +392,7 @@ mod tests {
         }
     }
 
-    fn held(status: ReadingStatus, span: Option<&str>) -> DeviceState {
+    fn device_state(status: ReadingStatus, span: Option<&str>) -> DeviceState {
         let position = span.map(|span| KoboPosition::new("OEBPS/chapter.xhtml", span, 0));
 
         DeviceState::of(&ReadingState::new("book", status, position))
@@ -401,11 +401,16 @@ mod tests {
     #[test]
     fn holds_a_position_only_while_a_book_is_being_read() {
         assert_eq!(
-            held(ReadingStatus::Reading, Some("kobo.1.1")).span.as_deref(),
+            device_state(ReadingStatus::Reading, Some("kobo.1.1"))
+                .span
+                .as_deref(),
             Some("kobo.1.1")
         );
-        assert_eq!(held(ReadingStatus::Finished, Some("kobo.1.1")).span, None);
-        assert_eq!(held(ReadingStatus::ReadyToRead, Some("kobo.1.1")).span, None);
+        assert_eq!(device_state(ReadingStatus::Finished, Some("kobo.1.1")).span, None);
+        assert_eq!(
+            device_state(ReadingStatus::ReadyToRead, Some("kobo.1.1")).span,
+            None
+        );
     }
 
     #[test]
@@ -420,31 +425,32 @@ mod tests {
 
         assert_eq!(
             DeviceState::of(&state),
-            held(ReadingStatus::Reading, Some("kobo.1.1"))
+            device_state(ReadingStatus::Reading, Some("kobo.1.1"))
         );
     }
 
     #[test]
     fn leaves_a_new_position_to_a_device_already_reading() {
-        let moved = held(ReadingStatus::Reading, Some("kobo.9.1"));
+        let moved = device_state(ReadingStatus::Reading, Some("kobo.9.1"));
 
-        assert!(!moved.is_news_to(Some(&held(ReadingStatus::Reading, Some("kobo.1.1")))));
-        assert!(moved.is_news_to(Some(&held(ReadingStatus::ReadyToRead, None))));
-        assert!(moved.is_news_to(Some(&held(ReadingStatus::Finished, None))));
-        assert!(moved.is_news_to(None));
+        assert!(!moved.needs_sync(Some(&device_state(ReadingStatus::Reading, Some("kobo.1.1")))));
+        assert!(moved.needs_sync(Some(&device_state(ReadingStatus::ReadyToRead, None))));
+        assert!(moved.needs_sync(Some(&device_state(ReadingStatus::Finished, None))));
+        assert!(moved.needs_sync(None));
     }
 
     #[test]
     fn sends_a_book_put_aside_only_to_a_device_that_does_not_hold_it_so() {
         for status in [ReadingStatus::ReadyToRead, ReadingStatus::Finished] {
-            let put_aside = held(status, None);
+            let put_aside = device_state(status, None);
 
-            assert!(!put_aside.is_news_to(Some(&held(status, None))));
-            assert!(put_aside.is_news_to(Some(&held(ReadingStatus::Reading, Some("kobo.1.1")))));
-            assert!(put_aside.is_news_to(None));
+            assert!(!put_aside.needs_sync(Some(&device_state(status, None))));
+            assert!(put_aside.needs_sync(Some(&device_state(ReadingStatus::Reading, Some("kobo.1.1")))));
+            assert!(put_aside.needs_sync(None));
         }
         assert!(
-            held(ReadingStatus::Finished, None).is_news_to(Some(&held(ReadingStatus::ReadyToRead, None)))
+            device_state(ReadingStatus::Finished, None)
+                .needs_sync(Some(&device_state(ReadingStatus::ReadyToRead, None)))
         );
     }
 }

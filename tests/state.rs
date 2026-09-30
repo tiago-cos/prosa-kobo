@@ -240,6 +240,27 @@ async fn dates_a_position_changed_elsewhere_now() {
 }
 
 #[tokio::test]
+async fn dates_a_changed_state_asked_for_again_before_the_devices_own() {
+    let (harness, device) = with_book().await;
+    harness
+        .report_state(&device, BOOK, update("Reading", Some("kobo.2.1")))
+        .await;
+    harness.client.seed_state(
+        BOOK,
+        state(
+            Some(&format!("{CHAPTER}#0/0/0/t0:0")),
+            ProsaReadingStatus::Reading,
+        ),
+    );
+    fetch(&harness, &device).await;
+
+    let bookmark = &fetch(&harness, &device).await["CurrentBookmark"];
+
+    assert_eq!(bookmark["Location"]["Value"], "kobo.1.1");
+    assert_eq!(bookmark["LastModified"], EPOCH);
+}
+
+#[tokio::test]
 async fn does_not_offer_back_a_book_the_device_put_aside() {
     let (harness, device) = with_book().await;
     harness

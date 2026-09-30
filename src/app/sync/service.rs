@@ -50,7 +50,7 @@ pub async fn translate_sync(
     for book_id in books_to_update {
         let entitlement = BookEntitlement::new(&book_id, false);
         let reading_state =
-            state::service::translate_book_state(client, &book_id, api_key, device_id).await?;
+            state::service::translate_sync_create_state(client, &book_id, api_key, device_id).await?;
         let metadata =
             metadata::service::translate_metadata(client, &book_id, server_url, api_key, device_id).await?;
 
@@ -62,7 +62,7 @@ pub async fn translate_sync(
 
     for book_id in states_to_update {
         let Some(reading_state) =
-            state::service::translate_changed_state(client, &book_id, api_key, device_id).await?
+            state::service::translate_sync_update_state(client, &book_id, api_key, device_id).await?
         else {
             continue;
         };
@@ -72,7 +72,7 @@ pub async fn translate_sync(
     }
 
     for book_id in books.deleted {
-        state::service::forget_book(device_id, &book_id).await?;
+        state::service::translate_sync_delete_state(device_id, &book_id).await?;
         let entitlement = BookEntitlement::new(&book_id, true);
         let reading_state = ReadingState::for_removed_book();
         let metadata = BookMetadata::for_removed_book();
