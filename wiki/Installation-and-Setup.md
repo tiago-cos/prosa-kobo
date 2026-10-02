@@ -87,7 +87,7 @@ curl http://localhost:5001/health
 ```
 
 ```json
-{ "status": "ok", "software": "prosa-kobo", "version": "0.1.0" }
+{ "status": "ok", "software": "prosa-kobo", "version": "0.2.0" }
 ```
 
 Once it answers, carry on to [Connecting a Kobo](Connecting-a-Kobo).
