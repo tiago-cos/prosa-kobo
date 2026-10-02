@@ -362,15 +362,14 @@ async fn holds_a_location_only_while_a_book_is_being_read(backend: &dyn Backend)
     );
 
     for status in [ProsaReadingStatus::Read, ProsaReadingStatus::Unread] {
-        assert_eq!(
-            client.patch_state(&book, None, status, key).await,
-            Err(ClientError::BadRequest)
-        );
-
         let mut state = fetch().await;
         state.statistics.reading_status = status;
         assert_eq!(
             client.replace_state(&book, &state, key).await,
+            Err(ClientError::BadRequest)
+        );
+        assert_eq!(
+            client.patch_state(&book, Some(&later()), status, key).await,
             Err(ClientError::BadRequest)
         );
 
@@ -381,6 +380,35 @@ async fn holds_a_location_only_while_a_book_is_being_read(backend: &dyn Backend)
         state.location = Some(earlier());
         state.statistics.reading_status = ProsaReadingStatus::Reading;
         assert_eq!(client.replace_state(&book, &state, key).await, Ok(()));
+    }
+}
+
+async fn drops_the_location_when_a_patch_puts_a_book_aside(backend: &dyn Backend) {
+    let client = backend.client();
+    let key = backend.key();
+    let book = backend.add_book().await;
+
+    for status in [ProsaReadingStatus::Read, ProsaReadingStatus::Unread] {
+        let reading = ProsaState {
+            location: Some(earlier()),
+            statistics: ProsaStatistics {
+                rating: Some(4.0),
+                reading_status: ProsaReadingStatus::Reading,
+            },
+        };
+        assert_eq!(client.replace_state(&book, &reading, key).await, Ok(()));
+
+        assert_eq!(client.patch_state(&book, None, status, key).await, Ok(()));
+        assert_eq!(
+            client.fetch_state(&book, key).await,
+            Ok(ProsaState {
+                location: None,
+                statistics: ProsaStatistics {
+                    rating: Some(4.0),
+                    reading_status: status,
+                },
+            })
+        );
     }
 }
 
@@ -632,6 +660,7 @@ contract!(
     keeps_a_reading_position_only_where_the_book_has_one,
     replaces_a_state_as_long_as_it_is_valid,
     holds_a_location_only_while_a_book_is_being_read,
+    drops_the_location_when_a_patch_puts_a_book_aside,
     keeps_an_annotation_over_text_until_it_is_deleted,
     refuses_an_annotation_that_is_not_a_stretch_of_text,
     refuses_to_annotate_a_span_or_reuse_an_id_twice,

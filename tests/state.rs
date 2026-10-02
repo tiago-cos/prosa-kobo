@@ -174,7 +174,7 @@ async fn drops_the_position_when_the_device_puts_a_book_aside() {
         assert_eq!(stored.location, None);
         assert_eq!(stored.statistics.rating, Some(4.0));
     }
-    assert_eq!(harness.client.call_count(ProsaMethod::PatchState), 0);
+    assert_eq!(harness.client.call_count(ProsaMethod::ReplaceState), 0);
 }
 
 #[tokio::test]

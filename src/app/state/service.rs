@@ -94,24 +94,17 @@ pub async fn translate_update_state(
 ) -> Result<UpdateStateResponse, KoboError> {
     let status: ProsaReadingStatus = state.status_info.status.into();
 
-    if status == ProsaReadingStatus::Reading {
-        let location = match state.current_bookmark.location.as_ref().map(Location::position) {
-            Some(position) => {
-                let kepub = kepub::get_kepub(client, book_id, api_key).await?;
-                kepub::to_prosa_location(&kepub, &position)
-            }
-            None => None,
-        };
+    let location = match state.current_bookmark.location.as_ref().map(Location::position) {
+        Some(position) if status == ProsaReadingStatus::Reading => {
+            let kepub = kepub::get_kepub(client, book_id, api_key).await?;
+            kepub::to_prosa_location(&kepub, &position)
+        }
+        _ => None,
+    };
 
-        client
-            .patch_state(book_id, location.as_deref(), status, api_key)
-            .await?;
-    } else {
-        let mut stored = client.fetch_state(book_id, api_key).await?;
-        stored.location = None;
-        stored.statistics.reading_status = status;
-        client.replace_state(book_id, &stored, api_key).await?;
-    }
+    client
+        .patch_state(book_id, location.as_deref(), status, api_key)
+        .await?;
 
     data::set_device_state(pool(), device_id, book_id, &DeviceState::of(state)).await?;
 

@@ -440,8 +440,10 @@ impl ProsaApi for MockProsaClient {
 
         let mut state = book.state.clone().ok_or(ClientError::NotFound)?;
 
-        if let Some(location) = location {
-            state.location = Some(location.to_owned());
+        match location {
+            Some(location) => state.location = Some(location.to_owned()),
+            None if reading_status != ProsaReadingStatus::Reading => state.location = None,
+            None => (),
         }
 
         state.statistics.reading_status = reading_status;
