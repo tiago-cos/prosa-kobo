@@ -1,13 +1,13 @@
 use super::{
-    annotations, authentication, books, covers, devices, fallback, initialization, kepub, metadata, state,
-    sync,
+    annotations, authentication, books, covers, devices, fallback, health, initialization, kepub, metadata,
+    state, sync,
 };
 use crate::{
     CONFIG,
     app::{authentication::middleware::extract_device_middleware, shelves, tracing},
     client::{prosa::ProsaApi, prosa_client},
 };
-use axum::{Router, http::StatusCode, middleware::from_fn, routing::get};
+use axum::{Router, middleware::from_fn};
 use log::{error, info, warn};
 use std::{process::exit, sync::LazyLock, time::Duration};
 use tokio::{net::TcpListener, time::sleep};
@@ -58,7 +58,7 @@ pub fn router() -> Router {
         .service(device);
 
     Router::new()
-        .route("/health", get(|| async { StatusCode::NO_CONTENT }))
+        .merge(health::routes::get_routes())
         .merge(devices::routes::get_routes())
         .fallback_service(device)
         .layer(from_fn(tracing::log_layer))

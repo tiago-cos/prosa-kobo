@@ -1,13 +1,20 @@
 mod common;
 
 use axum::http::{Request, StatusCode};
-use common::Harness;
+use common::{Harness, body_json};
+use serde_json::json;
 
 #[tokio::test]
 async fn the_router_answers_without_a_prosa_behind_it() {
     let harness = Harness::new().await;
 
-    assert_eq!(harness.get("/health").await.status(), StatusCode::NO_CONTENT);
+    let response = harness.get("/health").await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(
+        body_json(response).await,
+        json!({ "status": "ok", "software": "prosa-kobo", "version": env!("CARGO_PKG_VERSION") })
+    );
 }
 
 #[tokio::test]

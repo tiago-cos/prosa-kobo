@@ -7,6 +7,7 @@ pub mod devices;
 mod endpoint;
 mod error;
 mod fallback;
+mod health;
 mod initialization;
 pub mod kepub;
 mod kobo_time;
