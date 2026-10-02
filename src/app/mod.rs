@@ -15,7 +15,7 @@ mod server;
 mod shelves;
 mod state;
 mod sync;
-mod tracing;
+pub mod tracing;
 
 pub use endpoint::{Host, device_url};
 pub use server::*;

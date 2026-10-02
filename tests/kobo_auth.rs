@@ -1,7 +1,9 @@
 mod common;
 
 use axum::http::{Method, StatusCode};
+use axum::{body::Body, http::Response};
 use common::{API_KEY, DEVICE_HARDWARE_ID, Harness, assert_internal_error, body_json};
+use prosa_kobo::app::tracing::LoggedPath;
 
 const DEVICE_ID: &str = "x-kobo-deviceid";
 const AWKWARD_HOST: &str = r#"kobo"local\:5001"#;
@@ -34,6 +36,50 @@ async fn a_request_carrying_no_key_at_all_is_turned_away() {
     let response = harness.get("/v1/initialization").await;
 
     assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+}
+
+fn logged_path(response: &Response<Body>) -> Option<&str> {
+    response
+        .extensions()
+        .get::<LoggedPath>()
+        .map(|LoggedPath(path)| path.as_str())
+}
+
+#[tokio::test]
+async fn logs_a_device_request_without_its_lookup_key() {
+    let harness = Harness::new().await;
+    let device = harness.linked().await;
+
+    let response = harness.get(&device.at("/v1/initialization")).await;
+
+    assert_eq!(logged_path(&response), Some("/v1/initialization"));
+}
+
+#[tokio::test]
+async fn logs_a_request_under_an_unknown_key_without_the_key() {
+    let harness = Harness::new().await;
+    harness.linked().await;
+
+    let response = harness.get("/a-stale-key/v1/library/book/state").await;
+
+    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+    assert_eq!(logged_path(&response), Some("/v1/library/book/state"));
+}
+
+#[tokio::test]
+async fn logs_a_request_the_device_sends_without_a_key_whole() {
+    let harness = Harness::new().await;
+    harness.linked().await;
+
+    let response = harness
+        .request(
+            Method::POST,
+            "/api/v3/content/checkforchanges",
+            &[(DEVICE_ID, DEVICE_HARDWARE_ID)],
+        )
+        .await;
+
+    assert_eq!(logged_path(&response), Some("/api/v3/content/checkforchanges"));
 }
 
 #[tokio::test]

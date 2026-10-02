@@ -16,6 +16,9 @@ use tracing_subscriber::{
 #[derive(Clone, Copy)]
 pub struct Unhandled;
 
+#[derive(Clone)]
+pub struct LoggedPath(pub String);
+
 pub fn init_logging() {
     let fmt_layer = layer()
         .with_target(false)
@@ -40,6 +43,10 @@ pub async fn log_layer(req: Request, next: Next) -> Response {
 
     let mut response = next.run(req).await;
 
+    let path = match response.extensions().get::<LoggedPath>() {
+        Some(LoggedPath(logged)) => logged.clone(),
+        None => path,
+    };
     let status = response.status();
 
     let colored_code = if status.is_success() || status.is_redirection() {
@@ -53,8 +60,7 @@ pub async fn log_layer(req: Request, next: Next) -> Response {
     } else if status.is_success() || status.is_redirection() {
         info!("{method} {path} [{colored_code}]");
     } else {
-        let headers = response.headers().clone();
-        let body = response.into_body();
+        let (parts, body) = response.into_parts();
         let bytes = to_bytes(body, 1000).await.unwrap_or_default();
 
         let log_message = match serde_json::from_slice::<ErrorResponse>(&bytes) {
@@ -68,14 +74,7 @@ pub async fn log_layer(req: Request, next: Next) -> Response {
             error!("{method} {path} [{colored_code} - {log_message}]");
         }
 
-        let mut builder = Response::builder().status(status);
-        for (key, value) in headers {
-            if let Some(k) = key {
-                builder = builder.header(k, value);
-            }
-        }
-
-        response = builder.body(Body::from(bytes)).unwrap();
+        response = Response::from_parts(parts, Body::from(bytes));
     }
 
     response

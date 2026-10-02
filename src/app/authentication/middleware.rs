@@ -3,16 +3,18 @@ use crate::app::{
     authentication::models::{AuthToken, ProsaToken},
     devices,
     error::KoboError,
+    tracing::LoggedPath,
 };
 use axum::{
     extract::Request,
     http::{self, HeaderMap, HeaderValue, Uri, uri::PathAndQuery},
     middleware::Next,
-    response::IntoResponse,
+    response::{IntoResponse, Response},
 };
 use log::warn;
 
 const MAX_CLIENT_DEVICE_ID: usize = 128;
+const UNKEYED_PREFIX: &str = "/api/v3/content/";
 
 /// The lookup key reaches the middleware as the first path segment, stripped
 /// here so routes see the paths they were written for.
@@ -22,10 +24,35 @@ const MAX_CLIENT_DEVICE_ID: usize = 128;
 /// the device keeps only its scheme, host and port and everything under
 /// `/api/v3/content` arrives with no key. Those are matched on the hardware id
 /// the device sends instead, which keyed requests record as they pass.
-pub async fn extract_device_middleware(
-    mut request: Request,
-    next: Next,
-) -> Result<impl IntoResponse, KoboError> {
+///
+/// Every response is marked with the path to log, which leaves out the key
+/// whether or not it named a device, so a key never reaches the log.
+pub async fn extract_device_middleware(request: Request, next: Next) -> Response {
+    let logged = LoggedPath(without_lookup_key(request.uri().path()));
+
+    let mut response = match identify_device(request, next).await {
+        Ok(response) => response,
+        Err(error) => error.into_response(),
+    };
+    response.extensions_mut().insert(logged);
+
+    response
+}
+
+fn without_lookup_key(path: &str) -> String {
+    if path.starts_with(UNKEYED_PREFIX) {
+        return path.to_owned();
+    }
+
+    let remainder = path
+        .trim_start_matches('/')
+        .split_once('/')
+        .map_or("", |(_, rest)| rest);
+
+    format!("/{remainder}")
+}
+
+async fn identify_device(mut request: Request, next: Next) -> Result<Response, KoboError> {
     let path = request.uri().path().to_owned();
     let mut segments = path.trim_start_matches('/').splitn(2, '/');
 
@@ -82,7 +109,7 @@ fn report_unrecognized(request: &Request) {
     warn!(
         "{} {} named no device. Headers: [{}]. Kobo headers: [{}]",
         request.method(),
-        request.uri().path(),
+        without_lookup_key(request.uri().path()),
         names.join(", "),
         kobo.join(", ")
     );
@@ -121,4 +148,29 @@ fn bearer_token(header: &HeaderValue) -> Result<&str, AuthError> {
         .split_whitespace()
         .nth(1)
         .ok_or(AuthError::InvalidAuthHeader)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn leaves_the_lookup_key_out_of_a_path() {
+        assert_eq!(
+            without_lookup_key("/-w2Sk82Q_jFWuL79rcgiDhfiSxJ5XIIrgRdabAaCfts/v1/library/sync"),
+            "/v1/library/sync"
+        );
+        assert_eq!(
+            without_lookup_key("/-w2Sk82Q_jFWuL79rcgiDhfiSxJ5XIIrgRdabAaCfts"),
+            "/"
+        );
+    }
+
+    #[test]
+    fn keeps_a_path_that_carries_no_key() {
+        assert_eq!(
+            without_lookup_key("/api/v3/content/checkforchanges"),
+            "/api/v3/content/checkforchanges"
+        );
+    }
 }
