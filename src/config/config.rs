@@ -92,7 +92,8 @@ impl Default for Database {
 
 impl Configuration {
     pub fn new() -> Result<Self, ConfigError> {
-        let config_path = std::env::var("CONFIGURATION").unwrap_or_else(|_| "configuration.toml".to_string());
+        let config_path =
+            std::env::var("CONFIGURATION").unwrap_or_else(|_| "src/config/configuration.toml".to_string());
 
         let conf = Config::builder()
             .add_source(File::with_name(&config_path).required(false))

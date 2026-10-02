@@ -26,6 +26,8 @@ jobs:
               - 'migrations/**'
               - 'build.rs'
               - 'tests/**'
+              - 'examples/**'
+              - 'rustfmt.toml'
               - 'Cargo.toml'
               - 'Cargo.lock'
 

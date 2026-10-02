@@ -3,5 +3,6 @@
 !src/
 !migrations/
 !build.rs
+!examples/
 !Cargo.lock
 !Cargo.toml

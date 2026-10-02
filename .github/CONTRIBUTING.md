@@ -16,12 +16,18 @@ Whether it’s reporting a bug, suggesting a feature, or submitting code, all co
 Pull requests are welcome. Please make sure to follow these guidelines:
 
 1. **Tests**
-   - Ensure all tests pass. Instructions are in the [README](./README.md).
+   - Ensure all tests pass. Instructions are in
+     [Contributing and Architecture](https://github.com/tiago-cos/prosa-kobo/wiki/Contributing-and-Architecture).
    - Add tests that demonstrate your changes work as intended.
 
 2. **Documentation**
-   - Update documentation if necessary.  
-   - Currently, documentation lives in [`openapi/openapi.yaml`](./openapi/openapi.yaml).
+   - Update documentation if necessary. It lives in two places:
+     - The API reference is the OpenAPI spec in [`openapi/`](../openapi). Keep it
+       in step with any endpoint you add or change.
+     - Everything else — installing, configuring, connecting a Kobo and working
+       on Prosa-Kobo — is in [`wiki/`](../wiki), which is published to the
+       [wiki](https://github.com/tiago-cos/prosa-kobo/wiki) by a workflow. Edit
+       the files in `wiki/`, not the wiki itself.
 
 3. **Code Style & Formatting**
    - Rust code:  

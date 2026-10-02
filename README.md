@@ -1,31 +1,79 @@
 # Prosa-Kobo
 
-**A middleware service that bridges Kobo eReaders with [Prosa](https://github.com/tiago-cos/prosa).**
+**A middleware service that connects Kobo eReaders to [Prosa](https://github.com/tiago-cos/prosa).**
 
 ## Overview
 
-Prosa-Kobo is a companion service to [Prosa](https://github.com/tiago-cos/prosa), written in Rust.
+Prosa-Kobo is a companion service to [Prosa](https://github.com/tiago-cos/prosa),
+written in Rust. A Kobo is pointed at it instead of Kobo's own servers.
+Prosa-Kobo answers the Kobo the way it expects, and translates each request into
+calls to Prosa, so your self-hosted library syncs to the Kobo as if it came from
+Kobo itself.
 
-It acts as a translation layer between Kobo eReaders and the Prosa API, allowing Kobo devices to sync books, metadata, reading progress, and shelves.
+Nothing is forwarded to Kobo's servers, and nothing on the device is modified
+apart from one line in its configuration file.
 
-Prosa-Kobo ensures that Kobo devices see Prosa as if it were the official Kobo backend, making it possible to manage your entire eBook collection on Kobo hardware.
+## Documentation
 
-Full documentation (including API docs): [tiago-cos.github.io/prosa-kobo](https://tiago-cos.github.io/prosa-kobo)
-
-## Why Prosa-Kobo?
-
-Kobo eReaders expect to communicate with Kobo’s cloud infrastructure. Prosa-Kobo emulates that behavior and forwards requests to Prosa, translating them as necessary. This makes it possible to fully integrate Kobo devices into your self-hosted Prosa ecosystem.
-
-With Prosa-Kobo, you get:
-
-* Full Kobo synchronization support
-* Native experience on Kobo eReaders without modifying device firmware
+- **[Wiki](https://github.com/tiago-cos/prosa-kobo/wiki)**: installing,
+  configuring and connecting a Kobo, and working on Prosa-Kobo itself
+- **[API reference](https://tiago-cos.github.io/prosa-kobo)**: the endpoints
+  that link and unlink devices
 
 ## Features
 
-* Bridges Kobo eReaders to Prosa
-* Synchronization of books, metadata, shelves, and reading progress
-* Supports multiple users and devices
+- Books, converted to KEPUB on the way to the Kobo
+
+- Book details and covers, kept up to date as they change in Prosa
+
+- Reading position, reading status and ratings, in both directions
+
+- Highlights and notes, in both directions, down to the character
+
+- Collections, synced with Prosa shelves in both directions
+
+- Several devices and several users on one server
+
+## Quick Start
+
+```yaml
+services:
+  prosa-kobo:
+    image: tsousa28/prosa-kobo
+    container_name: prosa-kobo
+    ports:
+      - "5001:5001"
+    environment:
+      - PROSA__HOST=prosa
+      - PROSA__PORT=5000
+    volumes:
+      - prosa_kobo:/app/persistence
+    restart: unless-stopped
+
+  prosa:
+    image: tsousa28/prosa
+    container_name: prosa
+    ports:
+      - "5000:5000"
+    environment:
+      - AUTH__ADMIN_KEY=very_secret_key
+    volumes:
+      - prosa_library:/app/library
+    restart: unless-stopped
+
+volumes:
+  prosa_kobo:
+  prosa_library:
+```
+
+`docker compose up -d`, then link your Kobo and point it at the endpoint you are
+given, as described in
+[Connecting a Kobo](https://github.com/tiago-cos/prosa-kobo/wiki/Connecting-a-Kobo).
+
+Persistence needs **named volumes**; bind mounts do not work, because the
+containers run rootless. The full story, including running Prosa-Kobo as a
+binary, is in
+[Installation and Setup](https://github.com/tiago-cos/prosa-kobo/wiki/Installation-and-Setup).
 
 ## Build Instructions
 
@@ -35,26 +83,10 @@ cd prosa-kobo
 cargo build --release
 ```
 
-## Database Migrations
-
-The schema is migrated automatically on startup, after a snapshot of the
-database is written next to it (`database.db.backup-…`). Snapshots are never
-deleted automatically.
-
-```bash
-prosa-kobo --migrate-status        # list applied and pending migrations
-prosa-kobo --migrate-down <ver>    # revert the schema down to <ver>
-```
-
-A binary can only revert the migrations it carries, so to move to an older
-Prosa-Kobo, run `--migrate-down` with the newer binary first, while the server
-is stopped. In Docker, check the status with
-`docker exec <container> prosa-kobo --migrate-status`, and revert with the
-container stopped:
-
-```bash
-docker run --rm --entrypoint prosa-kobo -v <volume>:/app/persistence <image> --migrate-down <ver>
-```
+To run it from source, start Prosa, then `cargo run`. Settings go in
+`src/config/configuration.toml`; copy `src/config/example.toml` to start from
+it. See
+[Configuration](https://github.com/tiago-cos/prosa-kobo/wiki/Configuration).
 
 ## Test Instructions
 
@@ -62,55 +94,59 @@ docker run --rm --entrypoint prosa-kobo -v <volume>:/app/persistence <image> --m
 cargo test
 ```
 
-The tests drive the real router in process, with an in-memory stand-in for
-Prosa, so nothing else needs to be running.
-
-`tests/prosa_contract.rs` checks that stand-in against the real thing. Its
-live half is skipped by default; to run it, start Prosa with an admin key and
-point the tests at it:
-
-```bash
-AUTH__ADMIN_KEY=admin_key ./prosa
-PROSA_URL=http://127.0.0.1:5000 PROSA_ADMIN_KEY=admin_key cargo test --test prosa_contract -- --ignored
-```
+The tests use an in-memory stand-in for Prosa, so nothing else needs to be
+running. Checking that stand-in against a real Prosa, and the semi-automated
+test on a real Kobo, are described in
+[Contributing and Architecture](https://github.com/tiago-cos/prosa-kobo/wiki/Contributing-and-Architecture).
 
 ## Roadmap
 
-* [x] **Backend ([Prosa](https://github.com/tiago-cos/prosa))**
-  * [x] **Books**
-    * [x] File management
-    * [x] Covers
-    * [x] Metadata
-    * [x] Annotations
-    * [x] Reading progress
-    * [x] Ratings
-    * [ ] Reading time statistics
-  * [x] **Shelves** (collections of books)
-  * [x] **Users**
-    * [x] Profiles
-    * [x] Preferences
-    * [x] API keys
-  * [x] Automatic metadata retrieval
-  * [x] Synchronization across devices
-  * [ ] Audiobook support
+- [x] **Backend ([Prosa](https://github.com/tiago-cos/prosa))**
+  - [x] **Books**
+    - [x] File management
+    - [x] Covers
+    - [x] Metadata
+    - [x] Annotations
+    - [x] Reading progress
+    - [x] Ratings
+    - [ ] Reading time statistics
+  - [x] **Shelves** (collections of books)
+  - [x] **Users**
+    - [x] Profiles
+    - [x] Preferences
+    - [x] API keys
+  - [x] Automatic metadata retrieval
+  - [x] Synchronization across devices
+  - [ ] Audiobook support
 
-* [x] **Kobo Support (Prosa-Kobo)**
-  * [x] **Books**
-    * [x] File management
-    * [x] Covers
-    * [x] Metadata
-    * [x] Annotations
-    * [x] Reading progress
-    * [x] Ratings
-    * [ ] Reading time statistics
-  * [x] **Shelves**
-  * [x] Prosa synchronization
-  * [ ] Audiobooks
+- [x] **Kobo Support (Prosa-Kobo)**
+  - [x] **Books**
+    - [x] File management
+    - [x] Covers
+    - [x] Metadata
+    - [x] Annotations
+    - [x] Reading progress
+    - [x] Ratings
+    - [ ] Reading time statistics
+  - [x] **Shelves**
+  - [x] Prosa synchronization
+  - [ ] Audiobooks
 
-* [ ] **Mobile App**
+- [ ] **Mobile App**
 
-  * TODO
+  - TODO
+
+## Contributing
+
+Issues and pull requests are both welcome. See
+[CONTRIBUTING.md](.github/CONTRIBUTING.md), and
+[Contributing and Architecture](https://github.com/tiago-cos/prosa-kobo/wiki/Contributing-and-Architecture)
+for how the code is laid out.
 
 ## Related Projects
 
-* [Prosa](https://github.com/tiago-cos/prosa) – the main backend and API for managing your eBook collection.
+- [Prosa](https://github.com/tiago-cos/prosa) – the main backend and API for managing your eBook collection.
+
+## License
+
+[MIT](LICENSE)
