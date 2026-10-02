@@ -177,8 +177,8 @@ changed migration stops Prosa-Kobo from starting. Add a new one instead.
 
 ## The OpenAPI spec
 
-`openapi/` is the reference for Prosa-Kobo's own API, the device management
-endpoints. The Kobo-facing endpoints imitate Kobo's and are not part of it.
+`openapi/` is the reference for Prosa-Kobo's own API: the health check and the
+device management endpoints. The Kobo-facing endpoints imitate Kobo's and are not part of it.
 
 - `openapi/openapi.yaml`: the root document
 - `openapi/paths/`: one file per path, in directories mirroring the URL

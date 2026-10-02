@@ -16,13 +16,14 @@ info:
 
     Installing it, configuring it and connecting a Kobo are covered in the
     [wiki](https://github.com/tiago-cos/prosa-kobo/wiki). This document is the
-    reference for the endpoints that link and unlink devices. The endpoints the
-    Kobo itself calls imitate Kobo's own servers and are not described here.
+    reference for the health check and the endpoints that link and unlink
+    devices. The endpoints the Kobo itself calls imitate Kobo's own servers and
+    are not described here.
 
     ## Authentication
 
-    These endpoints take a Prosa JWT, `Authorization: Bearer <token>`, from
-    Prosa's `/auth/login`. A user may act only on their own devices; a Prosa
+    Every endpoint except `/health` takes a Prosa JWT,
+    `Authorization: Bearer <token>`, from Prosa's `/auth/login`. A user may act only on their own devices; a Prosa
     admin may act on anyone's, and is the only one who may list devices without
     filtering by user.
 
@@ -36,12 +37,15 @@ externalDocs:
   url: "https://github.com/tiago-cos/prosa-kobo"
 
 tags:
+  - name: Server
+    description: Whether this deployment is up, and which build it is. No credentials needed.
   - name: Devices
     description: Linking Kobo devices to Prosa API keys, listing them and unlinking them.
 
 x-tagGroups:
   - name: API Specification
     tags:
+      - Server
       - Devices
       
 security:
@@ -55,6 +59,8 @@ servers:
         description: The server host
         
 paths:
+  /health:
+    $ref: "paths/health.yaml"
   /devices/linked:
     $ref: "paths/devices/linked.yaml"
   /devices/linked/{device_id}:

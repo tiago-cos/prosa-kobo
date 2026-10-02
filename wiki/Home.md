@@ -27,8 +27,8 @@ apart from one line in its configuration file.
 
 **API reference**
 
-Prosa-Kobo's own API is the handful of endpoints that link and unlink devices.
-Its reference is generated from the OpenAPI spec and published at
+Prosa-Kobo's own API is a health check and the handful of endpoints that link
+and unlink devices. Its reference is generated from the OpenAPI spec and published at
 [tiago-cos.github.io/prosa-kobo](https://tiago-cos.github.io/prosa-kobo).
 
 ## What syncs

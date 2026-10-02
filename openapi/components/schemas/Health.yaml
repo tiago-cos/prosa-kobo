@@ -1,0 +1,19 @@
+type: object
+properties:
+  status:
+    type: string
+    enum: ["ok"]
+    description: Always `ok`; an unhealthy server does not answer.
+  software:
+    type: string
+    description: The name of the running software.
+    example: prosa-kobo
+  version:
+    type: string
+    description: The version of the running software.
+    example: 0.1.0
+required:
+  - status
+  - software
+  - version
+additionalProperties: false

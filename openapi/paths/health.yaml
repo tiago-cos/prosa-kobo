@@ -1,0 +1,19 @@
+get:
+  tags:
+    - Server
+  summary: Health check
+  description: |
+    Reports that the server is up, and which build is answering.
+
+    Takes no credentials, so it can be used as a container health check.
+  operationId: health_check
+
+  responses:
+    '200':
+      description: The server is running.
+      content:
+        application/json:
+          schema:
+            $ref: ../components/schemas/Health.yaml
+
+  security: []

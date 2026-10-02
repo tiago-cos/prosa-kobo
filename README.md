@@ -17,8 +17,8 @@ apart from one line in its configuration file.
 
 - **[Wiki](https://github.com/tiago-cos/prosa-kobo/wiki)**: installing,
   configuring and connecting a Kobo, and working on Prosa-Kobo itself
-- **[API reference](https://tiago-cos.github.io/prosa-kobo)**: the endpoints
-  that link and unlink devices
+- **[API reference](https://tiago-cos.github.io/prosa-kobo)**: the health
+  check and the endpoints that link and unlink devices
 
 ## Features
 

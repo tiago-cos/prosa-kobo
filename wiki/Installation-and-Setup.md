@@ -80,10 +80,14 @@ shows:
 [2026-10-02 11:54:08]  INFO Middleware started on http://0.0.0.0:5001
 ```
 
-`/health` answers `204 No Content` with no credentials:
+`/health` answers with no credentials:
 
 ```bash
-curl -i http://localhost:5001/health
+curl http://localhost:5001/health
+```
+
+```json
+{ "status": "ok", "software": "prosa-kobo", "version": "0.1.0" }
 ```
 
 Once it answers, carry on to [Connecting a Kobo](Connecting-a-Kobo).
