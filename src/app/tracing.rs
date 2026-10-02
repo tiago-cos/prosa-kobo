@@ -1,3 +1,4 @@
+use crate::app::error::ErrorResponse;
 use axum::{
     body::{Body, to_bytes},
     extract::Request,
@@ -12,7 +13,8 @@ use tracing_subscriber::{
     util::SubscriberInitExt,
 };
 
-use crate::app::error::ErrorResponse;
+#[derive(Clone, Copy)]
+pub struct Unhandled;
 
 pub fn init_logging() {
     let fmt_layer = layer()
@@ -22,11 +24,12 @@ pub fn init_logging() {
         .with_file(false)
         .with_line_number(false)
         .with_ansi_sanitization(false)
-        .with_timer(ChronoUtc::rfc_3339())
+        .with_timer(ChronoUtc::new("[%Y-%m-%d %H:%M:%S]".to_owned()))
         .compact();
 
     let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
     let filter = filter.add_directive("html5ever=error".parse().expect("Failed to parse log filter"));
+    let filter = filter.add_directive("xml5ever=error".parse().expect("Failed to parse log filter"));
 
     tracing_subscriber::registry().with(filter).with(fmt_layer).init();
 }
@@ -45,7 +48,7 @@ pub async fn log_layer(req: Request, next: Next) -> Response {
         format!("\x1B[31m{}\x1B[0m", status.as_u16())
     };
 
-    if path == "/health" {
+    if path == "/health" || response.extensions().get::<Unhandled>().is_some() {
         debug!("{method} {path} [{colored_code}]");
     } else if status.is_success() || status.is_redirection() {
         info!("{method} {path} [{colored_code}]");
