@@ -5,7 +5,7 @@ use crate::{
 use serde_json::json;
 
 const REFRESH: &str =
-    "Switch to another tab and back to My Books: the Kobo redraws a cover only when it comes back into view";
+    "Switch to another tab and back to Books: the Kobo redraws a cover only when it comes back into view";
 
 const DETAILS: &str =
     "Open the book's details: tap the ⋯ under its cover (or long-press it) and choose View Details";
@@ -70,7 +70,7 @@ async fn awkward_title(ctx: &mut Ctx) -> StepResult {
         .instruct("On the Kobo", &["Go back to the Home screen", SYNC])?;
 
     ctx.prompt.confirm(&format!(
-        "Does My Books show the title exactly as {AWKWARD_TITLE}?"
+        "Does the Books tab show the title exactly as {AWKWARD_TITLE}?"
     ))
 }
 
@@ -116,5 +116,5 @@ async fn removed_metadata(ctx: &mut Ctx) -> StepResult {
     ctx.prompt.instruct("On the Kobo", &[SYNC, "Open the book"])?;
 
     ctx.prompt
-        .confirm("Is the book still in My Books, now named “Untitled”, and did it open?")
+        .confirm("Is the book still in the Books tab, now named “Untitled”, and did it open?")
 }

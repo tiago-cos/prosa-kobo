@@ -4,7 +4,7 @@ use crate::{
 };
 
 const REMOVE: &str =
-    "On the Home screen or in My Books, tap the ⋯ under its cover (or long-press it) and choose Remove";
+    "On the Home screen or in the Books tab, tap the ⋯ under its cover (or long-press it) and choose Remove";
 
 pub fn section() -> Section {
     Section {
@@ -49,7 +49,7 @@ async fn download_removed(ctx: &mut Ctx) -> StepResult {
     ctx.prompt.good("Prosa still has the book");
 
     ctx.prompt
-        .confirm("Is “An Orchard Year” still in My Books, shown as not downloaded?")
+        .confirm("Is “An Orchard Year” still in the Books tab, shown as not downloaded?")
 }
 
 async fn device_deleted(ctx: &mut Ctx) -> StepResult {
@@ -83,7 +83,8 @@ async fn prosa_deleted(ctx: &mut Ctx) -> StepResult {
 
     ctx.prompt.instruct("On the Kobo", &[SYNC])?;
 
-    ctx.prompt.confirm("Is “An Orchard Year” gone from My Books?")
+    ctx.prompt
+        .confirm("Is “An Orchard Year” gone from the Books tab?")
 }
 
 async fn prosa_deleted_downloaded(ctx: &mut Ctx) -> StepResult {
@@ -100,7 +101,7 @@ async fn prosa_deleted_downloaded(ctx: &mut Ctx) -> StepResult {
     ctx.prompt.instruct("On the Kobo", &[SYNC])?;
 
     ctx.prompt
-        .confirm("Is “The Lighthouse Keeper” gone from My Books, download and all?")
+        .confirm("Is “The Lighthouse Keeper” gone from the Books tab, download and all?")
 }
 
 async fn restored(ctx: &mut Ctx) -> StepResult {
@@ -111,5 +112,5 @@ async fn restored(ctx: &mut Ctx) -> StepResult {
         .instruct("On the Kobo", &[SYNC, "Open “The Lighthouse Keeper”"])?;
 
     ctx.prompt
-        .confirm("Is “The Lighthouse Keeper” back in My Books, and does it open?")
+        .confirm("Is “The Lighthouse Keeper” back in the Books tab, and does it open?")
 }

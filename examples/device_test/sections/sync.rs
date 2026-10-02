@@ -49,7 +49,7 @@ async fn added_later(ctx: &mut Ctx) -> StepResult {
         .instruct("On the Kobo", &["Go back to the Home screen", SYNC])?;
 
     ctx.prompt.confirm(&format!(
-        "Is “Tidepool Notes” by Marina Shore now in My Books, its cover {}?",
+        "Is “Tidepool Notes” by Marina Shore now in the Books tab, its cover {}?",
         Cover::Purple.describe()
     ))
 }
@@ -84,5 +84,5 @@ async fn deleted(ctx: &mut Ctx) -> StepResult {
         .instruct("On the Kobo", &["Go back to the Home screen", SYNC])?;
 
     ctx.prompt
-        .confirm("Is “Tidepool Notes” gone from My Books, leaving the other two?")
+        .confirm("Is “Tidepool Notes” gone from the Books tab, leaving the other two?")
 }

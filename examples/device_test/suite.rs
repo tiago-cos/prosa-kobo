@@ -205,12 +205,12 @@ impl Ctx {
             &[
                 SYNC,
                 "Let it remove any books left over from earlier sections",
-                &format!("Wait for these to appear in My Books: {}", titles.join(", ")),
+                &format!("Wait for these to appear in the Books tab: {}", titles.join(", ")),
             ],
         )?;
 
         self.prompt.confirm(&format!(
-            "Are {} in My Books, with no test book left from an earlier section? Books of your own may be there too.",
+            "Are {} in the Books tab, with no test book left from an earlier section? Books of your own may be there too.",
             titles.join(", ")
         ))
     }

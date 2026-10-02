@@ -4,7 +4,8 @@ use crate::{
 };
 use std::collections::BTreeSet;
 
-const COLLECTIONS: &str = "Open My Books, then Collections";
+const COLLECTIONS: &str = "Open Collections";
+const COLLECTIONS_REFRESH: &str = "If Collections was already open when you synced, switch to another tab and back: the Kobo does not refresh it after a sync";
 
 pub fn section() -> Section {
     Section {
@@ -186,7 +187,8 @@ async fn device_deleted(ctx: &mut Ctx) -> StepResult {
 }
 
 fn confirm_collection(ctx: &mut Ctx, name: &str, fixtures: &[Fixture]) -> StepResult {
-    ctx.prompt.instruct("On the Kobo", &[SYNC, COLLECTIONS])?;
+    ctx.prompt
+        .instruct("On the Kobo", &[SYNC, COLLECTIONS, COLLECTIONS_REFRESH])?;
 
     ctx.prompt.confirm(&format!(
         "Is there one collection named “{name}”, holding {}?",
@@ -242,10 +244,11 @@ async fn prosa_deleted(ctx: &mut Ctx) -> StepResult {
     let shelf_id = ctx.recall("prosa shelf")?;
     ctx.api().delete_shelf(&shelf_id, ctx.key()).await?;
 
-    ctx.prompt.instruct("On the Kobo", &[SYNC, COLLECTIONS])?;
+    ctx.prompt
+        .instruct("On the Kobo", &[SYNC, COLLECTIONS, COLLECTIONS_REFRESH])?;
 
     ctx.prompt
-        .confirm("Is “Prosa Shelf Renamed” gone, with all three books still in My Books?")
+        .confirm("Is “Prosa Shelf Renamed” gone, with all three books still in the Books tab?")
 }
 
 async fn clashing_names(ctx: &mut Ctx) -> StepResult {

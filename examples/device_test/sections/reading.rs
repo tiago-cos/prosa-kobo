@@ -196,7 +196,7 @@ async fn prosa_finished(ctx: &mut Ctx) -> StepResult {
     ctx.prompt.instruct("On the Kobo", &[SYNC])?;
 
     ctx.prompt
-        .confirm("Is “The Lighthouse Keeper” marked Finished in My Books?")
+        .confirm("Is “The Lighthouse Keeper” marked Finished in the Books tab?")
 }
 
 async fn prosa_unread(ctx: &mut Ctx) -> StepResult {

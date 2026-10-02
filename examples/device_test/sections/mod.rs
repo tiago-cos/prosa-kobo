@@ -9,7 +9,7 @@ mod sync;
 
 use crate::{
     books::Fixture,
-    epub::{Book, Resolved},
+    epub::Book,
     suite::{Ctx, Problem, Section, StepEnd, StepResult},
 };
 use prosa_kobo::{
@@ -66,10 +66,6 @@ pub fn in_place(
     }
 
     Ok(())
-}
-
-pub fn is_element(book: &Book, location: &str) -> bool {
-    matches!(book.resolve(location), Ok(Resolved::Element { .. }))
 }
 
 pub async fn set_state(
