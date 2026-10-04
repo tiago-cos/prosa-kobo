@@ -157,7 +157,7 @@ async fn leaves_a_position_moved_elsewhere_for_the_device_to_offer_on_opening() 
         .seed_state("book", reading(Some(&format!("{CHAPTER}#0/0/0/t0:0"))));
     state_changed(&harness);
 
-    assert!(sync(&harness, &device).await.is_empty());
+    assert_eq!(sync(&harness, &device).await, [] as [Value; 0]);
 }
 
 #[tokio::test]
@@ -176,7 +176,7 @@ async fn sends_a_position_to_a_device_holding_the_book_unread_once() {
 
     assert_eq!(state["StatusInfo"]["Status"], "Reading");
     assert_eq!(state["CurrentBookmark"]["Location"]["Value"], "kobo.1.1");
-    assert!(sync(&harness, &device).await.is_empty());
+    assert_eq!(sync(&harness, &device).await, [] as [Value; 0]);
 }
 
 #[tokio::test]
@@ -194,7 +194,7 @@ async fn sends_a_book_finished_elsewhere_once() {
         items[0]["ChangedReadingState"]["ReadingState"]["StatusInfo"]["Status"],
         "Finished"
     );
-    assert!(sync(&harness, &device).await.is_empty());
+    assert_eq!(sync(&harness, &device).await, [] as [Value; 0]);
 }
 
 #[tokio::test]

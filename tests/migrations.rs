@@ -181,7 +181,7 @@ async fn reverting_to_zero_backs_up_and_drops_the_schema_which_the_next_start_re
         .await
         .expect("Failed to revert");
 
-    assert!(tables(&pool).await.is_empty());
+    assert_eq!(tables(&pool).await, [] as [String; 0]);
     assert_eq!(scratch.backups("pre-downgrade-to-v0"), 1);
     pool.close().await;
 

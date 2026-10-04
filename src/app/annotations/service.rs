@@ -407,7 +407,10 @@ mod tests {
 
         fixture.patch(update(vec![annotation])).await;
 
-        assert!(fixture.client.stored_annotations(BOOK).is_empty());
+        assert_eq!(
+            fixture.client.stored_annotations(BOOK),
+            [] as [ProsaAnnotation; 0]
+        );
         assert_eq!(fixture.client.call_count(ProsaMethod::AddAnnotation), 0);
     }
 
@@ -423,6 +426,9 @@ mod tests {
             })
             .await;
 
-        assert!(fixture.client.stored_annotations(BOOK).is_empty());
+        assert_eq!(
+            fixture.client.stored_annotations(BOOK),
+            [] as [ProsaAnnotation; 0]
+        );
     }
 }

@@ -5,7 +5,7 @@ use axum::{
     http::{Method, Response, StatusCode},
 };
 use common::{DEVICE_HARDWARE_ID, Harness, assert_internal_error, body_json};
-use prosa_kobo::client::{mock::ProsaMethod, prosa::ClientError};
+use prosa_kobo::client::{ProsaAnnotation, mock::ProsaMethod, prosa::ClientError};
 use serde_json::{Value, json};
 
 const BOOK: &str = "book";
@@ -196,7 +196,10 @@ async fn deletes_what_the_device_removed() {
     let response = patch(&harness, vec![], vec![HIGHLIGHT]).await;
 
     assert_eq!(response.status(), StatusCode::NO_CONTENT);
-    assert!(harness.client.stored_annotations(BOOK).is_empty());
+    assert_eq!(
+        harness.client.stored_annotations(BOOK),
+        [] as [ProsaAnnotation; 0]
+    );
 }
 
 #[tokio::test]
@@ -224,7 +227,7 @@ async fn drops_only_the_annotation_the_book_cannot_place() {
 async fn lists_an_unannotated_book_without_converting_it() {
     let harness = device_with_book().await;
 
-    assert!(annotations(&harness).await.is_empty());
+    assert_eq!(annotations(&harness).await, [] as [Value; 0]);
     assert_eq!(harness.client.call_count(ProsaMethod::DownloadBook), 0);
 }
 
