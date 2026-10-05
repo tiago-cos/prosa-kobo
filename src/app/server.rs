@@ -9,8 +9,8 @@ use crate::{
 };
 use axum::{Router, middleware::from_fn};
 use log::{error, info, warn};
-use std::{process::exit, sync::LazyLock, time::Duration};
-use tokio::{net::TcpListener, time::sleep};
+use std::{future::pending, process::exit, sync::LazyLock, time::Duration};
+use tokio::{net::TcpListener, signal, time::sleep};
 use tower::ServiceBuilder;
 
 const EXPECTED_PROSA_VERSION: &str = "0.2.0";
@@ -26,7 +26,10 @@ pub async fn run() {
         CONFIG.prosa.scheme, CONFIG.prosa.host, CONFIG.prosa.port
     );
 
-    await_prosa(prosa_client(), &prosa_url).await;
+    tokio::select! {
+        () = await_prosa(prosa_client(), &prosa_url) => {}
+        () = shutdown_signal() => return,
+    }
 
     authentication::service::load_prosa_keys(prosa_client()).await;
 
@@ -37,7 +40,42 @@ pub async fn run() {
     let app = router();
 
     let listener = TcpListener::bind(host).await.unwrap();
-    axum::serve(listener, app).await.unwrap();
+    axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown_signal())
+        .await
+        .unwrap();
+}
+
+async fn shutdown_signal() {
+    let interrupt = async {
+        if let Err(error) = signal::ctrl_c().await {
+            error!("Could not listen for Ctrl-C: {error}");
+            pending::<()>().await;
+        }
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        match signal::unix::signal(signal::unix::SignalKind::terminate()) {
+            Ok(mut terminate) => {
+                terminate.recv().await;
+            }
+            Err(error) => {
+                error!("Could not listen for SIGTERM: {error}");
+                pending::<()>().await;
+            }
+        }
+    };
+
+    #[cfg(not(unix))]
+    let terminate = pending::<()>();
+
+    tokio::select! {
+        () = interrupt => {}
+        () = terminate => {}
+    }
+
+    info!("Shutting down");
 }
 
 pub fn router() -> Router {

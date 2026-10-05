@@ -72,6 +72,7 @@ async fn start() -> Result<(), StartupError> {
                 CONFIG.prosa.port,
             )))?;
             app::run().await;
+            database::pool().close().await;
         }
     }
 
